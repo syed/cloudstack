@@ -14,7 +14,7 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package org.apache.cloudstack.api.response;
+package org.apache.cloudstack.api.response.solidfire;
 
 import com.cloud.serializer.Param;
 
@@ -25,13 +25,9 @@ import org.apache.cloudstack.api.BaseResponse;
 public class ApiSolidFireAccountIdResponse extends BaseResponse {
     @SerializedName("solidFireAccountId")
     @Param(description = "SolidFire Account ID")
-    private long solidFireAccountId;
+    private long _solidFireAccountId;
 
     public ApiSolidFireAccountIdResponse(long sfAccountId) {
-        solidFireAccountId = sfAccountId;
-    }
-
-    public long getSolidFireAccountId() {
-        return solidFireAccountId;
+        _solidFireAccountId = sfAccountId;
     }
 }
