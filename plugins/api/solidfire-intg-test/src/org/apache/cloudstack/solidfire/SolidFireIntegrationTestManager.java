@@ -14,24 +14,10 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package org.apache.cloudstack.api.response;
+package org.apache.cloudstack.solidfire;
 
-import com.cloud.serializer.Param;
-
-import com.google.gson.annotations.SerializedName;
-
-import org.apache.cloudstack.api.BaseResponse;
-
-public class ApiSolidFireVolumeSizeResponse extends BaseResponse {
-    @SerializedName("solidFireVolumeSize")
-    @Param(description = "SolidFire Volume Size Including Hypervisor Snapshot Reserve")
-    private long solidFireVolumeSize;
-
-    public ApiSolidFireVolumeSizeResponse(long sfVolumeSize) {
-        solidFireVolumeSize = sfVolumeSize;
-    }
-
-    public long getSolidFireVolumeSize() {
-        return solidFireVolumeSize;
-    }
+public interface SolidFireIntegrationTestManager {
+    long getSolidFireAccountId(String csAccountUuid, String storagePoolUuid);
+    long getSolidFireVolumeAccessGroupId(String csClusterUuid, String storagePoolUuid);
+    long getSolidFireVolumeSize(String volumeUuid);
 }
