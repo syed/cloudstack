@@ -96,6 +96,7 @@ public class SolidFirePrimaryDataStoreDriver implements PrimaryDataStoreDriver {
         Map<String, String> mapCapabilities = new HashMap<String, String>();
 
         mapCapabilities.put(DataStoreCapabilities.STORAGE_SYSTEM_SNAPSHOT.toString(), Boolean.TRUE.toString());
+        mapCapabilities.put(DataStoreCapabilities.CAN_CLONE_VOLUME.toString(), Boolean.TRUE.toString());
 
         return mapCapabilities;
     }
@@ -448,25 +449,35 @@ public class SolidFirePrimaryDataStoreDriver implements PrimaryDataStoreDriver {
 
             SolidFireUtil.SolidFireConnection sfConnection = SolidFireUtil.getSolidFireConnection(storagePoolId, _storagePoolDetailsDao);
 
-            AccountDetailVO accountDetail = SolidFireUtil.getAccountDetail(volumeInfo.getAccountId(), storagePoolId, _accountDetailsDao);
+            long snapshotId = getSnapshotIdForCloning(volumeInfo.getId());
 
-            if (accountDetail == null || accountDetail.getValue() == null) {
-                AccountVO account = _accountDao.findById(volumeInfo.getAccountId());
-                String sfAccountName = SolidFireUtil.getSolidFireAccountName(account.getUuid(), account.getAccountId());
-                SolidFireUtil.SolidFireAccount sfAccount = SolidFireUtil.getSolidFireAccount(sfConnection, sfAccountName);
+            SolidFireUtil.SolidFireVolume sfVolume = null;
 
-                if (sfAccount == null) {
-                    sfAccount = createSolidFireAccount(sfConnection, sfAccountName);
+            // if snapshotId > 0, then we are supposed to create a clone of the underlying volume that supports the CloudStack snapshot
+            if (snapshotId > 0) {
+                sfVolume = createClone(sfConnection, snapshotId, volumeInfo.getName());
+            }
+            else {
+                AccountDetailVO accountDetail = SolidFireUtil.getAccountDetail(volumeInfo.getAccountId(), storagePoolId, _accountDetailsDao);
+
+                if (accountDetail == null || accountDetail.getValue() == null) {
+                    AccountVO account = _accountDao.findById(volumeInfo.getAccountId());
+                    String sfAccountName = SolidFireUtil.getSolidFireAccountName(account.getUuid(), account.getAccountId());
+                    SolidFireUtil.SolidFireAccount sfAccount = SolidFireUtil.getSolidFireAccount(sfConnection, sfAccountName);
+
+                    if (sfAccount == null) {
+                        sfAccount = createSolidFireAccount(sfConnection, sfAccountName);
+                    }
+
+                    SolidFireUtil.updateCsDbWithSolidFireAccountInfo(account.getId(), sfAccount, storagePoolId, _accountDetailsDao);
+
+                    accountDetail = SolidFireUtil.getAccountDetail(volumeInfo.getAccountId(), storagePoolId, _accountDetailsDao);
                 }
 
-                SolidFireUtil.updateCsDbWithSolidFireAccountInfo(account.getId(), sfAccount, storagePoolId, _accountDetailsDao);
+                long sfAccountId = Long.parseLong(accountDetail.getValue());
 
-                accountDetail = SolidFireUtil.getAccountDetail(volumeInfo.getAccountId(), storagePoolId, _accountDetailsDao);
+                sfVolume = createSolidFireVolume(sfConnection, volumeInfo, sfAccountId);
             }
-
-            long sfAccountId = Long.parseLong(accountDetail.getValue());
-
-            SolidFireUtil.SolidFireVolume sfVolume = createSolidFireVolume(sfConnection, volumeInfo, sfAccountId);
 
             iqn = sfVolume.getIqn();
 
@@ -502,6 +513,36 @@ public class SolidFirePrimaryDataStoreDriver implements PrimaryDataStoreDriver {
         result.setResult(errMsg);
 
         callback.complete(result);
+    }
+
+    private long getSnapshotIdForCloning(long volumeId) {
+        VolumeDetailVO volumeDetail = _volumeDetailsDao.findDetail(volumeId, "cloneOf");
+
+        if (volumeDetail != null && volumeDetail.getValue() != null) {
+            return new Long(volumeDetail.getValue());
+        }
+
+        return Long.MIN_VALUE;
+    }
+
+    private boolean shouldClone(long snapshotId) {
+        SnapshotDetailsVO snapshotDetails = _snapshotDetailsDao.findDetail(snapshotId, "makeClone");
+
+        if (snapshotDetails != null && snapshotDetails.getValue() != null) {
+            return new Boolean(snapshotDetails.getValue());
+        }
+
+        return false;
+    }
+
+    private SolidFireUtil.SolidFireVolume createClone(SolidFireUtil.SolidFireConnection sfConnection, long snapshotId, String sfNewVolumeName) {
+        SnapshotDetailsVO snapshotDetails = _snapshotDetailsDao.findDetail(snapshotId, SolidFireUtil.VOLUME_ID);
+
+        long volumeId = Long.parseLong(snapshotDetails.getValue());
+
+        long newVolumeId = SolidFireUtil.createSolidFireClone(sfConnection, volumeId, sfNewVolumeName);
+
+        return SolidFireUtil.getSolidFireVolume(sfConnection, newVolumeId);
     }
 
     private void updateVolumeDetails(long volumeId, long sfVolumeSize) {
@@ -601,10 +642,17 @@ public class SolidFirePrimaryDataStoreDriver implements PrimaryDataStoreDriver {
 
             storagePool.setUsedBytes(usedBytes);
 
-            String volumeName = volumeInfo.getName() + "-" + snapshotInfo.getUuid();
+            String sfNewVolumeName = volumeInfo.getName() + "-" + snapshotInfo.getUuid();
 
-            long sfNewVolumeId = SolidFireUtil.createSolidFireVolume(sfConnection, volumeName, sfVolume.getAccountId(), sfVolumeSize,
-                    sfVolume.isEnable512e(), NumberFormat.getInstance().format(volumeInfo.getSize()), sfVolume.getMinIops(), 50000, 75000);
+            final long sfNewVolumeId;
+
+            if (shouldClone(snapshotInfo.getId())) {
+                sfNewVolumeId = SolidFireUtil.createSolidFireClone(sfConnection, sfVolumeId, sfNewVolumeName);
+            }
+            else {
+                sfNewVolumeId = SolidFireUtil.createSolidFireVolume(sfConnection, sfNewVolumeName, sfVolume.getAccountId(), sfVolumeSize, sfVolume.isEnable512e(),
+                        NumberFormat.getInstance().format(volumeInfo.getSize()), sfVolume.getMinIops(), sfVolume.getMaxIops(), sfVolume.getBurstIops());
+            }
 
             // Now that we have successfully created a volume, update the space usage in the storage_pool table
             // (even though storage_pool.used_bytes is likely no longer in use).

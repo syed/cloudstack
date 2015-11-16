@@ -18,9 +18,12 @@
  */
 package org.apache.cloudstack.storage.motion;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import javax.inject.Inject;
 
@@ -30,7 +33,7 @@ import org.apache.cloudstack.engine.subsystem.api.storage.DataMotionStrategy;
 import org.apache.cloudstack.engine.subsystem.api.storage.DataObject;
 import org.apache.cloudstack.engine.subsystem.api.storage.DataStore;
 import org.apache.cloudstack.engine.subsystem.api.storage.DataStoreCapabilities;
-import org.apache.cloudstack.engine.subsystem.api.storage.ObjectInDataStoreStateMachine.Event;
+import org.apache.cloudstack.engine.subsystem.api.storage.DataStoreManager;
 import org.apache.cloudstack.engine.subsystem.api.storage.SnapshotInfo;
 import org.apache.cloudstack.engine.subsystem.api.storage.StrategyPriority;
 import org.apache.cloudstack.engine.subsystem.api.storage.TemplateInfo;
@@ -43,18 +46,24 @@ import org.apache.cloudstack.framework.async.AsyncCompletionCallback;
 import org.apache.cloudstack.framework.config.dao.ConfigurationDao;
 import org.apache.cloudstack.storage.command.CopyCmdAnswer;
 import org.apache.cloudstack.storage.command.CopyCommand;
+import org.apache.cloudstack.storage.command.ResignatureAnswer;
+import org.apache.cloudstack.storage.command.ResignatureCommand;
 import org.apache.cloudstack.storage.datastore.db.PrimaryDataStoreDao;
 import org.apache.cloudstack.storage.datastore.db.StoragePoolVO;
+import org.apache.cloudstack.storage.to.VolumeObjectTO;
 import org.apache.log4j.Logger;
+
 import org.springframework.stereotype.Component;
 
 import com.cloud.agent.AgentManager;
 import com.cloud.agent.api.to.DiskTO;
 import com.cloud.agent.api.to.VirtualMachineTO;
 import com.cloud.configuration.Config;
+import com.cloud.host.DetailVO;
 import com.cloud.host.Host;
 import com.cloud.host.HostVO;
 import com.cloud.host.dao.HostDao;
+import com.cloud.host.dao.HostDetailsDao;
 import com.cloud.hypervisor.Hypervisor.HypervisorType;
 import com.cloud.org.Cluster;
 import com.cloud.org.Grouping.AllocationState;
@@ -64,12 +73,14 @@ import com.cloud.storage.DataStoreRole;
 import com.cloud.storage.DiskOfferingVO;
 import com.cloud.storage.SnapshotVO;
 import com.cloud.storage.Storage.ImageFormat;
+import com.cloud.storage.VolumeDetailVO;
 import com.cloud.storage.VolumeVO;
 import com.cloud.storage.dao.DiskOfferingDao;
 import com.cloud.storage.dao.SnapshotDao;
 import com.cloud.storage.dao.SnapshotDetailsDao;
 import com.cloud.storage.dao.SnapshotDetailsVO;
 import com.cloud.storage.dao.VolumeDao;
+import com.cloud.storage.dao.VolumeDetailsDao;
 import com.cloud.utils.NumbersUtil;
 import com.cloud.utils.exception.CloudRuntimeException;
 import com.cloud.vm.VirtualMachineManager;
@@ -80,14 +91,17 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
 
     @Inject private AgentManager _agentMgr;
     @Inject private ConfigurationDao _configDao;
+    @Inject private DataStoreManager _dataStoreMgr;
     @Inject private DiskOfferingDao _diskOfferingDao;
     @Inject private HostDao _hostDao;
+    @Inject private HostDetailsDao _hostDetailsDao;
     @Inject private ManagementService _mgr;
     @Inject private PrimaryDataStoreDao _storagePoolDao;
     @Inject private SnapshotDao _snapshotDao;
     @Inject private SnapshotDetailsDao _snapshotDetailsDao;
     @Inject private VolumeDao _volumeDao;
     @Inject private VolumeDataFactory _volumeDataFactory;
+    @Inject private VolumeDetailsDao _volumeDetailsDao;
     @Inject private VolumeService _volumeService;
 
     @Override
@@ -180,7 +194,12 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
             throw new CloudRuntimeException("This snapshot is not currently in a state where it can be used to create a template.");
         }
 
-        HostVO hostVO = getHost(snapshotInfo.getDataStore().getId());
+        HostVO hostVO = getXenServerHost(snapshotInfo.getDataStore().getId(), false);
+
+        if (hostVO == null) {
+            throw new CloudRuntimeException("Unable to locate an applicable host");
+        }
+
         DataStore srcDataStore = snapshotInfo.getDataStore();
 
         String value = _configDao.getValue(Config.PrimaryStorageDownloadWait.toString());
@@ -243,10 +262,27 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
     }
 
     private Void handleCreateVolumeFromSnapshotBothOnStorageSystem(SnapshotInfo snapshotInfo, VolumeInfo volumeInfo, AsyncCompletionCallback<CopyCommandResult> callback) {
+        HostVO hostVO = getXenServerHost(snapshotInfo.getDataStore().getId(), true);
+
+        if (hostVO == null) {
+            hostVO = getXenServerHost(snapshotInfo.getDataStore().getId(), false);
+
+            if (hostVO == null) {
+                throw new CloudRuntimeException("Unable to locate an applicable host");
+            }
+        }
+
+        boolean canComputeClusterHandleClonedVolume = canComputeClusterHandleClonedVolume(hostVO.getClusterId());
+        boolean canStorageSystemCloneVolume = canStorageSystemCloneVolume(volumeInfo.getPoolId());
+
         try {
             // at this point, the snapshotInfo and volumeInfo should have the same disk offering ID (so either one should be OK to get a DiskOfferingVO instance)
             DiskOfferingVO diskOffering = _diskOfferingDao.findByIdIncludingRemoved(volumeInfo.getDiskOfferingId());
             SnapshotVO snapshot = _snapshotDao.findById(snapshotInfo.getId());
+
+            if (canComputeClusterHandleClonedVolume && canStorageSystemCloneVolume) {
+                updateVolumeDetails(volumeInfo.getId(), snapshotInfo.getId());
+            }
 
             // update the volume's hv_ss_reserve (hypervisor snapshot reserve) from a disk offering (used for managed storage)
             _volumeService.updateHypervisorSnapshotReserveForVolume(diskOffering, volumeInfo.getId(), snapshot.getHypervisorType());
@@ -271,45 +307,13 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
 
         volumeInfo = _volumeDataFactory.getVolume(volumeInfo.getId(), volumeInfo.getDataStore());
 
-        HostVO hostVO = getHost(snapshotInfo.getDataStore().getId());
+        final CopyCmdAnswer copyCmdAnswer;
 
-        String value = _configDao.getValue(Config.PrimaryStorageDownloadWait.toString());
-        int primaryStorageDownloadWait = NumbersUtil.parseInt(value, Integer.parseInt(Config.PrimaryStorageDownloadWait.getDefaultValue()));
-        CopyCommand copyCommand = new CopyCommand(snapshotInfo.getTO(), volumeInfo.getTO(), primaryStorageDownloadWait, VirtualMachineManager.ExecuteInSequence.value());
-
-        CopyCmdAnswer copyCmdAnswer = null;
-
-        try {
-            _volumeService.grantAccess(snapshotInfo, hostVO, snapshotInfo.getDataStore());
-            _volumeService.grantAccess(volumeInfo, hostVO, volumeInfo.getDataStore());
-
-            Map<String, String> srcDetails = getSnapshotDetails(_storagePoolDao.findById(snapshotInfo.getDataStore().getId()), snapshotInfo);
-
-            copyCommand.setOptions(srcDetails);
-
-            Map<String, String> destDetails = getVolumeDetails(volumeInfo);
-
-            copyCommand.setOptions2(destDetails);
-
-            copyCmdAnswer = (CopyCmdAnswer)_agentMgr.send(hostVO.getId(), copyCommand);
+        if (canComputeClusterHandleClonedVolume && canStorageSystemCloneVolume) {
+            copyCmdAnswer = performResignature(volumeInfo, hostVO);
         }
-        catch (Exception ex) {
-            throw new CloudRuntimeException(ex.getMessage());
-        }
-        finally {
-            try {
-                _volumeService.revokeAccess(snapshotInfo, hostVO, snapshotInfo.getDataStore());
-            }
-            catch (Exception ex) {
-                s_logger.debug(ex.getMessage(), ex);
-            }
-
-            try {
-                _volumeService.revokeAccess(volumeInfo, hostVO, volumeInfo.getDataStore());
-            }
-            catch (Exception ex) {
-                s_logger.debug(ex.getMessage(), ex);
-            }
+        else {
+            copyCmdAnswer = performCopyOfVdi(volumeInfo, snapshotInfo, hostVO);
         }
 
         String errMsg = null;
@@ -330,6 +334,61 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
         callback.complete(result);
 
         return null;
+    }
+
+    private boolean canComputeClusterHandleClonedVolume(long clusterId) {
+        List<HostVO> hosts = _hostDao.findByClusterId(clusterId);
+
+        if (hosts == null) {
+            return false;
+        }
+
+        for (HostVO host : hosts) {
+            if (host == null) {
+                return false;
+            }
+
+            DetailVO hostDetail = _hostDetailsDao.findDetail(host.getId(), "supportsClonedVolumes");
+
+            if (hostDetail == null) {
+                return false;
+            }
+
+            String value = hostDetail.getValue();
+
+            Boolean booleanValue = Boolean.valueOf(value);
+
+            if (booleanValue == false) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private boolean canStorageSystemCloneVolume(long storagePoolId) {
+        boolean supportsVolumeCloning = false;
+
+        DataStore dataStore = _dataStoreMgr.getDataStore(storagePoolId, DataStoreRole.Primary);
+
+        Map<String, String> mapCapabilities = dataStore.getDriver().getCapabilities();
+
+        if (mapCapabilities != null) {
+            String value = mapCapabilities.get(DataStoreCapabilities.CAN_CLONE_VOLUME.toString());
+
+            supportsVolumeCloning = new Boolean(value);
+        }
+
+        return supportsVolumeCloning;
+    }
+
+    private void updateVolumeDetails(long volumeId, long snapshotId) {
+        VolumeDetailVO volumeDetail = new VolumeDetailVO(volumeId,
+                "cloneOf",
+                String.valueOf(snapshotId),
+                false);
+
+        _volumeDetailsDao.persist(volumeDetail);
     }
 
     private Map<String, String> getSnapshotDetails(StoragePoolVO storagePoolVO, SnapshotInfo snapshotInfo) {
@@ -384,30 +443,46 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
         return sourceDetails;
     }
 
-    public HostVO getHost(long dataStoreId) {
+    private HostVO getXenServerHost(long dataStoreId, boolean computeClusterMustHandleClonedVolume) {
         StoragePoolVO storagePoolVO = _storagePoolDao.findById(dataStoreId);
 
         List<? extends Cluster> clusters = _mgr.searchForClusters(storagePoolVO.getDataCenterId(), new Long(0), Long.MAX_VALUE, HypervisorType.XenServer.toString());
 
         if (clusters == null) {
-            throw new CloudRuntimeException("Unable to locate an applicable cluster");
+            clusters = new ArrayList<>();
         }
 
+        Collections.shuffle(clusters, new Random(System.nanoTime()));
+
+        clusters:
         for (Cluster cluster : clusters) {
             if (cluster.getAllocationState() == AllocationState.Enabled) {
                 List<HostVO> hosts = _hostDao.findByClusterId(cluster.getId());
 
                 if (hosts != null) {
+                    Collections.shuffle(hosts, new Random(System.nanoTime()));
+
                     for (HostVO host : hosts) {
                         if (host.getResourceState() == ResourceState.Enabled) {
-                            return host;
+                            if (computeClusterMustHandleClonedVolume) {
+                                if (canComputeClusterHandleClonedVolume(cluster.getId())) {
+                                    return host;
+                                }
+                                else {
+                                    // no other host in the cluster in question should be able to satisfy our requirements here, so move on to the next cluster
+                                    continue clusters;
+                                }
+                            }
+                            else {
+                                return host;
+                            }
                         }
                     }
                 }
             }
         }
 
-        throw new CloudRuntimeException("Unable to locate an applicable cluster");
+        return null;
     }
 
     @Override
@@ -415,5 +490,97 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
         CopyCommandResult result = new CopyCommandResult(null, null);
         result.setResult("Unsupported operation requested for copying data.");
         callback.complete(result);
+    }
+
+    private CopyCmdAnswer performResignature(VolumeInfo volumeInfo, HostVO hostVO) {
+        long storagePoolId = volumeInfo.getPoolId();
+        DataStore dataStore = _dataStoreMgr.getDataStore(storagePoolId, DataStoreRole.Primary);
+
+        Map<String, String> details = getVolumeDetails(volumeInfo);
+
+        ResignatureCommand command = new ResignatureCommand(details);
+
+        ResignatureAnswer answer = null;
+
+        try {
+            _volumeService.grantAccess(volumeInfo, hostVO, dataStore);
+
+            answer = (ResignatureAnswer)_agentMgr.send(hostVO.getId(), command);
+        }
+        catch (Exception ex) {
+            throw new CloudRuntimeException(ex.getMessage());
+        }
+        finally {
+            try {
+                _volumeService.revokeAccess(volumeInfo, hostVO, dataStore);
+            }
+            catch (Exception ex) {
+                s_logger.debug(ex.getMessage(), ex);
+            }
+        }
+
+        if (answer == null || !answer.getResult()) {
+            final String errMsg;
+
+            if (answer != null && answer.getDetails() != null && !answer.getDetails().isEmpty()) {
+                errMsg = answer.getDetails();
+            }
+            else {
+                errMsg = "Unable to perform resignature operation";
+            }
+
+            throw new CloudRuntimeException(errMsg);
+        }
+
+        VolumeObjectTO newVolume = new VolumeObjectTO();
+
+        newVolume.setSize(answer.getSize());
+        newVolume.setPath(answer.getPath());
+        newVolume.setFormat(answer.getFormat());
+
+        return new CopyCmdAnswer(newVolume);
+    }
+
+    private CopyCmdAnswer performCopyOfVdi(VolumeInfo volumeInfo, SnapshotInfo snapshotInfo, HostVO hostVO) {
+        String value = _configDao.getValue(Config.PrimaryStorageDownloadWait.toString());
+        int primaryStorageDownloadWait = NumbersUtil.parseInt(value, Integer.parseInt(Config.PrimaryStorageDownloadWait.getDefaultValue()));
+        CopyCommand copyCommand = new CopyCommand(snapshotInfo.getTO(), volumeInfo.getTO(), primaryStorageDownloadWait, VirtualMachineManager.ExecuteInSequence.value());
+
+        CopyCmdAnswer copyCmdAnswer = null;
+
+        try {
+            _volumeService.grantAccess(snapshotInfo, hostVO, snapshotInfo.getDataStore());
+            _volumeService.grantAccess(volumeInfo, hostVO, volumeInfo.getDataStore());
+
+            Map<String, String> srcDetails = getSnapshotDetails(_storagePoolDao.findById(snapshotInfo.getDataStore().getId()), snapshotInfo);
+
+            copyCommand.setOptions(srcDetails);
+
+            Map<String, String> destDetails = getVolumeDetails(volumeInfo);
+
+            copyCommand.setOptions2(destDetails);
+
+            copyCmdAnswer = (CopyCmdAnswer)_agentMgr.send(hostVO.getId(), copyCommand);
+        }
+        catch (Exception ex) {
+            throw new CloudRuntimeException(ex.getMessage());
+        }
+        finally {
+            try {
+                _volumeService.revokeAccess(snapshotInfo, hostVO, snapshotInfo.getDataStore());
+            }
+            catch (Exception ex) {
+                s_logger.debug(ex.getMessage(), ex);
+            }
+
+            try {
+                _volumeService.revokeAccess(volumeInfo, hostVO, volumeInfo.getDataStore());
+            }
+            catch (Exception ex) {
+                s_logger.debug(ex.getMessage(), ex);
+            }
+        }
+
+        return copyCmdAnswer;
     }
 }
