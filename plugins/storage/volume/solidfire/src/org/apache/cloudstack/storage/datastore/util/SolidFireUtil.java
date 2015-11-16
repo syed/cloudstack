@@ -736,10 +736,10 @@ public class SolidFireUtil {
         verifyResult(rollbackInitiatedResult.result, strRollbackInitiatedResultJson, gson);
     }
 
-    public static long createSolidFireClone(SolidFireConnection sfConnection, long lVolumeId, long lSnapshotId, String cloneName) {
+    public static long createSolidFireClone(SolidFireConnection sfConnection, long lVolumeId, String cloneName) {
         final Gson gson = new GsonBuilder().create();
 
-        CloneToCreate cloneToCreate = new CloneToCreate(lVolumeId, lSnapshotId, cloneName);
+        CloneToCreate cloneToCreate = new CloneToCreate(lVolumeId, cloneName);
 
         String strCloneToCreateJson = gson.toJson(cloneToCreate);
 
@@ -749,7 +749,33 @@ public class SolidFireUtil {
 
         verifyResult(cloneCreateResult.result, strCloneCreateResultJson, gson);
 
-        return cloneCreateResult.result.cloneID;
+        // Clone is an async operation. Poll until we get data.
+
+        AsyncJobToPoll asyncJobToPoll = new AsyncJobToPoll(cloneCreateResult.result.asyncHandle);
+
+        String strAsyncJobToPollJson = gson.toJson(asyncJobToPoll);
+
+        do {
+            String strAsyncJobResultJson = executeJsonRpc(sfConnection, strAsyncJobToPollJson);
+
+            AsyncJobResult asyncJobResult = gson.fromJson(strAsyncJobResultJson, AsyncJobResult.class);
+
+            verifyResult(asyncJobResult.result, strAsyncJobResultJson, gson);
+
+            if (asyncJobResult.result.status.equals("complete")) {
+                break;
+            }
+
+            try {
+                Thread.sleep(500); // sleep for 1/2 of a second
+            }
+            catch (Exception ex) {
+                // ignore
+            }
+        }
+        while (true);
+
+        return cloneCreateResult.result.volumeID;
     }
 
     public static long createSolidFireAccount(SolidFireConnection sfConnection, String strAccountName)
@@ -1365,18 +1391,16 @@ public class SolidFireUtil {
         private final String method = "CloneVolume";
         private final CloneToCreateParams params;
 
-        private CloneToCreate(final long lVolumeId, final long lSnapshotId, final String cloneName) {
-            params = new CloneToCreateParams(lVolumeId, lSnapshotId, cloneName);
+        private CloneToCreate(final long lVolumeId, final String cloneName) {
+            params = new CloneToCreateParams(lVolumeId, cloneName);
         }
 
         private static final class CloneToCreateParams {
             private final long volumeID;
-            private final long snapshotID;
             private final String name;
 
-            private CloneToCreateParams(final long lVolumeId, final long lSnapshotId, final String cloneName) {
+            private CloneToCreateParams(final long lVolumeId, final String cloneName) {
                 volumeID = lVolumeId;
-                snapshotID = lSnapshotId;
                 name = cloneName;
             }
         }
@@ -1575,6 +1599,28 @@ public class SolidFireUtil {
         }
     }
 
+    @SuppressWarnings("unused")
+    private static final class AsyncJobToPoll
+    {
+        private final String method = "GetAsyncResult";
+        private final AsyncJobToPollParams params;
+
+        private AsyncJobToPoll(final long asyncHandle)
+        {
+            params = new AsyncJobToPollParams(asyncHandle);
+        }
+
+        private static final class AsyncJobToPollParams
+        {
+            private final long asyncHandle;
+
+            private AsyncJobToPollParams(final long asyncHandle)
+            {
+                this.asyncHandle = asyncHandle;
+            }
+        }
+    }
+
     private static final class VolumeCreateResult {
         private Result result;
 
@@ -1629,7 +1675,8 @@ public class SolidFireUtil {
         private Result result;
 
         private static final class Result {
-            private long cloneID;
+            private long volumeID;
+            private long asyncHandle;
         }
     }
 
@@ -1678,6 +1725,15 @@ public class SolidFireUtil {
                 private String[] initiators;
                 private long[] volumes;
             }
+        }
+    }
+
+    private static final class AsyncJobResult {
+        private AsyncResult result;
+
+        private static final class AsyncResult
+        {
+            private String status;
         }
     }
 
