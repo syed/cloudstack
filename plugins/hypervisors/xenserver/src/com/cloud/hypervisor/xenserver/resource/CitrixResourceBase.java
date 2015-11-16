@@ -1794,10 +1794,26 @@ public abstract class CitrixResourceBase implements ServerResource, HypervisorRe
             cmd.setPod(_pod);
             cmd.setVersion(CitrixResourceBase.class.getPackage().getImplementationVersion());
 
+            try {
+                final String cmdLine = "xe sm-list | grep \"resigning of duplicates\"";
+
+                final XenServerUtilitiesHelper xenServerUtilitiesHelper = getXenServerUtilitiesHelper();
+
+                Pair<Boolean, String> result = xenServerUtilitiesHelper.executeSshWrapper(_host.getIp(), 22, _username, null, getPwdFromQueue(), cmdLine);
+
+                boolean supportsClonedVolumes = result != null && result.first() != null && result.first() &&
+                        result.second() != null && result.second().length() > 0;
+
+                cmd.setSupportsClonedVolumes(supportsClonedVolumes);
+            } catch (Exception ex) {
+                s_logger.warn("Issue sending 'xe sm-list' via SSH to XenServer host: " + ex.getMessage());
+            }
         } catch (final XmlRpcException e) {
-            throw new CloudRuntimeException("XML RPC Exception" + e.getMessage(), e);
+            throw new CloudRuntimeException("XML RPC Exception: " + e.getMessage(), e);
         } catch (final XenAPIException e) {
-            throw new CloudRuntimeException("XenAPIException" + e.toString(), e);
+            throw new CloudRuntimeException("XenAPIException: " + e.toString(), e);
+        } catch (final Exception e) {
+            throw new CloudRuntimeException("Exception: " + e.toString(), e);
         }
     }
 
@@ -2264,6 +2280,11 @@ public abstract class CitrixResourceBase implements ServerResource, HypervisorRe
 
     public SR getIscsiSR(final Connection conn, final String srNameLabel, final String target, String path, final String chapInitiatorUsername,
             final String chapInitiatorPassword, final boolean ignoreIntroduceException) {
+        return getIscsiSR(conn, srNameLabel, target, path, chapInitiatorUsername, chapInitiatorPassword, false, ignoreIntroduceException);
+    }
+
+    public SR getIscsiSR(final Connection conn, final String srNameLabel, final String target, String path, final String chapInitiatorUsername,
+            final String chapInitiatorPassword, final boolean resignature, final boolean ignoreIntroduceException) {
         synchronized (srNameLabel.intern()) {
             final Map<String, String> deviceConfig = new HashMap<String, String>();
             try {
@@ -2353,46 +2374,63 @@ public abstract class CitrixResourceBase implements ServerResource, HypervisorRe
                         throw new CloudRuntimeException(msg, e);
                     }
                 }
+
                 deviceConfig.put("SCSIid", scsiid);
 
-                final String result = SR.probe(conn, host, deviceConfig, type, smConfig);
-                String pooluuid = null;
-                if (result.indexOf("<UUID>") != -1) {
-                    pooluuid = result.substring(result.indexOf("<UUID>") + 6, result.indexOf("</UUID>")).trim();
-                }
+                if (resignature) {
+                    deviceConfig.put("resign", "true");
 
-                if (pooluuid == null || pooluuid.length() != 36) {
                     sr = SR.create(conn, host, deviceConfig, new Long(0), srNameLabel, srNameLabel, type, "user", true, smConfig);
-                } else {
-                    try {
-                        sr = SR.introduce(conn, pooluuid, srNameLabel, srNameLabel, type, "user", true, smConfig);
-                    } catch (final XenAPIException ex) {
-                        if (ignoreIntroduceException) {
-                            return sr;
+                }
+                else {
+                    final String result = SR.probe(conn, host, deviceConfig, type, smConfig);
+
+                    String pooluuid = null;
+
+                    if (result.indexOf("<UUID>") != -1) {
+                        pooluuid = result.substring(result.indexOf("<UUID>") + 6, result.indexOf("</UUID>")).trim();
+                    }
+
+                    if (pooluuid == null || pooluuid.length() != 36) {
+                        sr = SR.create(conn, host, deviceConfig, new Long(0), srNameLabel, srNameLabel, type, "user", true, smConfig);
+                    }
+                    else {
+                        try {
+                            sr = SR.introduce(conn, pooluuid, srNameLabel, srNameLabel, type, "user", true, smConfig);
+                        } catch (final XenAPIException ex) {
+                            if (ignoreIntroduceException) {
+                                return sr;
+                            }
+
+                            throw ex;
                         }
 
-                        throw ex;
-                    }
+                        final Set<Host> setHosts = Host.getAll(conn);
 
-                    final Set<Host> setHosts = Host.getAll(conn);
-                    if (setHosts == null) {
-                        final String msg = "Unable to create Iscsi SR  " + deviceConfig + " due to hosts not available.";
-                        s_logger.warn(msg);
-                        throw new CloudRuntimeException(msg);
-                    }
-                    for (final Host currentHost : setHosts) {
-                        final PBD.Record rec = new PBD.Record();
+                        if (setHosts == null) {
+                            final String msg = "Unable to create iSCSI SR " + deviceConfig + " due to hosts not available.";
 
-                        rec.deviceConfig = deviceConfig;
-                        rec.host = currentHost;
-                        rec.SR = sr;
+                            s_logger.warn(msg);
 
-                        final PBD pbd = PBD.create(conn, rec);
+                            throw new CloudRuntimeException(msg);
+                        }
 
-                        pbd.plug(conn);
+                        for (final Host currentHost : setHosts) {
+                            final PBD.Record rec = new PBD.Record();
+
+                            rec.deviceConfig = deviceConfig;
+                            rec.host = currentHost;
+                            rec.SR = sr;
+
+                            final PBD pbd = PBD.create(conn, rec);
+
+                            pbd.plug(conn);
+                        }
                     }
                 }
+
                 sr.scan(conn);
+
                 return sr;
             } catch (final XenAPIException e) {
                 final String msg = "Unable to create Iscsi SR  " + deviceConfig + " due to  " + e.toString();
