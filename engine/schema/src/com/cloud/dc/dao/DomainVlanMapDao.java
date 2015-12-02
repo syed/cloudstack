@@ -14,14 +14,15 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package com.cloud.server.auth;
+package com.cloud.dc.dao;
 
+import java.util.List;
 
-import com.cloud.utils.component.AdapterBase;
+import com.cloud.dc.DomainVlanMapVO;
+import com.cloud.utils.db.GenericDao;
 
-/**
- * Use this UserAuthenticator if users are already authenticated outside
- *
- */
-public abstract class DefaultUserAuthenticator extends AdapterBase implements UserAuthenticator {
+public interface DomainVlanMapDao extends GenericDao<DomainVlanMapVO, Long> {
+    public List<DomainVlanMapVO> listDomainVlanMapsByDomain(long domainId);
+    public List<DomainVlanMapVO> listDomainVlanMapsByVlan(long vlanDbId);
+    public DomainVlanMapVO findDomainVlanMap(long domainId, long vlanDbId);
 }

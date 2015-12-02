@@ -1170,17 +1170,17 @@ public class LibvirtComputingResource extends ServerResourceBase implements Serv
         return "";
     }
 
-    String [] _ifNamePrefixes = {
-            "eth",
-            "bond",
-            "vlan",
-            "vx",
-            "em",
-            "ens",
-            "eno",
-            "enp",
-            "team",
-            "enx",
+    String [] _ifNamePatterns = {
+            "^eth",
+            "^bond",
+            "^vlan",
+            "^vx",
+            "^em",
+            "^ens",
+            "^eno",
+            "^enp",
+            "^team",
+            "^enx",
             "^p\\d+p\\d+"
     };
     /**
@@ -1188,9 +1188,9 @@ public class LibvirtComputingResource extends ServerResourceBase implements Serv
      * @return
      */
     boolean isInterface(final String fname) {
-        final StringBuffer commonPattern = new StringBuffer();
-        for (final String ifNamePrefix : _ifNamePrefixes) {
-            commonPattern.append("|(").append(ifNamePrefix).append(".*)");
+        StringBuffer commonPattern = new StringBuffer();
+        for (final String ifNamePattern : _ifNamePatterns) {
+            commonPattern.append("|(").append(ifNamePattern).append(".*)");
         }
         if(fname.matches(commonPattern.toString())) {
             return true;
@@ -2141,6 +2141,7 @@ public class LibvirtComputingResource extends ServerResourceBase implements Serv
 
             if (data instanceof VolumeObjectTO) {
                 final VolumeObjectTO volumeObjectTO = (VolumeObjectTO)data;
+                disk.setSerial(diskUuidToSerial(volumeObjectTO.getUuid()));
                 if (volumeObjectTO.getBytesReadRate() != null && volumeObjectTO.getBytesReadRate() > 0) {
                     disk.setBytesReadRate(volumeObjectTO.getBytesReadRate());
                 }
@@ -2418,6 +2419,11 @@ public class LibvirtComputingResource extends ServerResourceBase implements Serv
         } else {
             return new StartupCommand[] {cmd};
         }
+    }
+
+    public String diskUuidToSerial(String uuid) {
+        String uuidWithoutHyphen = uuid.replace("-","");
+        return uuidWithoutHyphen.substring(0, Math.min(uuidWithoutHyphen.length(), 20));
     }
 
     private String getIqn() {
