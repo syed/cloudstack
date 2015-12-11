@@ -773,7 +773,7 @@ public class ConfigurationManagerImpl extends ManagerBase implements Configurati
                     throw new InvalidParameterValueException("Please enter a positive value for the configuration parameter:" + name);
                 }
                 //TODO - better validation for all password pamameters
-                if ("vm.password.length".equalsIgnoreCase(name) && val < 6) {
+                if ("vm.password.length".equalsIgnoreCase(name) && val < 10) {
                     throw new InvalidParameterValueException("Please enter a value greater than 6 for the configuration parameter:" + name);
                 }
                 if ("remote.access.vpn.psk.length".equalsIgnoreCase(name)) {
@@ -1495,7 +1495,7 @@ public class ConfigurationManagerImpl extends ManagerBase implements Configurati
                         final List<DedicatedResourceVO> resourcesInGroup = _dedicatedDao.listByAffinityGroupId(dr.getAffinityGroupId());
                         if (resourcesInGroup.isEmpty()) {
                             // delete the group
-                            _affinityGroupService.deleteAffinityGroup(dr.getAffinityGroupId(), null, null, null);
+                            _affinityGroupService.deleteAffinityGroup(dr.getAffinityGroupId(), null, null, null, null);
                         }
                     }
                 }
@@ -1713,7 +1713,7 @@ public class ConfigurationManagerImpl extends ManagerBase implements Configurati
                         final List<DedicatedResourceVO> resourcesInGroup = _dedicatedDao.listByAffinityGroupId(resource.getAffinityGroupId());
                         if (resourcesInGroup.isEmpty()) {
                             // delete the group
-                            _affinityGroupService.deleteAffinityGroup(resource.getAffinityGroupId(), null, null, null);
+                            _affinityGroupService.deleteAffinityGroup(resource.getAffinityGroupId(), null, null, null, null);
                         }
                     }
                 }
@@ -1811,7 +1811,7 @@ public class ConfigurationManagerImpl extends ManagerBase implements Configurati
             }
         }
 
-        group = _affinityGroupService.createAffinityGroupInternal(accountName, domainId, affinityGroupName, "ExplicitDedication", "dedicated resources group");
+        group = _affinityGroupService.createAffinityGroup(accountName, null, domainId, affinityGroupName, "ExplicitDedication", "dedicated resources group");
 
         return group;
 
@@ -3296,7 +3296,7 @@ public class ConfigurationManagerImpl extends ManagerBase implements Configurati
                 }
             }
         } else {   // !isAccountSpecific
-            final NicIpAliasVO ipAlias = _nicIpAliasDao.findByGatewayAndNetworkIdAndState(vlanRange.getVlanGateway(), vlanRange.getNetworkId(), NicIpAlias.state.active);
+            final NicIpAliasVO ipAlias = _nicIpAliasDao.findByGatewayAndNetworkIdAndState(vlanRange.getVlanGateway(), vlanRange.getNetworkId(), NicIpAlias.State.active);
             //check if the ipalias belongs to the vlan range being deleted.
             if (ipAlias != null && vlanDbId == _publicIpAddressDao.findByIpAndSourceNetworkId(vlanRange.getNetworkId(), ipAlias.getIp4Address()).getVlanId()) {
                 throw new InvalidParameterValueException("Cannot delete vlan range " + vlanDbId + " as " + ipAlias.getIp4Address()

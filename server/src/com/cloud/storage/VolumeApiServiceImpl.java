@@ -1158,6 +1158,9 @@ public class VolumeApiServiceImpl extends ManagerBase implements VolumeApiServic
             if (newDiskOfferingId != null) {
                 volume.setDiskOfferingId(newDiskOfferingId);
             }
+            if (currentSize != newSize) {
+                volume.setSize(newSize);
+            }
 
             _volsDao.update(volume.getId(), volume);
 
@@ -1441,6 +1444,15 @@ public class VolumeApiServiceImpl extends ManagerBase implements VolumeApiServic
         if (!(Volume.State.Allocated.equals(volumeToAttach.getState()) || Volume.State.Ready.equals(volumeToAttach.getState()) || Volume.State.Uploaded.equals(volumeToAttach
                 .getState()))) {
             throw new InvalidParameterValueException("Volume state must be in Allocated, Ready or in Uploaded state");
+        }
+
+        Account owner = _accountDao.findById(volumeToAttach.getAccountId());
+
+        try {
+            _resourceLimitMgr.checkResourceLimit(owner, ResourceType.primary_storage, volumeToAttach.getSize());
+        } catch (ResourceAllocationException e) {
+            s_logger.error("primary storage resource limit check failed", e);
+            throw new InvalidParameterValueException(e.getMessage());
         }
 
         HypervisorType rootDiskHyperType = vm.getHypervisorType();
