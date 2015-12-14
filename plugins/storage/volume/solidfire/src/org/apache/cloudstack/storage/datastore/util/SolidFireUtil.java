@@ -736,10 +736,10 @@ public class SolidFireUtil {
         verifyResult(rollbackInitiatedResult.result, strRollbackInitiatedResultJson, gson);
     }
 
-    public static long createSolidFireClone(SolidFireConnection sfConnection, long lVolumeId, long lSnapshotId, String cloneName) {
+    public static long createSolidFireClone(SolidFireConnection sfConnection, long lVolumeId, String cloneName) {
         final Gson gson = new GsonBuilder().create();
 
-        CloneToCreate cloneToCreate = new CloneToCreate(lVolumeId, lSnapshotId, cloneName);
+        CloneToCreate cloneToCreate = new CloneToCreate(lVolumeId, cloneName);
 
         String strCloneToCreateJson = gson.toJson(cloneToCreate);
 
@@ -749,7 +749,7 @@ public class SolidFireUtil {
 
         verifyResult(cloneCreateResult.result, strCloneCreateResultJson, gson);
 
-        return cloneCreateResult.result.cloneID;
+        return cloneCreateResult.result.volumeID;
     }
 
     public static long createSolidFireAccount(SolidFireConnection sfConnection, String strAccountName)
@@ -1365,18 +1365,16 @@ public class SolidFireUtil {
         private final String method = "CloneVolume";
         private final CloneToCreateParams params;
 
-        private CloneToCreate(final long lVolumeId, final long lSnapshotId, final String cloneName) {
-            params = new CloneToCreateParams(lVolumeId, lSnapshotId, cloneName);
+        private CloneToCreate(final long lVolumeId, final String cloneName) {
+            params = new CloneToCreateParams(lVolumeId, cloneName);
         }
 
         private static final class CloneToCreateParams {
             private final long volumeID;
-            private final long snapshotID;
             private final String name;
 
-            private CloneToCreateParams(final long lVolumeId, final long lSnapshotId, final String cloneName) {
+            private CloneToCreateParams(final long lVolumeId, final String cloneName) {
                 volumeID = lVolumeId;
-                snapshotID = lSnapshotId;
                 name = cloneName;
             }
         }
@@ -1629,7 +1627,7 @@ public class SolidFireUtil {
         private Result result;
 
         private static final class Result {
-            private long cloneID;
+            private long volumeID;
         }
     }
 

@@ -597,16 +597,10 @@ public class NfsSecondaryStorageResource extends ServerResourceBase implements S
                     return answer;
                 }
                 s_logger.debug("starting copy template to swift");
-                DataTO newTemplate = answer.getNewData();
-                File templateFile = getFile(newTemplate.getPath(), ((NfsTO)srcDataStore).getUrl());
-                SwiftTO swift = (SwiftTO)destDataStore;
-                String containterName = SwiftUtil.getContainerName(destData.getObjectType().toString(), destData.getId());
-                String swiftPath = SwiftUtil.putObject(swift, templateFile, containterName, templateFile.getName());
-                //upload template.properties
-                File properties = new File(templateFile.getParent() + File.separator + _tmpltpp);
-                if (properties.exists()) {
-                    SwiftUtil.putObject(swift, properties, containterName, _tmpltpp);
-                }
+                TemplateObjectTO newTemplate = (TemplateObjectTO)answer.getNewData();
+                newTemplate.setDataStore(srcDataStore);
+                CopyCommand newCpyCmd = new CopyCommand(newTemplate, destData, cmd.getWait(), cmd.executeInSequence());
+                Answer result = copyFromNfsToSwift(newCpyCmd);
 
                 //clean up template data on staging area
                 try {
@@ -615,14 +609,8 @@ public class NfsSecondaryStorageResource extends ServerResourceBase implements S
                 } catch (Exception e) {
                     s_logger.debug("Failed to clean up staging area:", e);
                 }
+                return result;
 
-                TemplateObjectTO template = new TemplateObjectTO();
-                template.setPath(swiftPath);
-                template.setSize(templateFile.length());
-                template.setPhysicalSize(template.getSize());
-                SnapshotObjectTO snapshot = (SnapshotObjectTO)srcData;
-                template.setFormat(snapshot.getVolume().getFormat());
-                return new CopyCmdAnswer(template);
             } else if (destDataStore instanceof S3TO) {
                 //create template on the same data store
                 CopyCmdAnswer answer =
@@ -771,9 +759,10 @@ public class NfsSecondaryStorageResource extends ServerResourceBase implements S
             bufferWriter.write("filename=" + fileName);
             bufferWriter.write("\n");
             bufferWriter.write("size=" + file.length());
+            bufferWriter.write("\n");
+            bufferWriter.write("virtualsize=" + getVirtualSize(file, getTemplateFormat(file.getName())));
             bufferWriter.close();
             writer.close();
-
             SwiftUtil.putObject(swiftTO, metaFile, container, "template.properties");
             metaFile.delete();
             uniqDir.delete();
@@ -940,6 +929,83 @@ public class NfsSecondaryStorageResource extends ServerResourceBase implements S
             s_logger.error("failed to upload" + srcData.getPath(), e);
             return new CopyCmdAnswer("failed to upload" + srcData.getPath() + e.toString());
         }
+    }
+
+    protected boolean swiftUploadMetadataFile(SwiftTO swift, File srcFile, String containerName) throws IOException {
+
+
+        //create a template.properties for Swift with its correct unique name
+        File uniqDir = _storage.createUniqDir();
+        String metaFileName = uniqDir.getAbsolutePath() + File.separator + "template.properties";
+        _storage.create(uniqDir.getAbsolutePath(), "template.properties");
+
+        String uniqueName = FilenameUtils.getBaseName(srcFile.getName());
+        File metaFile = new File(metaFileName);
+        FileWriter writer = new FileWriter(metaFile);
+        BufferedWriter bufferWriter = new BufferedWriter(writer);
+        bufferWriter.write("uniquename=" + uniqueName);
+        bufferWriter.write("\n");
+        bufferWriter.write("filename=" + srcFile.getName());
+        bufferWriter.write("\n");
+        bufferWriter.write("size=" + srcFile.length());
+        bufferWriter.write("\n");
+        bufferWriter.write("virtualsize=" + getVirtualSize(srcFile, getTemplateFormat(srcFile.getName())));
+        bufferWriter.close();
+        writer.close();
+
+        SwiftUtil.putObject(swift, metaFile, containerName, _tmpltpp);
+        metaFile.delete();
+        uniqDir.delete();
+
+        return true;
+    }
+
+
+    protected Answer copyFromNfsToSwift(CopyCommand cmd) {
+
+        final DataTO srcData = cmd.getSrcTO();
+        final DataTO destData = cmd.getDestTO();
+
+        DataStoreTO srcDataStore = srcData.getDataStore();
+        NfsTO srcStore = (NfsTO)srcDataStore;
+        DataStoreTO destDataStore = destData.getDataStore();
+        File srcFile = getFile(srcData.getPath(), srcStore.getUrl());
+
+        SwiftTO swift = (SwiftTO)destDataStore;
+
+        try {
+
+            String containerName = SwiftUtil.getContainerName(destData.getObjectType().toString(), destData.getId());
+            String swiftPath = SwiftUtil.putObject(swift, srcFile, containerName, srcFile.getName());
+
+
+            DataTO retObj = null;
+            if (destData.getObjectType() == DataObjectType.TEMPLATE) {
+                swiftUploadMetadataFile(swift, srcFile, containerName);
+                TemplateObjectTO newTemplate = new TemplateObjectTO();
+                newTemplate.setPath(swiftPath);
+                newTemplate.setSize(getVirtualSize(srcFile, getTemplateFormat(srcFile.getName())));
+                newTemplate.setPhysicalSize(srcFile.length());
+                newTemplate.setFormat(getTemplateFormat(srcFile.getName()));
+                retObj = newTemplate;
+            } else if (destData.getObjectType() == DataObjectType.VOLUME) {
+                VolumeObjectTO newVol = new VolumeObjectTO();
+                newVol.setPath(containerName);
+                newVol.setSize(srcFile.length());
+                retObj = newVol;
+            } else if (destData.getObjectType() == DataObjectType.SNAPSHOT) {
+                SnapshotObjectTO newSnapshot = new SnapshotObjectTO();
+                newSnapshot.setPath(containerName);
+                retObj = newSnapshot;
+            }
+
+            return new CopyCmdAnswer(retObj);
+
+        } catch (Exception e) {
+            s_logger.error("failed to upload " + srcData.getPath(), e);
+            return new CopyCmdAnswer("failed to upload " + srcData.getPath() + e.toString());
+        }
+
     }
 
     String swiftDownload(SwiftTO swift, String container, String rfilename, String lFullPath) {
