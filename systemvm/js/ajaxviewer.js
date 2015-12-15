@@ -649,6 +649,7 @@ AjaxViewer.prototype = {
 		this.sendingEventInProgress = false;
 		ajaxViewer.installMouseHook();
 		ajaxViewer.installKeyboardHook();
+		ajaxViewer.panel.parent().focus();
 
 		$(window).bind("resize", function() {
 			ajaxViewer.onWindowResize();
@@ -1259,6 +1260,7 @@ AjaxViewer.prototype = {
 		case 38 :		// UP
 		case 39 :		// RIGHT
 		case 40 :		// DOWN
+		case 47 :		// slash (prevent quick search)
 			return false;
 		}
 		
