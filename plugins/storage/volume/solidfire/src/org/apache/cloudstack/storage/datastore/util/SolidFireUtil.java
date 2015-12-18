@@ -749,6 +749,27 @@ public class SolidFireUtil {
 
         verifyResult(cloneCreateResult.result, strCloneCreateResultJson, gson);
 
+        //Clone is an async operation, poll until we get data
+
+        AsyncJobToPoll asyncJobToPoll = new AsyncJobToPoll(cloneCreateResult.result.asyncHandle);
+        String strAsyncJobToPollJson = gson.toJson(asyncJobToPoll);
+
+        String strAsyncJobResultJson = executeJsonRpc(sfConnection, strAsyncJobToPollJson);
+        AsyncJobResult asyncJobResult = gson.fromJson(strAsyncJobResultJson, AsyncJobResult.class);
+
+        boolean jobCompleted = false;
+
+        while(!jobCompleted){
+            verifyResult(asyncJobResult.result, strAsyncJobResultJson, gson);
+
+            if (asyncJobResult.result.status.equals("complete")) {
+                jobCompleted = true;
+            }
+
+            strAsyncJobResultJson = executeJsonRpc(sfConnection, strAsyncJobToPollJson);
+            asyncJobResult = gson.fromJson(strAsyncJobResultJson, AsyncJobResult.class);
+        }
+
         return cloneCreateResult.result.volumeID;
     }
 
@@ -1573,6 +1594,28 @@ public class SolidFireUtil {
         }
     }
 
+    @SuppressWarnings("unused")
+    private static final class AsyncJobToPoll
+    {
+        private final String method = "GetAsyncResult";
+        private final AsyncJobToPollParams params;
+
+        private AsyncJobToPoll(final long asyncHandle)
+        {
+            params = new AsyncJobToPollParams(asyncHandle);
+        }
+
+        private static final class AsyncJobToPollParams
+        {
+            private final long asyncHandle;
+
+            private AsyncJobToPollParams(final long asyncHandle)
+            {
+                this.asyncHandle = asyncHandle;
+            }
+        }
+    }
+
     private static final class VolumeCreateResult {
         private Result result;
 
@@ -1628,6 +1671,7 @@ public class SolidFireUtil {
 
         private static final class Result {
             private long volumeID;
+            private long asyncHandle;
         }
     }
 
@@ -1677,6 +1721,17 @@ public class SolidFireUtil {
                 private long[] volumes;
             }
         }
+    }
+
+    private static final class AsyncJobResult {
+
+        private AsyncResult result;
+
+        private static final class AsyncResult
+        {
+            private String status;
+        }
+
     }
 
     private static final class JsonError
