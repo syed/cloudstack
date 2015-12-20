@@ -117,6 +117,8 @@ public class SolidFireUtil {
     private static final int DEFAULT_MANAGEMENT_PORT = 443;
     private static final int DEFAULT_STORAGE_PORT = 3260;
 
+    private static final int POLL_SLEEP_TIME_MS = 3000;
+
     public static class SolidFireConnection {
         private final String _managementVip;
         private final int _managementPort;
@@ -750,25 +752,7 @@ public class SolidFireUtil {
         verifyResult(cloneCreateResult.result, strCloneCreateResultJson, gson);
 
         //Clone is an async operation, poll until we get data
-
-        AsyncJobToPoll asyncJobToPoll = new AsyncJobToPoll(cloneCreateResult.result.asyncHandle);
-        String strAsyncJobToPollJson = gson.toJson(asyncJobToPoll);
-
-        String strAsyncJobResultJson = executeJsonRpc(sfConnection, strAsyncJobToPollJson);
-        AsyncJobResult asyncJobResult = gson.fromJson(strAsyncJobResultJson, AsyncJobResult.class);
-
-        boolean jobCompleted = false;
-
-        while(!jobCompleted){
-            verifyResult(asyncJobResult.result, strAsyncJobResultJson, gson);
-
-            if (asyncJobResult.result.status.equals("complete")) {
-                jobCompleted = true;
-            }
-
-            strAsyncJobResultJson = executeJsonRpc(sfConnection, strAsyncJobToPollJson);
-            asyncJobResult = gson.fromJson(strAsyncJobResultJson, AsyncJobResult.class);
-        }
+        pollAsync(sfConnection, cloneCreateResult.result.asyncHandle);
 
         return cloneCreateResult.result.volumeID;
     }
@@ -1838,6 +1822,38 @@ public class SolidFireUtil {
 
     private static boolean isSuccess(int iCode) {
         return iCode >= 200 && iCode < 300;
+    }
+
+    private static String pollAsync(SolidFireConnection sfConnection, long asyncHandle) {
+
+        final Gson gson = new GsonBuilder().create();
+
+        AsyncJobToPoll asyncJobToPoll = new AsyncJobToPoll(asyncHandle);
+        String strAsyncJobToPollJson = gson.toJson(asyncJobToPoll);
+
+        String strAsyncJobResultJson = executeJsonRpc(sfConnection, strAsyncJobToPollJson);
+        AsyncJobResult asyncJobResult = gson.fromJson(strAsyncJobResultJson, AsyncJobResult.class);
+
+        boolean jobCompleted = false;
+
+        while(!jobCompleted){
+            try {
+
+                Thread.sleep(POLL_SLEEP_TIME_MS);
+                verifyResult(asyncJobResult.result, strAsyncJobResultJson, gson);
+
+                if (asyncJobResult.result.status.equals("complete")) {
+                    jobCompleted = true;
+                }
+
+                strAsyncJobResultJson = executeJsonRpc(sfConnection, strAsyncJobToPollJson);
+                asyncJobResult = gson.fromJson(strAsyncJobResultJson, AsyncJobResult.class);
+
+            } catch (InterruptedException e) {
+                return "error";
+            }
+        }
+        return asyncJobResult.result.status;
     }
 
     private static void verifyResult(Object result, String strJson, Gson gson) throws IllegalStateException {
