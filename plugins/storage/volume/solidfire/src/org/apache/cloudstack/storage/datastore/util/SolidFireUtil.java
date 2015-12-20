@@ -1852,7 +1852,6 @@ public class SolidFireUtil {
                 return "error";
             }
         }
-        return "error";
     }
 
     private static void verifyResult(Object result, String strJson, Gson gson) throws IllegalStateException {
