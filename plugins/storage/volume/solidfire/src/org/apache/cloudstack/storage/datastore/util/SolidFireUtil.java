@@ -1834,16 +1834,15 @@ public class SolidFireUtil {
         String strAsyncJobResultJson = executeJsonRpc(sfConnection, strAsyncJobToPollJson);
         AsyncJobResult asyncJobResult = gson.fromJson(strAsyncJobResultJson, AsyncJobResult.class);
 
-        boolean jobCompleted = false;
 
-        while(!jobCompleted){
+        while(true){
             try {
 
                 Thread.sleep(POLL_SLEEP_TIME_MS);
                 verifyResult(asyncJobResult.result, strAsyncJobResultJson, gson);
 
                 if (asyncJobResult.result.status.equals("complete")) {
-                    jobCompleted = true;
+                    return "complete";
                 }
 
                 strAsyncJobResultJson = executeJsonRpc(sfConnection, strAsyncJobToPollJson);
@@ -1853,7 +1852,7 @@ public class SolidFireUtil {
                 return "error";
             }
         }
-        return asyncJobResult.result.status;
+        return "error";
     }
 
     private static void verifyResult(Object result, String strJson, Gson gson) throws IllegalStateException {
