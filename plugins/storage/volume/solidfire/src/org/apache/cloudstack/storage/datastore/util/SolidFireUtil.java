@@ -117,6 +117,8 @@ public class SolidFireUtil {
     private static final int DEFAULT_MANAGEMENT_PORT = 443;
     private static final int DEFAULT_STORAGE_PORT = 3260;
 
+    private static final int POLL_SLEEP_TIME_MS = 3000;
+
     public static class SolidFireConnection {
         private final String _managementVip;
         private final int _managementPort;
@@ -736,10 +738,10 @@ public class SolidFireUtil {
         verifyResult(rollbackInitiatedResult.result, strRollbackInitiatedResultJson, gson);
     }
 
-    public static long createSolidFireClone(SolidFireConnection sfConnection, long lVolumeId, long lSnapshotId, String cloneName) {
+    public static long createSolidFireClone(SolidFireConnection sfConnection, long lVolumeId, String cloneName) {
         final Gson gson = new GsonBuilder().create();
 
-        CloneToCreate cloneToCreate = new CloneToCreate(lVolumeId, lSnapshotId, cloneName);
+        CloneToCreate cloneToCreate = new CloneToCreate(lVolumeId, cloneName);
 
         String strCloneToCreateJson = gson.toJson(cloneToCreate);
 
@@ -749,7 +751,10 @@ public class SolidFireUtil {
 
         verifyResult(cloneCreateResult.result, strCloneCreateResultJson, gson);
 
-        return cloneCreateResult.result.cloneID;
+        //Clone is an async operation, poll until we get data
+        pollAsync(sfConnection, cloneCreateResult.result.asyncHandle);
+
+        return cloneCreateResult.result.volumeID;
     }
 
     public static long createSolidFireAccount(SolidFireConnection sfConnection, String strAccountName)
@@ -1365,18 +1370,16 @@ public class SolidFireUtil {
         private final String method = "CloneVolume";
         private final CloneToCreateParams params;
 
-        private CloneToCreate(final long lVolumeId, final long lSnapshotId, final String cloneName) {
-            params = new CloneToCreateParams(lVolumeId, lSnapshotId, cloneName);
+        private CloneToCreate(final long lVolumeId, final String cloneName) {
+            params = new CloneToCreateParams(lVolumeId, cloneName);
         }
 
         private static final class CloneToCreateParams {
             private final long volumeID;
-            private final long snapshotID;
             private final String name;
 
-            private CloneToCreateParams(final long lVolumeId, final long lSnapshotId, final String cloneName) {
+            private CloneToCreateParams(final long lVolumeId, final String cloneName) {
                 volumeID = lVolumeId;
-                snapshotID = lSnapshotId;
                 name = cloneName;
             }
         }
@@ -1575,6 +1578,28 @@ public class SolidFireUtil {
         }
     }
 
+    @SuppressWarnings("unused")
+    private static final class AsyncJobToPoll
+    {
+        private final String method = "GetAsyncResult";
+        private final AsyncJobToPollParams params;
+
+        private AsyncJobToPoll(final long asyncHandle)
+        {
+            params = new AsyncJobToPollParams(asyncHandle);
+        }
+
+        private static final class AsyncJobToPollParams
+        {
+            private final long asyncHandle;
+
+            private AsyncJobToPollParams(final long asyncHandle)
+            {
+                this.asyncHandle = asyncHandle;
+            }
+        }
+    }
+
     private static final class VolumeCreateResult {
         private Result result;
 
@@ -1629,7 +1654,8 @@ public class SolidFireUtil {
         private Result result;
 
         private static final class Result {
-            private long cloneID;
+            private long volumeID;
+            private long asyncHandle;
         }
     }
 
@@ -1679,6 +1705,17 @@ public class SolidFireUtil {
                 private long[] volumes;
             }
         }
+    }
+
+    private static final class AsyncJobResult {
+
+        private AsyncResult result;
+
+        private static final class AsyncResult
+        {
+            private String status;
+        }
+
     }
 
     private static final class JsonError
@@ -1785,6 +1822,36 @@ public class SolidFireUtil {
 
     private static boolean isSuccess(int iCode) {
         return iCode >= 200 && iCode < 300;
+    }
+
+    private static String pollAsync(SolidFireConnection sfConnection, long asyncHandle) {
+
+        final Gson gson = new GsonBuilder().create();
+
+        AsyncJobToPoll asyncJobToPoll = new AsyncJobToPoll(asyncHandle);
+        String strAsyncJobToPollJson = gson.toJson(asyncJobToPoll);
+
+        String strAsyncJobResultJson = executeJsonRpc(sfConnection, strAsyncJobToPollJson);
+        AsyncJobResult asyncJobResult = gson.fromJson(strAsyncJobResultJson, AsyncJobResult.class);
+
+
+        while(true){
+            try {
+
+                Thread.sleep(POLL_SLEEP_TIME_MS);
+                verifyResult(asyncJobResult.result, strAsyncJobResultJson, gson);
+
+                if (asyncJobResult.result.status.equals("complete")) {
+                    return "complete";
+                }
+
+                strAsyncJobResultJson = executeJsonRpc(sfConnection, strAsyncJobToPollJson);
+                asyncJobResult = gson.fromJson(strAsyncJobResultJson, AsyncJobResult.class);
+
+            } catch (InterruptedException e) {
+                return "error";
+            }
+        }
     }
 
     private static void verifyResult(Object result, String strJson, Gson gson) throws IllegalStateException {

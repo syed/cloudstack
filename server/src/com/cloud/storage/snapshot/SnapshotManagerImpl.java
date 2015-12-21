@@ -1008,7 +1008,7 @@ public class SnapshotManagerImpl extends ManagerBase implements SnapshotManager,
 
             try {
                 postCreateSnapshot(volume.getId(), snapshotId, payload.getSnapshotPolicyId());
-                SnapshotDataStoreVO snapshotStoreRef = _snapshotStoreDao.findBySnapshot(snapshotId, DataStoreRole.Image);
+                SnapshotDataStoreVO snapshotStoreRef = _snapshotStoreDao.findBySnapshot(snapshotId, DataStoreRole.Primary);
                 UsageEventUtils.publishUsageEvent(EventTypes.EVENT_SNAPSHOT_CREATE, snapshot.getAccountId(), snapshot.getDataCenterId(), snapshotId, snapshot.getName(),
                     null, null, snapshotStoreRef.getPhysicalSize(), volume.getSize(), snapshot.getClass().getName(), snapshot.getUuid());
                 // Correct the resource count of snapshot in case of delta snapshots.
