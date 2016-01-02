@@ -96,8 +96,10 @@ public class SolidFireUtil {
 
     public static final String ACCOUNT_ID = "accountId";
     public static final String VOLUME_ID = "volumeId";
+    public static final String SNAPSHOT_ID = "snapshotId";
 
     public static final String VOLUME_SIZE = "sfVolumeSize";
+    public static final String SNAPSHOT_SIZE = "sfSnapshotSize";
 
     public static final String STORAGE_POOL_ID = "sfStoragePoolId";
 
@@ -732,7 +734,7 @@ public class SolidFireUtil {
             _id = id;
             _name = name;
             _accountId = accountId;
-            _volumeId = volumeId
+            _volumeId = volumeId;
             _status = status;
             _totalSize = totalSize;
         }

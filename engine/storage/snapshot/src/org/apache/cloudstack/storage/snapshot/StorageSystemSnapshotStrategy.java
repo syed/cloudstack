@@ -258,7 +258,8 @@ public class StorageSystemSnapshotStrategy extends SnapshotStrategyBase {
                 throw new CloudRuntimeException(result.getResult());
             }
 
-            if (canComputeClusterHandleClonedVolume && canStorageSystemCloneVolume) {
+            //TODO: This doesn't belong here as we are doing snapshots on SF which cannot be attached
+            /* if (canComputeClusterHandleClonedVolume && canStorageSystemCloneVolume) {
                 // send a command to XenServer to re-signature the SR and VDI
 
                 performResignature(volumeInfo, snapshotInfo, hostVO);
@@ -267,7 +268,7 @@ public class StorageSystemSnapshotStrategy extends SnapshotStrategyBase {
                 // send a command to XenServer to create a VM snapshot on the applicable SR (get back the VDI UUID of the VM snapshot)
 
                 performSnapshotAndCopyOnHostSide(volumeInfo, snapshotInfo, hostVO);
-            }
+            } */
 
             markAsBackedUp((SnapshotObject)result.getSnashot());
         }
