@@ -611,6 +611,7 @@ public class SolidFirePrimaryDataStoreDriver implements PrimaryDataStoreDriver {
 
     @Override
     public void takeSnapshot(SnapshotInfo snapshotInfo, AsyncCompletionCallback<CreateCmdResult> callback) {
+        /* TODO */
         CreateCmdResult result = null;
 
         try {
@@ -642,23 +643,18 @@ public class SolidFirePrimaryDataStoreDriver implements PrimaryDataStoreDriver {
 
             storagePool.setUsedBytes(usedBytes);
 
-            String sfNewVolumeName = volumeInfo.getName() + "-" + snapshotInfo.getUuid();
+            String sfNewSnapshotName = volumeInfo.getName() + "-" + snapshotInfo.getUuid();
 
-            final long sfNewVolumeId;
+            final long sfNewSnapshotId;
 
-            if (shouldClone(snapshotInfo.getId())) {
-                sfNewVolumeId = SolidFireUtil.createSolidFireClone(sfConnection, sfVolumeId, sfNewVolumeName);
-            }
-            else {
-                sfNewVolumeId = SolidFireUtil.createSolidFireVolume(sfConnection, sfNewVolumeName, sfVolume.getAccountId(), sfVolumeSize, sfVolume.isEnable512e(),
-                        NumberFormat.getInstance().format(volumeInfo.getSize()), sfVolume.getMinIops(), sfVolume.getMaxIops(), sfVolume.getBurstIops());
-            }
+            /*TODO*/
+            sfNewSnapshotId = SolidFireUtil.createSolidFireSnapshot(sfConnection, sfVolumeId, sfNewSnapshotName);
 
             // Now that we have successfully created a volume, update the space usage in the storage_pool table
             // (even though storage_pool.used_bytes is likely no longer in use).
             _storagePoolDao.update(storagePoolId, storagePool);
 
-            SolidFireUtil.SolidFireVolume sfNewVolume = SolidFireUtil.getSolidFireVolume(sfConnection, sfNewVolumeId);
+            SolidFireUtil.SolidFireVolume sfNewSnapshot = SolidFireUtil.getSolidFireSnapshot(sfConnection, sfNewSnapshotId);
 
             updateSnapshotDetails(snapshotInfo.getId(), sfNewVolumeId, storagePoolId, sfVolumeSize, sfNewVolume.getIqn());
 

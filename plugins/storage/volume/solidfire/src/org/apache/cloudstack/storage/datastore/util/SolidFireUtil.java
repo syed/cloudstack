@@ -117,6 +117,8 @@ public class SolidFireUtil {
     private static final int DEFAULT_MANAGEMENT_PORT = 443;
     private static final int DEFAULT_STORAGE_PORT = 3260;
 
+
+
     public static class SolidFireConnection {
         private final String _managementVip;
         private final int _managementPort;
@@ -496,6 +498,28 @@ public class SolidFireUtil {
         }
     }
 
+    public static SolidFireSnapshot getSolidFireSnapshot(SolidFireConnection sfConnection, long lSnapshotId, long lVolumeId) {
+
+        final Gson gson = new GsonBuilder().create();
+
+        SnapshotToGet snapshotToGet = new SnapshotToGet(lVolumeId);
+
+        String strSnapshotToGetJson = gson.toJson(snapshotToGet);
+
+        String strSnapshotGetResultJson = executeJsonRpc(sfConnection, strSnapshotToGetJson);
+
+        SnapshotGetResult snapshotGetResult = gson.fromJson(strSnapshotGetResultJson, SnapshotGetResult.class);
+
+        verifyResult(snapshotGetResult.result, strSnapshotGetResultJson, gson);
+
+        String strSnapshotName = getSnapshotName(snapshotGetResult, lSnapshotId);
+        long lAccountId = getSnapshotAccountId(snapshotGetResult, lSnapshotId);
+        String strSnapshotStatus = getSnapshotStatus(snapshotGetResult, lSnapshotId);
+        long lTotalSize = getSnapshotTotalSize(snapshotGetResult, lSnapshotId);
+
+        return new SolidFireSnapshot(lSnapshotId, strSnapshotName, lAccountId, lVolumeId, strSnapshotStatus, lTotalSize);
+    }
+
     public static SolidFireVolume getSolidFireVolume(SolidFireConnection sfConnection, long lVolumeId)
     {
         final Gson gson = new GsonBuilder().create();
@@ -694,6 +718,78 @@ public class SolidFireUtil {
             return false;
         }
     }
+
+        public static class SolidFireSnapshot {
+        private final long _id;
+        private final String _name;
+        private final long _accountId;
+        private final long _volumeId;
+        private final String _status;
+        private final long _totalSize;
+
+        public SolidFireSnapshot(long id, String name, long accountId, long volumeId, String status, long totalSize)
+        {
+            _id = id;
+            _name = name;
+            _accountId = accountId;
+            _volumeId = volumeId
+            _status = status;
+            _totalSize = totalSize;
+        }
+
+        public long getId() {
+            return _id;
+        }
+
+        public String getName() {
+            return _name;
+        }
+
+        public long getAccountId() {
+            return _accountId;
+        }
+
+        public long getVolumeId(){
+            return _volumeId;
+        }
+
+        public boolean isActive() {
+            return ACTIVE.equalsIgnoreCase(_status);
+        }
+
+        public long getTotalSize() {
+            return _totalSize;
+        }
+
+        @Override
+        public String toString() {
+            return _name;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+
+            if (!obj.getClass().equals(SolidFireSnapshot.class)) {
+                return false;
+            }
+
+            SolidFireSnapshot sfv = (SolidFireSnapshot) obj;
+
+            if (_id == sfv._id && _name.equals(sfv._name) &&
+                _accountId == sfv._accountId &&
+                isActive() == sfv.isActive() &&
+                getTotalSize() == sfv.getTotalSize() && getVolumeId() == sfv.getVolumeId()) {
+                return true;
+            }
+
+            return false;
+        }
+    }
+
+
 
     public static long createSolidFireSnapshot(SolidFireConnection sfConnection, long lVolumeId, String snapshotName) {
         final Gson gson = new GsonBuilder().create();
@@ -1328,6 +1424,28 @@ public class SolidFireUtil {
     }
 
     @SuppressWarnings("unused")
+    private static final class SnapshotToGet
+    {
+        private final String method = "ListSnapshots";
+        private final SnapshotToGetParams params;
+
+        private SnapshotToGet(final long lSnapshotId)
+        {
+            params = new SnapshotToGetParams(lSnapshotId);
+        }
+
+        private static final class SnapshotToGetParams
+        {
+            private final long volumeID;
+
+            private SnapshotToGetParams(final long lVolumeId)
+            {
+                volumeID = lVolumeId;
+            }
+        }
+    }
+
+    @SuppressWarnings("unused")
     private static final class SnapshotToCreate {
         private final String method = "CreateSnapshot";
         private final SnapshotToCreateParams params;
@@ -1662,6 +1780,23 @@ public class SolidFireUtil {
         }
     }
 
+    private static final class SnapshotGetResult {
+        private Result result;
+
+        private static final class Result {
+            private Snapshot[] snapshots;
+
+            private static final class Snapshot {
+                private long snapshotID;
+                private long volumeID;
+                private String name;
+                private long accountID;
+                private String status;
+                private long totalSize;
+            }
+        }
+    }
+
     @SuppressWarnings("unused")
     private static final class RollbackInitiatedResult {
         private Result result;
@@ -1943,6 +2078,42 @@ public class SolidFireUtil {
 
         throw new CloudRuntimeException("Could not determine the total size of the volume for volume ID of " + lVolumeId + ".");
     }
+
+    private static String getSnapshotName(SnapshotGetResult snapshotGetResult, long lSnapshotId) {
+        if (snapshotGetResult.result.snapshots != null && snapshotGetResult.result.snapshots.length == 1 && snapshotGetResult.result.snapshots[0].volumeID == lSnapshotId) {
+            return snapshotGetResult.result.snapshots[0].name;
+        }
+
+        throw new CloudRuntimeException("Could not determine the name of the volume for volume ID of " + lSnapshotId + ".");
+    }
+
+    private static long getSnapshotTotalSize(SnapshotGetResult snapshotGetResult, long lSnapshotId)
+    {
+        if (snapshotGetResult.result.snapshots != null && snapshotGetResult.result.snapshots.length == 1 &&
+            snapshotGetResult.result.snapshots[0].volumeID == lSnapshotId)
+        {
+            return snapshotGetResult.result.snapshots[0].totalSize;
+        }
+
+        throw new CloudRuntimeException("Could not determine the total size of the volume for volume ID of " + lSnapshotId + ".");
+    }
+
+    private static long getSnapshotAccountId(SnapshotGetResult snapshotGetResult, long lVolumeId) {
+        if (snapshotGetResult.result.snapshots != null && snapshotGetResult.result.snapshots.length == 1 && snapshotGetResult.result.snapshots[0].volumeID == lVolumeId) {
+            return snapshotGetResult.result.snapshots[0].accountID;
+        }
+
+        throw new CloudRuntimeException("Could not determine the account ID of the volume for volume ID of " + lVolumeId + ".");
+    }
+
+    private static String getSnapshotStatus(SnapshotGetResult snapshotGetResult, long lSnapshotId) {
+        if (snapshotGetResult.result.snapshots != null && snapshotGetResult.result.snapshots.length == 1 && snapshotGetResult.result.snapshots[0].volumeID == lSnapshotId) {
+            return snapshotGetResult.result.snapshots[0].status;
+        }
+
+        throw new CloudRuntimeException("Could not determine the status of the volume for volume ID of " + lSnapshotId + ".");
+    }
+
 
     private static String[] getVagIqns(VagGetResult vagGetResult, long lVagId)
     {
