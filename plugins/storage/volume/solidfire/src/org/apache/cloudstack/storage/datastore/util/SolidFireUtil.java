@@ -119,9 +119,6 @@ public class SolidFireUtil {
     private static final int DEFAULT_MANAGEMENT_PORT = 443;
     private static final int DEFAULT_STORAGE_PORT = 3260;
 
-    public static long createSolidFireCloneFromSnapshot(SolidFireConnection sfConnection, long sfSnapshotId, long sfVolumeId, String sfNewVolumeName) {
-        return 0;
-    }
 
 
     public static class SolidFireConnection {
@@ -837,6 +834,46 @@ public class SolidFireUtil {
         verifyResult(rollbackInitiatedResult.result, strRollbackInitiatedResultJson, gson);
     }
 
+    public static long createSolidFireCloneFromSnapshot(SolidFireConnection sfConnection, long lSnapshotId, long lVolumeId, String cloneName) {
+
+        final Gson gson = new GsonBuilder().create();
+        CloneToCreate cloneToCreate = new CloneToCreate(lVolumeId, lSnapshotId, cloneName);
+
+        String strCloneToCreateJson = gson.toJson(cloneToCreate);
+        String strCloneCreateResultJson = executeJsonRpc(sfConnection, strCloneToCreateJson);
+        CloneCreateResult cloneCreateResult = gson.fromJson(strCloneCreateResultJson, CloneCreateResult.class);
+
+        verifyResult(cloneCreateResult.result, strCloneCreateResultJson, gson);
+
+        // Clone is an async operation. Poll until we get data.
+
+        AsyncJobToPoll asyncJobToPoll = new AsyncJobToPoll(cloneCreateResult.result.asyncHandle);
+
+        String strAsyncJobToPollJson = gson.toJson(asyncJobToPoll);
+
+        do {
+            String strAsyncJobResultJson = executeJsonRpc(sfConnection, strAsyncJobToPollJson);
+
+            AsyncJobResult asyncJobResult = gson.fromJson(strAsyncJobResultJson, AsyncJobResult.class);
+
+            verifyResult(asyncJobResult.result, strAsyncJobResultJson, gson);
+
+            if (asyncJobResult.result.status.equals("complete")) {
+                break;
+            }
+
+            try {
+                Thread.sleep(500); // sleep for 1/2 of a second
+            }
+            catch (Exception ex) {
+                // ignore
+            }
+        }
+        while (true);
+
+        return cloneCreateResult.result.volumeID;
+    }
+
     public static long createSolidFireClone(SolidFireConnection sfConnection, long lVolumeId, String cloneName) {
         final Gson gson = new GsonBuilder().create();
 
@@ -1518,13 +1555,25 @@ public class SolidFireUtil {
             params = new CloneToCreateParams(lVolumeId, cloneName);
         }
 
+        private CloneToCreate(final long lVolumeId, long lSnapshotId, final String cloneName) {
+            params = new CloneToCreateParams(lVolumeId, cloneName);
+        }
+
         private static final class CloneToCreateParams {
             private final long volumeID;
+            private final long snapshotId;
             private final String name;
 
             private CloneToCreateParams(final long lVolumeId, final String cloneName) {
                 volumeID = lVolumeId;
                 name = cloneName;
+                snapshotId = 0; //FIXME: Validate if this is correct
+            }
+
+            private CloneToCreateParams(final long lVolumeId, long lSnapshotId, final String cloneName) {
+                volumeID = lVolumeId;
+                name = cloneName;
+                snapshotId = lSnapshotId;
             }
         }
     }
