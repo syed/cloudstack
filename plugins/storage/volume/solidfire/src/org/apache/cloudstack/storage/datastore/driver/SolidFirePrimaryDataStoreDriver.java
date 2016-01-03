@@ -455,7 +455,8 @@ public class SolidFirePrimaryDataStoreDriver implements PrimaryDataStoreDriver {
 
             // if snapshotId > 0, then we are supposed to create a clone of the underlying volume that supports the CloudStack snapshot
             if (snapshotId > 0) {
-                sfVolume = createClone(sfConnection, snapshotId, volumeInfo.getName());
+                //TODO: Create a clone from snapshot
+                sfVolume = createCloneFromSnapshot(sfConnection, snapshotId, volumeInfo.getName());
             }
             else {
                 AccountDetailVO accountDetail = SolidFireUtil.getAccountDetail(volumeInfo.getAccountId(), storagePoolId, _accountDetailsDao);
@@ -533,6 +534,18 @@ public class SolidFirePrimaryDataStoreDriver implements PrimaryDataStoreDriver {
         }
 
         return false;
+    }
+
+    private SolidFireUtil.SolidFireVolume createCloneFromSnapshot(SolidFireUtil.SolidFireConnection sfConnection, long snapshotId, String sfNewVolumeName) {
+        SnapshotDetailsVO snapshotDetails = _snapshotDetailsDao.findDetail(snapshotId, SolidFireUtil.VOLUME_ID);
+        long sfVolumeId = Long.parseLong(snapshotDetails.getValue());
+
+        snapshotDetails = _snapshotDetailsDao.findDetail(snapshotId, SolidFireUtil.SNAPSHOT_ID);
+        long sfSnapshotId = Long.parseLong(snapshotDetails.getValue());
+
+        long newVolumeId = SolidFireUtil.createSolidFireCloneFromSnapshot(sfConnection, sfSnapshotId, sfVolumeId, sfNewVolumeName);
+
+        return SolidFireUtil.getSolidFireVolume(sfConnection, newVolumeId);
     }
 
     private SolidFireUtil.SolidFireVolume createClone(SolidFireUtil.SolidFireConnection sfConnection, long snapshotId, String sfNewVolumeName) {

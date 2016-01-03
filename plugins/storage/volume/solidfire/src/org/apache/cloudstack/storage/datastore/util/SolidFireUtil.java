@@ -119,6 +119,9 @@ public class SolidFireUtil {
     private static final int DEFAULT_MANAGEMENT_PORT = 443;
     private static final int DEFAULT_STORAGE_PORT = 3260;
 
+    public static long createSolidFireCloneFromSnapshot(SolidFireConnection sfConnection, long sfSnapshotId, long sfVolumeId, String sfNewVolumeName) {
+        return 0;
+    }
 
 
     public static class SolidFireConnection {
