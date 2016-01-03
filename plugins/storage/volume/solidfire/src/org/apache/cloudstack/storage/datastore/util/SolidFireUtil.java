@@ -846,30 +846,7 @@ public class SolidFireUtil {
         verifyResult(cloneCreateResult.result, strCloneCreateResultJson, gson);
 
         // Clone is an async operation. Poll until we get data.
-
-        AsyncJobToPoll asyncJobToPoll = new AsyncJobToPoll(cloneCreateResult.result.asyncHandle);
-
-        String strAsyncJobToPollJson = gson.toJson(asyncJobToPoll);
-
-        do {
-            String strAsyncJobResultJson = executeJsonRpc(sfConnection, strAsyncJobToPollJson);
-
-            AsyncJobResult asyncJobResult = gson.fromJson(strAsyncJobResultJson, AsyncJobResult.class);
-
-            verifyResult(asyncJobResult.result, strAsyncJobResultJson, gson);
-
-            if (asyncJobResult.result.status.equals("complete")) {
-                break;
-            }
-
-            try {
-                Thread.sleep(500); // sleep for 1/2 of a second
-            }
-            catch (Exception ex) {
-                // ignore
-            }
-        }
-        while (true);
+        pollAsync(sfConnection, cloneCreateResult.result.asyncHandle);
 
         return cloneCreateResult.result.volumeID;
     }
@@ -888,30 +865,7 @@ public class SolidFireUtil {
         verifyResult(cloneCreateResult.result, strCloneCreateResultJson, gson);
 
         // Clone is an async operation. Poll until we get data.
-
-        AsyncJobToPoll asyncJobToPoll = new AsyncJobToPoll(cloneCreateResult.result.asyncHandle);
-
-        String strAsyncJobToPollJson = gson.toJson(asyncJobToPoll);
-
-        do {
-            String strAsyncJobResultJson = executeJsonRpc(sfConnection, strAsyncJobToPollJson);
-
-            AsyncJobResult asyncJobResult = gson.fromJson(strAsyncJobResultJson, AsyncJobResult.class);
-
-            verifyResult(asyncJobResult.result, strAsyncJobResultJson, gson);
-
-            if (asyncJobResult.result.status.equals("complete")) {
-                break;
-            }
-
-            try {
-                Thread.sleep(500); // sleep for 1/2 of a second
-            }
-            catch (Exception ex) {
-                // ignore
-            }
-        }
-        while (true);
+        pollAsync(sfConnection, cloneCreateResult.result.asyncHandle);
 
         return cloneCreateResult.result.volumeID;
     }
@@ -985,6 +939,8 @@ public class SolidFireUtil {
 
         executeJsonRpc(sfConnection, strAccountToRemoveJson);
     }
+
+
 
     public static class SolidFireAccount
     {
@@ -2044,6 +2000,37 @@ public class SolidFireUtil {
         }
 
         throw new IllegalStateException("Problem with the following JSON: " + strJson);
+    }
+
+
+    private static void pollAsync(SolidFireConnection sfConnection, long asyncHandle) {
+
+        final Gson gson = new GsonBuilder().create();
+        AsyncJobToPoll asyncJobToPoll = new AsyncJobToPoll(asyncHandle);
+
+        String strAsyncJobToPollJson = gson.toJson(asyncJobToPoll);
+
+        do {
+            String strAsyncJobResultJson = executeJsonRpc(sfConnection, strAsyncJobToPollJson);
+
+            AsyncJobResult asyncJobResult = gson.fromJson(strAsyncJobResultJson, AsyncJobResult.class);
+
+            verifyResult(asyncJobResult.result, strAsyncJobResultJson, gson);
+
+            if (asyncJobResult.result.status.equals("complete")) {
+                return;
+            }
+
+            try {
+                Thread.sleep(500); // sleep for 1/2 of a second
+            }
+            catch (Exception ex) {
+                // ignore
+            }
+
+        } while (true);
+
+
     }
 
     private static String getVolumeName(VolumeGetResult volumeGetResult, long lVolumeId) {
