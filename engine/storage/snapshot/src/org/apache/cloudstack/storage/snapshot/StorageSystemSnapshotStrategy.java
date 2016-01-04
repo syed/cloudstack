@@ -39,8 +39,6 @@ import org.apache.cloudstack.engine.subsystem.api.storage.StrategyPriority;
 import org.apache.cloudstack.engine.subsystem.api.storage.VolumeInfo;
 import org.apache.cloudstack.engine.subsystem.api.storage.VolumeService;
 import org.apache.cloudstack.engine.subsystem.api.storage.ObjectInDataStoreStateMachine.Event;
-import org.apache.cloudstack.storage.command.ResignatureAnswer;
-import org.apache.cloudstack.storage.command.ResignatureCommand;
 import org.apache.cloudstack.storage.command.SnapshotAndCopyAnswer;
 import org.apache.cloudstack.storage.command.SnapshotAndCopyCommand;
 import org.apache.cloudstack.storage.datastore.db.PrimaryDataStoreDao;
@@ -241,16 +239,22 @@ public class StorageSystemSnapshotStrategy extends SnapshotStrategyBase {
             // if canComputeClusterHandleClonedVolume && canStorageSystemCloneVolume, then just take a back-end snapshot;
             // else, tell the storage driver to create a back-end volume (eventually used to create a new SR on and to copy a VDI to)
 
-            if (canComputeClusterHandleClonedVolume && canStorageSystemCloneVolume) {
-                SnapshotDetailsVO snapshotDetail = new SnapshotDetailsVO(snapshotInfo.getId(),
-                        "makeClone",
+            SnapshotDetailsVO snapshotDetail = null;
+
+            if (!canComputeClusterHandleClonedVolume || !canStorageSystemCloneVolume) {
+                snapshotDetail = new SnapshotDetailsVO(snapshotInfo.getId(),
+                        "createVolume",
                         Boolean.TRUE.toString(),
                         false);
 
-                _snapshotDetailsDao.persist(snapshotDetail);
+                snapshotDetail = _snapshotDetailsDao.persist(snapshotDetail);
             }
 
             result = snapshotSvr.takeSnapshot(snapshotInfo);
+
+            if (snapshotDetail != null) {
+                _snapshotDetailsDao.remove(snapshotDetail.getId());
+            }
 
             if (result.isFailed()) {
                 s_logger.debug("Failed to take a snapshot: " + result.getResult());
@@ -258,12 +262,7 @@ public class StorageSystemSnapshotStrategy extends SnapshotStrategyBase {
                 throw new CloudRuntimeException(result.getResult());
             }
 
-            if (canComputeClusterHandleClonedVolume && canStorageSystemCloneVolume) {
-                // send a command to XenServer to re-signature the SR and VDI
-
-                performResignature(volumeInfo, snapshotInfo, hostVO);
-            }
-            else {
+            if (!canComputeClusterHandleClonedVolume || !canStorageSystemCloneVolume) {
                 // send a command to XenServer to create a VM snapshot on the applicable SR (get back the VDI UUID of the VM snapshot)
 
                 performSnapshotAndCopyOnHostSide(volumeInfo, snapshotInfo, hostVO);
@@ -350,59 +349,6 @@ public class StorageSystemSnapshotStrategy extends SnapshotStrategyBase {
         }
 
         return supportsVolumeCloning;
-    }
-
-    private void performResignature(VolumeInfo volumeInfo, SnapshotInfo snapshotInfo, HostVO hostVO) {
-        VolumeVO volumeVO = _volumeDao.findById(volumeInfo.getId());
-
-        long storagePoolId = volumeVO.getPoolId();
-        StoragePoolVO storagePoolVO = _storagePoolDao.findById(storagePoolId);
-        DataStore dataStore = _dataStoreMgr.getDataStore(storagePoolId, DataStoreRole.Primary);
-
-        Map<String, String> details = getDestDetails(storagePoolVO, snapshotInfo);
-
-        ResignatureCommand command = new ResignatureCommand(details);
-
-        ResignatureAnswer answer = null;
-
-        try {
-            _volService.grantAccess(snapshotInfo, hostVO, dataStore);
-
-            answer = (ResignatureAnswer)_agentMgr.send(hostVO.getId(), command);
-        }
-        catch (Exception ex) {
-            throw new CloudRuntimeException(ex.getMessage());
-        }
-        finally {
-            try {
-                _volService.revokeAccess(snapshotInfo, hostVO, dataStore);
-            }
-            catch (Exception ex) {
-                s_logger.debug(ex.getMessage(), ex);
-            }
-        }
-
-        if (answer == null || !answer.getResult()) {
-            final String errMsg;
-
-            if (answer != null && answer.getDetails() != null && !answer.getDetails().isEmpty()) {
-                errMsg = answer.getDetails();
-            }
-            else {
-                errMsg = "Unable to perform resignature operation";
-            }
-
-            throw new CloudRuntimeException(errMsg);
-        }
-
-        String path = answer.getPath(); // for XenServer, this is the VDI's UUID
-
-        SnapshotDetailsVO snapshotDetail = new SnapshotDetailsVO(snapshotInfo.getId(),
-                DiskTO.PATH,
-                path,
-                false);
-
-        _snapshotDetailsDao.persist(snapshotDetail);
     }
 
     private void performSnapshotAndCopyOnHostSide(VolumeInfo volumeInfo, SnapshotInfo snapshotInfo, HostVO hostVO) {
