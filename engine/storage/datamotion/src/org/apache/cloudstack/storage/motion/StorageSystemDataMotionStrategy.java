@@ -188,6 +188,12 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
         }
     }
 
+    private boolean alreadyHaveCloneFor(SnapshotInfo snapshotInfo) {
+        String property = getProperty(snapshotInfo.getId(), DiskTO.IQN);
+
+        return property != null;
+    }
+
     private Void handleCreateTemplateFromSnapshot(SnapshotInfo snapshotInfo, TemplateInfo templateInfo, AsyncCompletionCallback<CopyCommandResult> callback) {
         try {
             snapshotInfo.processEvent(Event.CopyingRequested);
@@ -196,10 +202,19 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
             throw new CloudRuntimeException("This snapshot is not currently in a state where it can be used to create a template.");
         }
 
-        HostVO hostVO = getXenServerHost(snapshotInfo.getDataStore().getId(), false);
+        HostVO hostVO = null;
 
-        if (hostVO == null) {
-            throw new CloudRuntimeException("Unable to locate an applicable host");
+        if (alreadyHaveCloneFor(snapshotInfo)) {
+            hostVO = getXenServerHost(snapshotInfo.getDataStore().getId(), false);
+
+            if (hostVO == null) {
+                throw new CloudRuntimeException("Unable to locate an applicable host");
+            }
+        }
+        else {
+            hostVO = getXenServerHost(snapshotInfo.getDataStore().getId(), true);
+
+            createCloneFromSnapshot(hostVO, snapshotInfo);
         }
 
         DataStore srcDataStore = snapshotInfo.getDataStore();
@@ -266,6 +281,10 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
     private Void handleCreateVolumeFromSnapshotBothOnStorageSystem(SnapshotInfo snapshotInfo, VolumeInfo volumeInfo, AsyncCompletionCallback<CopyCommandResult> callback) {
         HostVO hostVO = getXenServerHost(snapshotInfo.getDataStore().getId(), true);
 
+        if (!alreadyHaveCloneFor(snapshotInfo)) {
+            createCloneFromSnapshot(hostVO, snapshotInfo);
+        }
+
         if (hostVO == null) {
             hostVO = getXenServerHost(snapshotInfo.getDataStore().getId(), false);
 
@@ -282,8 +301,15 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
             DiskOfferingVO diskOffering = _diskOfferingDao.findByIdIncludingRemoved(volumeInfo.getDiskOfferingId());
             SnapshotVO snapshot = _snapshotDao.findById(snapshotInfo.getId());
 
+            VolumeDetailVO volumeDetail = null;
+
             if (canComputeClusterHandleClonedVolume && canStorageSystemCloneVolume) {
-                updateVolumeDetails(volumeInfo.getId(), snapshotInfo.getId());
+                volumeDetail = new VolumeDetailVO(volumeInfo.getId(),
+                        "cloneOf",
+                        String.valueOf(snapshotInfo.getId()),
+                        false);
+
+                volumeDetail = _volumeDetailsDao.persist(volumeDetail);
             }
 
             // update the volume's hv_ss_reserve (hypervisor snapshot reserve) from a disk offering (used for managed storage)
@@ -292,6 +318,10 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
             AsyncCallFuture<VolumeApiResult> future = _volumeService.createVolumeAsync(volumeInfo, volumeInfo.getDataStore());
 
             VolumeApiResult result = future.get();
+
+            if (volumeDetail != null) {
+                _volumeDetailsDao.remove(volumeDetail.getId());
+            }
 
             if (result.isFailed()) {
                 s_logger.debug("Failed to create a volume: " + result.getResult());
@@ -338,6 +368,33 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
         return null;
     }
 
+    private void createCloneFromSnapshot(HostVO hostVO, SnapshotInfo snapshotInfo) {
+        if (hostVO != null) {
+            snapshotInfo.getDataStore().getDriver().createAsync(snapshotInfo.getDataStore(), snapshotInfo, null);
+
+            CopyCmdAnswer copyCmdAnswer = performResignature(snapshotInfo, hostVO);
+
+            if (copyCmdAnswer == null || !copyCmdAnswer.getResult()) {
+                if (copyCmdAnswer != null && copyCmdAnswer.getDetails() != null && !copyCmdAnswer.getDetails().isEmpty()) {
+                    throw new CloudRuntimeException(copyCmdAnswer.getDetails());
+                }
+                else {
+                    throw new CloudRuntimeException("Unable to perform host-side operation");
+                }
+            }
+
+            SnapshotDetailsVO snapshotDetail = new SnapshotDetailsVO(snapshotInfo.getId(),
+                    DiskTO.PATH,
+                    ((VolumeObjectTO)copyCmdAnswer.getNewData()).getPath(),
+                    false);
+
+            _snapshotDetailsDao.persist(snapshotDetail);
+        }
+        else {
+            throw new CloudRuntimeException("Unable to locate an applicable host with which to perform a resignature operation");
+        }
+    }
+
     private boolean canComputeClusterHandleClonedVolume(long clusterId) {
         List<HostVO> hosts = _hostDao.findByClusterId(clusterId);
 
@@ -382,15 +439,6 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
         }
 
         return supportsVolumeCloning;
-    }
-
-    private void updateVolumeDetails(long volumeId, long snapshotId) {
-        VolumeDetailVO volumeDetail = new VolumeDetailVO(volumeId,
-                "cloneOf",
-                String.valueOf(snapshotId),
-                false);
-
-        _volumeDetailsDao.persist(volumeDetail);
     }
 
     private Map<String, String> getSnapshotDetails(StoragePoolVO storagePoolVO, SnapshotInfo snapshotInfo) {
@@ -524,6 +572,55 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
         finally {
             try {
                 _volumeService.revokeAccess(volumeInfo, hostVO, dataStore);
+            }
+            catch (Exception ex) {
+                s_logger.debug(ex.getMessage(), ex);
+            }
+        }
+
+        if (answer == null || !answer.getResult()) {
+            final String errMsg;
+
+            if (answer != null && answer.getDetails() != null && !answer.getDetails().isEmpty()) {
+                errMsg = answer.getDetails();
+            }
+            else {
+                errMsg = "Unable to perform resignature operation";
+            }
+
+            throw new CloudRuntimeException(errMsg);
+        }
+
+        VolumeObjectTO newVolume = new VolumeObjectTO();
+
+        newVolume.setSize(answer.getSize());
+        newVolume.setPath(answer.getPath());
+        newVolume.setFormat(answer.getFormat());
+
+        return new CopyCmdAnswer(newVolume);
+    }
+
+    private CopyCmdAnswer performResignature(SnapshotInfo snapshotInfo, HostVO hostVO) {
+        long storagePoolId = snapshotInfo.getDataStore().getId();
+        DataStore dataStore = _dataStoreMgr.getDataStore(storagePoolId, DataStoreRole.Primary);
+
+        Map<String, String> details = getSnapshotDetails(_storagePoolDao.findById(storagePoolId), snapshotInfo);
+
+        ResignatureCommand command = new ResignatureCommand(details);
+
+        ResignatureAnswer answer = null;
+
+        try {
+            _volumeService.grantAccess(snapshotInfo, hostVO, dataStore);
+
+            answer = (ResignatureAnswer)_agentMgr.send(hostVO.getId(), command);
+        }
+        catch (Exception ex) {
+            throw new CloudRuntimeException(ex.getMessage());
+        }
+        finally {
+            try {
+                _volumeService.revokeAccess(snapshotInfo, hostVO, dataStore);
             }
             catch (Exception ex) {
                 s_logger.debug(ex.getMessage(), ex);
