@@ -96,6 +96,7 @@ public class SolidFireUtil {
 
     public static final String ACCOUNT_ID = "accountId";
     public static final String VOLUME_ID = "volumeId";
+    public static final String SNAPSHOT_ID = "snapshotId";
 
     public static final String VOLUME_SIZE = "sfVolumeSize";
 
@@ -695,6 +696,24 @@ public class SolidFireUtil {
         }
     }
 
+    public static class SolidFireSnapshot {
+        private final long _id;
+        private final String _name;
+
+        public SolidFireSnapshot(long id, String name) {
+            _id = id;
+            _name = name;
+        }
+
+        public long getId() {
+            return _id;
+        }
+
+        public String getName() {
+            return _name;
+        }
+    }
+
     public static long createSolidFireSnapshot(SolidFireConnection sfConnection, long lVolumeId, String snapshotName) {
         final Gson gson = new GsonBuilder().create();
 
@@ -709,6 +728,38 @@ public class SolidFireUtil {
         verifyResult(snapshotCreateResult.result, strSnapshotCreateResultJson, gson);
 
         return snapshotCreateResult.result.snapshotID;
+    }
+
+    public static SolidFireSnapshot getSolidFireSnapshot(SolidFireConnection sfConnection, long lVolumeId, long lSnapshotId) {
+        final Gson gson = new GsonBuilder().create();
+
+        SnapshotsToGet snapshotsToGet = new SnapshotsToGet(lVolumeId);
+
+        String strSnapshotsToGetJson = gson.toJson(snapshotsToGet);
+
+        String strSnapshotsGetResultJson = executeJsonRpc(sfConnection, strSnapshotsToGetJson);
+
+        SnapshotsGetResult snapshotsGetResult = gson.fromJson(strSnapshotsGetResultJson, SnapshotsGetResult.class);
+
+        verifyResult(snapshotsGetResult.result, strSnapshotsGetResultJson, gson);
+
+        String snapshotName = null;
+
+        if (snapshotsGetResult.result.snapshots != null) {
+            for (SnapshotsGetResult.Result.Snapshot snapshot : snapshotsGetResult.result.snapshots) {
+                if (snapshot.snapshotID == lSnapshotId) {
+                    snapshotName = snapshot.name;
+
+                    break;
+                }
+            }
+        }
+
+        if (snapshotName == null) {
+            throw new CloudRuntimeException("Could not find SolidFire snapshot ID: " + lSnapshotId + " for the following SolidFire volume ID: " + lVolumeId);
+        }
+
+        return new SolidFireSnapshot(lSnapshotId, snapshotName);
     }
 
     public static void deleteSolidFireSnapshot(SolidFireConnection sfConnection, long lSnapshotId)
@@ -737,9 +788,15 @@ public class SolidFireUtil {
     }
 
     public static long createSolidFireClone(SolidFireConnection sfConnection, long lVolumeId, String cloneName) {
+        return createSolidFireClone(sfConnection, lVolumeId, Long.MIN_VALUE, cloneName);
+    }
+
+    public static long createSolidFireClone(SolidFireConnection sfConnection, long lVolumeId, long lSnapshotId, String cloneName) {
         final Gson gson = new GsonBuilder().create();
 
-        CloneToCreate cloneToCreate = new CloneToCreate(lVolumeId, cloneName);
+        Object cloneToCreate = lSnapshotId > 0 ?
+                new CloneToCreateFromSnapshot(lVolumeId, lSnapshotId, cloneName) :
+                new CloneToCreateFromVolume(lVolumeId, cloneName);
 
         String strCloneToCreateJson = gson.toJson(cloneToCreate);
 
@@ -1348,6 +1405,25 @@ public class SolidFireUtil {
     }
 
     @SuppressWarnings("unused")
+    private static final class SnapshotsToGet
+    {
+        private final String method = "ListSnapshots";
+        private final SnapshotsToGetParams params;
+
+        private SnapshotsToGet(final long lVolumeId) {
+            params = new SnapshotsToGetParams(lVolumeId);
+        }
+
+        private static final class SnapshotsToGetParams {
+            private final long volumeID;
+
+            private SnapshotsToGetParams(final long lVolumeId) {
+                volumeID = lVolumeId;
+            }
+        }
+    }
+
+    @SuppressWarnings("unused")
     private static final class SnapshotToDelete
     {
         private final String method = "DeleteSnapshot";
@@ -1387,11 +1463,11 @@ public class SolidFireUtil {
     }
 
     @SuppressWarnings("unused")
-    private static final class CloneToCreate {
+    private static final class CloneToCreateFromVolume {
         private final String method = "CloneVolume";
         private final CloneToCreateParams params;
 
-        private CloneToCreate(final long lVolumeId, final String cloneName) {
+        private CloneToCreateFromVolume(final long lVolumeId, final String cloneName) {
             params = new CloneToCreateParams(lVolumeId, cloneName);
         }
 
@@ -1401,6 +1477,28 @@ public class SolidFireUtil {
 
             private CloneToCreateParams(final long lVolumeId, final String cloneName) {
                 volumeID = lVolumeId;
+                name = cloneName;
+            }
+        }
+    }
+
+    @SuppressWarnings("unused")
+    private static final class CloneToCreateFromSnapshot {
+        private final String method = "CloneVolume";
+        private final CloneToCreateParams params;
+
+        private CloneToCreateFromSnapshot(final long lVolumeId, final long lSnapshotId, final String cloneName) {
+            params = new CloneToCreateParams(lVolumeId, lSnapshotId, cloneName);
+        }
+
+        private static final class CloneToCreateParams {
+            private final long volumeID;
+            private final long snapshotID;
+            private final String name;
+
+            private CloneToCreateParams(final long lVolumeId, final long lSnapshotId, final String cloneName) {
+                volumeID = lVolumeId;
+                snapshotID = lSnapshotId;
                 name = cloneName;
             }
         }
@@ -1659,6 +1757,19 @@ public class SolidFireUtil {
 
         private static final class Result {
             private long snapshotID;
+        }
+    }
+
+    private static final class SnapshotsGetResult {
+        private Result result;
+
+        private static final class Result {
+            private Snapshot[] snapshots;
+
+            private static final class Snapshot {
+                private long snapshotID;
+                private String name;
+            }
         }
     }
 
