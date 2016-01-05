@@ -96,6 +96,7 @@ public class SolidFireUtil {
 
     public static final String ACCOUNT_ID = "accountId";
     public static final String VOLUME_ID = "volumeId";
+    public static final String TEMP_VOLUME_ID = "tempVolumeId";
     public static final String SNAPSHOT_ID = "snapshotId";
 
     public static final String VOLUME_SIZE = "sfVolumeSize";
