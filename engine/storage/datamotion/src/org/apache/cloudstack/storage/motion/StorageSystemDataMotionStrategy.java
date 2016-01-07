@@ -216,7 +216,7 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
 
         try {
             if (usingBackendSnapshot) {
-                createVolumeFromSnapshot(hostVO, snapshotInfo);
+                createVolumeFromSnapshot(hostVO, snapshotInfo, true);
             }
 
             DataStore srcDataStore = snapshotInfo.getDataStore();
@@ -230,7 +230,11 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
             CopyCmdAnswer copyCmdAnswer = null;
 
             try {
-                _volumeService.grantAccess(snapshotInfo, hostVO, srcDataStore);
+                // If we are using a back-end snapshot, then we should still have access to it from the hosts in the cluster that hostVO is in
+                // (because we passed in true as the third parameter to createVolumeFromSnapshot above).
+                if (usingBackendSnapshot == false) {
+                    _volumeService.grantAccess(snapshotInfo, hostVO, srcDataStore);
+                }
 
                 Map<String, String> srcDetails = getSnapshotDetails(snapshotInfo);
 
@@ -383,7 +387,7 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
     //
     // If the storage system is using writable snapshots, then nothing need be done by that storage system here because we can just
     // resign the SR and the VDI that should be inside of the snapshot before copying the VHD file to secondary storage.
-    private void createVolumeFromSnapshot(HostVO hostVO, SnapshotInfo snapshotInfo) {
+    private void createVolumeFromSnapshot(HostVO hostVO, SnapshotInfo snapshotInfo, boolean keepGrantedAccess) {
         SnapshotDetailsVO snapshotDetails = handleSnapshotDetails(snapshotInfo.getId(), "tempVolume", "create");
 
         try {
@@ -393,7 +397,7 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
             _snapshotDetailsDao.remove(snapshotDetails.getId());
         }
 
-        CopyCmdAnswer copyCmdAnswer = performResignature(snapshotInfo, hostVO);
+        CopyCmdAnswer copyCmdAnswer = performResignature(snapshotInfo, hostVO, keepGrantedAccess);
 
         if (copyCmdAnswer == null || !copyCmdAnswer.getResult()) {
             if (copyCmdAnswer != null && copyCmdAnswer.getDetails() != null && !copyCmdAnswer.getDetails().isEmpty()) {
@@ -605,6 +609,10 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
     }
 
     private CopyCmdAnswer performResignature(DataObject dataObj, HostVO hostVO) {
+        return performResignature(dataObj, hostVO, false);
+    }
+
+    private CopyCmdAnswer performResignature(DataObject dataObj, HostVO hostVO, boolean keepGrantedAccess) {
         long storagePoolId = dataObj.getDataStore().getId();
         DataStore dataStore = _dataStoreMgr.getDataStore(storagePoolId, DataStoreRole.Primary);
 
@@ -620,14 +628,18 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
             answer = (ResignatureAnswer)_agentMgr.send(hostVO.getId(), command);
         }
         catch (Exception ex) {
+            keepGrantedAccess = false;
+
             throw new CloudRuntimeException(ex.getMessage());
         }
         finally {
-            try {
-                _volumeService.revokeAccess(dataObj, hostVO, dataStore);
-            }
-            catch (Exception ex) {
-                s_logger.debug(ex.getMessage(), ex);
+            if (keepGrantedAccess = false) {
+                try {
+                    _volumeService.revokeAccess(dataObj, hostVO, dataStore);
+                }
+                catch (Exception ex) {
+                    s_logger.debug(ex.getMessage(), ex);
+                }
             }
         }
 
