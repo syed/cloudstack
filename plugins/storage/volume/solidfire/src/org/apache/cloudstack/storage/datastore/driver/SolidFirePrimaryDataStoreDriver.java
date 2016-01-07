@@ -327,11 +327,15 @@ public class SolidFirePrimaryDataStoreDriver implements PrimaryDataStoreDriver {
 
                         SolidFireUtil.SolidFireVolume sfVolume = SolidFireUtil.getSolidFireVolume(sfConnection, lVolumeId);
 
+                        long volumeSize = sfVolume.getTotalSize();
+
                         // SolidFireUtil.VOLUME_SIZE was introduced in 4.5.
                         // To be backward compatible with releases prior to 4.5, call updateVolumeDetails here.
                         // That way if SolidFireUtil.VOLUME_SIZE wasn't put in the volume_details table when the
                         // volume was initially created, it can be placed in volume_details here.
-                        updateVolumeDetails(volume.getId(), sfVolume.getTotalSize());
+                        updateVolumeDetails(volume.getId(), volumeSize);
+
+                        usedSpace += volumeSize;
                     }
                     catch (NumberFormatException ex) {
                         // can be ignored (the "folder" column didn't have a valid "long" in it (hasn't been placed there yet))
