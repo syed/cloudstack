@@ -645,7 +645,7 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
             throw new CloudRuntimeException(ex.getMessage());
         }
         finally {
-            if (keepGrantedAccess = false) {
+            if (keepGrantedAccess == false) {
                 try {
                     _volumeService.revokeAccess(dataObj, hostVO, dataStore);
                 }
