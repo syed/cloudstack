@@ -881,7 +881,7 @@ public class SolidFirePrimaryDataStoreDriver implements PrimaryDataStoreDriver {
 
                 long sfVolumeId = Long.parseLong(snapshotDetails.getValue());
 
-                deleteSolidFireVolume(sfConnection, snapshotInfo.getVolumeId(), sfVolumeId);
+                SolidFireUtil.deleteSolidFireVolume(sfConnection, sfVolumeId);
             }
 
             _snapshotDetailsDao.removeDetails(csSnapshotId);
