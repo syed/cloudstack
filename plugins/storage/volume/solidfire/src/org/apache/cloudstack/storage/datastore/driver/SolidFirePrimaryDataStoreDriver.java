@@ -973,7 +973,19 @@ public class SolidFirePrimaryDataStoreDriver implements PrimaryDataStoreDriver {
     private void deleteSolidFireVolume(SolidFireUtil.SolidFireConnection sfConnection, long csVolumeId, long sfVolumeId) {
         List<SnapshotVO> lstSnapshots = getNonDestroyedSnapshots(csVolumeId);
 
-        if (lstSnapshots.isEmpty()) {
+        boolean deleteVolume = true;
+
+        for (SnapshotVO snapshot : lstSnapshots) {
+            SnapshotDetailsVO snapshotDetails = _snapshotDetailsDao.findDetail(snapshot.getId(), SolidFireUtil.SNAPSHOT_ID);
+
+            if (snapshotDetails != null && snapshotDetails.getValue() != null) {
+                deleteVolume = false;
+
+                break;
+            }
+        }
+
+        if (deleteVolume) {
             SolidFireUtil.deleteSolidFireVolume(sfConnection, sfVolumeId);
         }
     }
