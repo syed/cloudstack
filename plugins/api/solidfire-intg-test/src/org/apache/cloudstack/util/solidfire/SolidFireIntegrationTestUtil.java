@@ -16,14 +16,22 @@
 // under the License.
 package org.apache.cloudstack.util.solidfire;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import javax.inject.Inject;
 
+import org.apache.cloudstack.api.response.solidfire.ApiVolumeSnapshotDetailsResponse;
 import org.apache.cloudstack.storage.datastore.db.PrimaryDataStoreDao;
 import org.apache.cloudstack.storage.datastore.db.StoragePoolVO;
 
 import com.cloud.dc.ClusterVO;
 import com.cloud.dc.dao.ClusterDao;
+import com.cloud.storage.SnapshotVO;
 import com.cloud.storage.VolumeVO;
+import com.cloud.storage.dao.SnapshotDao;
+import com.cloud.storage.dao.SnapshotDetailsDao;
+import com.cloud.storage.dao.SnapshotDetailsVO;
 import com.cloud.storage.dao.VolumeDao;
 import com.cloud.user.Account;
 import com.cloud.user.dao.AccountDao;
@@ -32,6 +40,8 @@ public class SolidFireIntegrationTestUtil {
     @Inject private AccountDao _accountDao;
     @Inject private ClusterDao _clusterDao;
     @Inject private PrimaryDataStoreDao _storagePoolDao;
+    @Inject private SnapshotDao _snapshotDao;
+    @Inject private SnapshotDetailsDao _snapshotDetailsDao;
     @Inject private VolumeDao _volumeDao;
 
     private SolidFireIntegrationTestUtil() {}
@@ -46,6 +56,12 @@ public class SolidFireIntegrationTestUtil {
         VolumeVO volume = _volumeDao.findByUuid(volumeUuid);
 
         return volume.getAccountId();
+    }
+
+    public long getAccountIdForSnapshotUuid(String snapshotUuid) {
+        SnapshotVO snapshot = _snapshotDao.findByUuid(snapshotUuid);
+
+        return snapshot.getAccountId();
     }
 
     public long getClusterIdForClusterUuid(String clusterUuid) {
@@ -70,5 +86,27 @@ public class SolidFireIntegrationTestUtil {
         VolumeVO volume = _volumeDao.findByUuid(volumeUuid);
 
         return volume.get_iScsiName();
+    }
+
+    public List<ApiVolumeSnapshotDetailsResponse> getSnapshotDetails(String snapshotUuid) {
+        SnapshotVO snapshot = _snapshotDao.findByUuid(snapshotUuid);
+
+        List<SnapshotDetailsVO> snapshotDetails = _snapshotDetailsDao.listDetails(snapshot.getId());
+
+        List<ApiVolumeSnapshotDetailsResponse> responses = new ArrayList<>();
+
+        if (snapshotDetails != null) {
+            for (SnapshotDetailsVO snapshotDetail : snapshotDetails) {
+                ApiVolumeSnapshotDetailsResponse response = new ApiVolumeSnapshotDetailsResponse(
+                    snapshotDetail.getResourceId(),
+                    snapshotDetail.getName(),
+                    snapshotDetail.getValue()
+                );
+
+                responses.add(response);
+            }
+        }
+
+        return responses;
     }
 }

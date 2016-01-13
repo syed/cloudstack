@@ -668,6 +668,7 @@ getSolidFireVolumeAccessGroupId=1
 getSolidFireVolumeSize=1
 getPathForVolume=1
 getVolumeiScsiName=1
+getVolumeSnapshotDetails=1
 
 #### Region commands
 addRegion=1
