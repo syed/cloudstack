@@ -23,6 +23,7 @@ import org.apache.cloudstack.api.command.admin.solidfire.GetPathForVolumeCmd;
 // import org.apache.log4j.Logger;
 import org.apache.cloudstack.api.command.admin.solidfire.GetSolidFireAccountIdCmd;
 import org.apache.cloudstack.api.command.admin.solidfire.GetSolidFireVolumeAccessGroupIdCmd;
+import org.apache.cloudstack.api.command.admin.solidfire.GetVolumeSnapshotDetailsCmd;
 import org.apache.cloudstack.api.command.admin.solidfire.GetVolumeiScsiNameCmd;
 import org.apache.cloudstack.api.command.admin.solidfire.GetSolidFireVolumeSizeCmd;
 import org.springframework.stereotype.Component;
@@ -40,6 +41,7 @@ public class ApiSolidFireIntegrationTestServiceImpl extends AdapterBase implemen
         cmdList.add(GetSolidFireVolumeAccessGroupIdCmd.class);
         cmdList.add(GetVolumeiScsiNameCmd.class);
         cmdList.add(GetSolidFireVolumeSizeCmd.class);
+        cmdList.add(GetVolumeSnapshotDetailsCmd.class);
 
         return cmdList;
     }
