@@ -931,10 +931,16 @@ public class NfsSecondaryStorageResource extends ServerResourceBase implements S
         }
     }
 
+    /**
+     * Creates a template.properties for Swift with its correct unique name
+     *
+     * @param swift 
+     * @param srcFile
+     * @param containerName
+     * @return true on successful write
+     */ 
     protected boolean swiftUploadMetadataFile(SwiftTO swift, File srcFile, String containerName) throws IOException {
 
-
-        //create a template.properties for Swift with its correct unique name
         File uniqDir = _storage.createUniqDir();
         String metaFileName = uniqDir.getAbsolutePath() + File.separator + "template.properties";
         _storage.create(uniqDir.getAbsolutePath(), "template.properties");
@@ -960,7 +966,12 @@ public class NfsSecondaryStorageResource extends ServerResourceBase implements S
         return true;
     }
 
-
+    /**
+     * Copies data from NFS and uploads it into a Swift container
+     *
+     * @param cmd CopyComand
+     * @return CopyCmdAnswer
+     */
     protected Answer copyFromNfsToSwift(CopyCommand cmd) {
 
         final DataTO srcData = cmd.getSrcTO();
