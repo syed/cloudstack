@@ -29,6 +29,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -54,6 +55,7 @@ import org.apache.log4j.Logger;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 
 import org.apache.cloudstack.storage.datastore.db.PrimaryDataStoreDao;
 import org.apache.cloudstack.storage.datastore.db.StoragePoolDetailVO;
@@ -98,6 +100,11 @@ public class SolidFireUtil {
     public static final String VOLUME_ID = "volumeId";
     public static final String TEMP_VOLUME_ID = "tempVolumeId";
     public static final String SNAPSHOT_ID = "snapshotId";
+
+    public static final String CloudStackVolumeId = "CloudStackVolumeId";
+    public static final String CloudStackVolumeSize = "CloudStackVolumeSize";
+    public static final String CloudStackSnapshotId = "CloudStackSnapshotId";
+    public static final String CloudStackSnapshotSize = "CloudStackSnapshotSize";
 
     public static final String VOLUME_SIZE = "sfVolumeSize";
 
@@ -459,13 +466,44 @@ public class SolidFireUtil {
     }
 
     public static long createSolidFireVolume(SolidFireConnection sfConnection, String strSfVolumeName, long lSfAccountId, long lTotalSize,
-            boolean bEnable512e, String strCloudStackVolumeSize, long minIops, long maxIops, long burstIops)
+            boolean bEnable512e, Map<String, String> mapAttributes, long minIops, long maxIops, long burstIops)
     {
-        final Gson gson = new GsonBuilder().create();
+        JsonObject volumeToCreate = new JsonObject();
 
-        Object volumeToCreate = strCloudStackVolumeSize != null && strCloudStackVolumeSize.trim().length() > 0 ?
-                new VolumeToCreateWithCloudStackVolumeSize(strSfVolumeName, lSfAccountId, lTotalSize, bEnable512e, strCloudStackVolumeSize, minIops, maxIops, burstIops) :
-                new VolumeToCreate(strSfVolumeName, lSfAccountId, lTotalSize, bEnable512e, minIops, maxIops, burstIops);
+        volumeToCreate.addProperty("method", "CreateVolume");
+
+        JsonObject params = new JsonObject();
+
+        volumeToCreate.add("params", params);
+
+        params.addProperty("name", strSfVolumeName);
+        params.addProperty("accountID", lSfAccountId);
+        params.addProperty("totalSize", lTotalSize);
+        params.addProperty("enable512e", bEnable512e);
+
+        JsonObject qos = new JsonObject();
+
+        params.add("qos", qos);
+
+        qos.addProperty("minIOPS", minIops);
+        qos.addProperty("maxIOPS", maxIops);
+        qos.addProperty("burstIOPS", burstIops);
+
+        if (mapAttributes != null && mapAttributes.size() > 0) {
+            JsonObject attributes = new JsonObject();
+
+            params.add("attributes", attributes);
+
+            Iterator<Map.Entry<String, String>> itr = mapAttributes.entrySet().iterator();
+
+            while (itr.hasNext()) {
+                Map.Entry<String, String> pair = itr.next();
+
+                attributes.addProperty(pair.getKey(), pair.getValue());
+            }
+        }
+
+        final Gson gson = new GsonBuilder().create();
 
         String strVolumeToCreateJson = gson.toJson(volumeToCreate);
 
@@ -478,14 +516,43 @@ public class SolidFireUtil {
         return volumeCreateResult.result.volumeID;
     }
 
-    public static void modifySolidFireVolume(SolidFireConnection sfConnection, long volumeId, long totalSize, String strCloudStackVolumeSize,
+    public static void modifySolidFireVolume(SolidFireConnection sfConnection, long volumeId, long totalSize, Map<String, String> mapAttributes,
             long minIops, long maxIops, long burstIops)
     {
-        final Gson gson = new GsonBuilder().create();
+        JsonObject volumeToModify = new JsonObject();
 
-        Object volumeToModify = strCloudStackVolumeSize != null && strCloudStackVolumeSize.trim().length() > 0 ?
-                new VolumeToModifyWithCloudStackVolumeSize(volumeId, totalSize, strCloudStackVolumeSize, minIops, maxIops, burstIops) :
-                new VolumeToModify(volumeId, totalSize, minIops, maxIops, burstIops);
+        volumeToModify.addProperty("method", "ModifyVolume");
+
+        JsonObject params = new JsonObject();
+
+        volumeToModify.add("params", params);
+
+        params.addProperty("volumeID", volumeId);
+        params.addProperty("totalSize", totalSize);
+
+        JsonObject qos = new JsonObject();
+
+        params.add("qos", qos);
+
+        qos.addProperty("minIOPS", minIops);
+        qos.addProperty("maxIOPS", maxIops);
+        qos.addProperty("burstIOPS", burstIops);
+
+        if (mapAttributes != null && mapAttributes.size() > 0) {
+            JsonObject attributes = new JsonObject();
+
+            params.add("attributes", attributes);
+
+            Iterator<Map.Entry<String, String>> itr = mapAttributes.entrySet().iterator();
+
+            while (itr.hasNext()) {
+                Map.Entry<String, String> pair = itr.next();
+
+                attributes.addProperty(pair.getKey(), pair.getValue());
+            }
+        }
+
+        final Gson gson = new GsonBuilder().create();
 
         String strVolumeToModifyJson = gson.toJson(volumeToModify);
 
@@ -1110,189 +1177,6 @@ public class SolidFireUtil {
             }
 
             return false;
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private static final class VolumeToCreateWithCloudStackVolumeSize {
-        private final String method = "CreateVolume";
-        private final VolumeToCreateParams params;
-
-        private VolumeToCreateWithCloudStackVolumeSize(final String strVolumeName, final long lAccountId, final long lTotalSize,
-                final boolean bEnable512e, final String strCloudStackVolumeSize, final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS) {
-            params = new VolumeToCreateParams(strVolumeName, lAccountId, lTotalSize, bEnable512e, strCloudStackVolumeSize, lMinIOPS, lMaxIOPS, lBurstIOPS);
-        }
-
-        private static final class VolumeToCreateParams {
-            private final String name;
-            private final long accountID;
-            private final long totalSize;
-            private final boolean enable512e;
-            private final VolumeToCreateParamsAttributes attributes;
-            private final VolumeToCreateParamsQoS qos;
-
-            private VolumeToCreateParams(final String strVolumeName, final long lAccountId, final long lTotalSize, final boolean bEnable512e,
-                    final String strCloudStackVolumeSize, final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS) {
-                name = strVolumeName;
-                accountID = lAccountId;
-                totalSize = lTotalSize;
-                enable512e = bEnable512e;
-
-                attributes = new VolumeToCreateParamsAttributes(strCloudStackVolumeSize);
-                qos = new VolumeToCreateParamsQoS(lMinIOPS, lMaxIOPS, lBurstIOPS);
-            }
-
-            private static final class VolumeToCreateParamsAttributes {
-                private final String CloudStackVolumeSize;
-
-                private VolumeToCreateParamsAttributes(final String strCloudStackVolumeSize) {
-                    CloudStackVolumeSize = strCloudStackVolumeSize;
-                }
-            }
-
-            private static final class VolumeToCreateParamsQoS {
-                private final long minIOPS;
-                private final long maxIOPS;
-                private final long burstIOPS;
-
-                private VolumeToCreateParamsQoS(final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS) {
-                    minIOPS = lMinIOPS;
-                    maxIOPS = lMaxIOPS;
-                    burstIOPS = lBurstIOPS;
-                }
-            }
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private static final class VolumeToCreate {
-        private final String method = "CreateVolume";
-        private final VolumeToCreateParams params;
-
-        private VolumeToCreate(final String strVolumeName, final long lAccountId, final long lTotalSize, final boolean bEnable512e,
-                final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS) {
-            params = new VolumeToCreateParams(strVolumeName, lAccountId, lTotalSize, bEnable512e, lMinIOPS, lMaxIOPS, lBurstIOPS);
-        }
-
-        private static final class VolumeToCreateParams {
-            private final String name;
-            private final long accountID;
-            private final long totalSize;
-            private final boolean enable512e;
-            private final VolumeToCreateParamsQoS qos;
-
-            private VolumeToCreateParams(final String strVolumeName, final long lAccountId, final long lTotalSize, final boolean bEnable512e,
-                    final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS) {
-                name = strVolumeName;
-                accountID = lAccountId;
-                totalSize = lTotalSize;
-                enable512e = bEnable512e;
-
-                qos = new VolumeToCreateParamsQoS(lMinIOPS, lMaxIOPS, lBurstIOPS);
-            }
-
-            private static final class VolumeToCreateParamsQoS {
-                private final long minIOPS;
-                private final long maxIOPS;
-                private final long burstIOPS;
-
-                private VolumeToCreateParamsQoS(final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS) {
-                    minIOPS = lMinIOPS;
-                    maxIOPS = lMaxIOPS;
-                    burstIOPS = lBurstIOPS;
-                }
-            }
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private static final class VolumeToModifyWithCloudStackVolumeSize
-    {
-        private final String method = "ModifyVolume";
-        private final VolumeToModifyParams params;
-
-        private VolumeToModifyWithCloudStackVolumeSize(final long lVolumeId, final long lTotalSize, final String strCloudStackVolumeSize,
-                final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS)
-        {
-            params = new VolumeToModifyParams(lVolumeId, lTotalSize, strCloudStackVolumeSize, lMinIOPS, lMaxIOPS, lBurstIOPS);
-        }
-
-        private static final class VolumeToModifyParams
-        {
-            private final long volumeID;
-            private final long totalSize;
-            private final VolumeToModifyParamsAttributes attributes;
-            private final VolumeToModifyParamsQoS qos;
-
-            private VolumeToModifyParams(final long lVolumeId, final long lTotalSize, String strCloudStackVolumeSize, final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS)
-            {
-                volumeID = lVolumeId;
-
-                totalSize = lTotalSize;
-
-                attributes = new VolumeToModifyParamsAttributes(strCloudStackVolumeSize);
-                qos = new VolumeToModifyParamsQoS(lMinIOPS, lMaxIOPS, lBurstIOPS);
-            }
-        }
-
-        private static final class VolumeToModifyParamsAttributes {
-            private final String CloudStackVolumeSize;
-
-            private VolumeToModifyParamsAttributes(final String strCloudStackVolumeSize) {
-                CloudStackVolumeSize = strCloudStackVolumeSize;
-            }
-        }
-
-        private static final class VolumeToModifyParamsQoS {
-            private final long minIOPS;
-            private final long maxIOPS;
-            private final long burstIOPS;
-
-            private VolumeToModifyParamsQoS(final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS) {
-                minIOPS = lMinIOPS;
-                maxIOPS = lMaxIOPS;
-                burstIOPS = lBurstIOPS;
-            }
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private static final class VolumeToModify
-    {
-        private final String method = "ModifyVolume";
-        private final VolumeToModifyParams params;
-
-        private VolumeToModify(final long lVolumeId, final long lTotalSize, final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS)
-        {
-            params = new VolumeToModifyParams(lVolumeId, lTotalSize, lMinIOPS, lMaxIOPS, lBurstIOPS);
-        }
-
-        private static final class VolumeToModifyParams
-        {
-            private final long volumeID;
-            private final long totalSize;
-            private final VolumeToModifyParamsQoS qos;
-
-            private VolumeToModifyParams(final long lVolumeId, final long lTotalSize, final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS)
-            {
-                volumeID = lVolumeId;
-
-                totalSize = lTotalSize;
-
-                qos = new VolumeToModifyParamsQoS(lMinIOPS, lMaxIOPS, lBurstIOPS);
-            }
-        }
-
-        private static final class VolumeToModifyParamsQoS {
-            private final long minIOPS;
-            private final long maxIOPS;
-            private final long burstIOPS;
-
-            private VolumeToModifyParamsQoS(final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS) {
-                minIOPS = lMinIOPS;
-                maxIOPS = lMaxIOPS;
-                burstIOPS = lBurstIOPS;
-            }
         }
     }
 
