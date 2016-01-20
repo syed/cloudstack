@@ -782,10 +782,33 @@ public class SolidFireUtil {
         }
     }
 
-    public static long createSolidFireSnapshot(SolidFireConnection sfConnection, long lVolumeId, String snapshotName) {
-        final Gson gson = new GsonBuilder().create();
+    public static long createSolidFireSnapshot(SolidFireConnection sfConnection, long lVolumeId, String snapshotName, Map<String, String> mapAttributes) {
+        JsonObject snapshotToCreate = new JsonObject();
 
-        SnapshotToCreate snapshotToCreate = new SnapshotToCreate(lVolumeId, snapshotName);
+        snapshotToCreate.addProperty("method", "CreateSnapshot");
+
+        JsonObject params = new JsonObject();
+
+        snapshotToCreate.add("params", params);
+
+        params.addProperty("volumeID", lVolumeId);
+        params.addProperty("name", snapshotName);
+
+        if (mapAttributes != null && mapAttributes.size() > 0) {
+            JsonObject attributes = new JsonObject();
+
+            params.add("attributes", attributes);
+
+            Iterator<Map.Entry<String, String>> itr = mapAttributes.entrySet().iterator();
+
+            while (itr.hasNext()) {
+                Map.Entry<String, String> pair = itr.next();
+
+                attributes.addProperty(pair.getKey(), pair.getValue());
+            }
+        }
+
+        final Gson gson = new GsonBuilder().create();
 
         String strSnapshotToCreateJson = gson.toJson(snapshotToCreate);
 
@@ -855,16 +878,42 @@ public class SolidFireUtil {
         verifyResult(rollbackInitiatedResult.result, strRollbackInitiatedResultJson, gson);
     }
 
-    public static long createSolidFireClone(SolidFireConnection sfConnection, long lVolumeId, String cloneName) {
-        return createSolidFireClone(sfConnection, lVolumeId, Long.MIN_VALUE, cloneName);
+    public static long createSolidFireClone(SolidFireConnection sfConnection, long lVolumeId, String cloneName, Map<String, String> mapAttributes) {
+        return createSolidFireClone(sfConnection, lVolumeId, Long.MIN_VALUE, cloneName, mapAttributes);
     }
 
-    public static long createSolidFireClone(SolidFireConnection sfConnection, long lVolumeId, long lSnapshotId, String cloneName) {
-        final Gson gson = new GsonBuilder().create();
+    public static long createSolidFireClone(SolidFireConnection sfConnection, long lVolumeId, long lSnapshotId, String cloneName, Map<String, String> mapAttributes) {
+        JsonObject cloneToCreate = new JsonObject();
 
-        Object cloneToCreate = lSnapshotId > 0 ?
-                new CloneToCreateFromSnapshot(lVolumeId, lSnapshotId, cloneName) :
-                new CloneToCreateFromVolume(lVolumeId, cloneName);
+        cloneToCreate.addProperty("method", "CloneVolume");
+
+        JsonObject params = new JsonObject();
+
+        cloneToCreate.add("params", params);
+
+        params.addProperty("volumeID", lVolumeId);
+
+        if (lSnapshotId > 0) {
+            params.addProperty("snapshotID", lSnapshotId);
+        }
+
+        params.addProperty("name", cloneName);
+
+        if (mapAttributes != null && mapAttributes.size() > 0) {
+            JsonObject attributes = new JsonObject();
+
+            params.add("attributes", attributes);
+
+            Iterator<Map.Entry<String, String>> itr = mapAttributes.entrySet().iterator();
+
+            while (itr.hasNext()) {
+                Map.Entry<String, String> pair = itr.next();
+
+                attributes.addProperty(pair.getKey(), pair.getValue());
+            }
+        }
+
+        final Gson gson = new GsonBuilder().create();
 
         String strCloneToCreateJson = gson.toJson(cloneToCreate);
 
@@ -1270,26 +1319,6 @@ public class SolidFireUtil {
     }
 
     @SuppressWarnings("unused")
-    private static final class SnapshotToCreate {
-        private final String method = "CreateSnapshot";
-        private final SnapshotToCreateParams params;
-
-        private SnapshotToCreate(final long lVolumeId, final String snapshotName) {
-            params = new SnapshotToCreateParams(lVolumeId, snapshotName);
-        }
-
-        private static final class SnapshotToCreateParams {
-            private final long volumeID;
-            private final String name;
-
-            private SnapshotToCreateParams(final long lVolumeId, final String snapshotName) {
-                volumeID = lVolumeId;
-                name = snapshotName;
-            }
-        }
-    }
-
-    @SuppressWarnings("unused")
     private static final class SnapshotsToGet
     {
         private final String method = "ListSnapshots";
@@ -1343,48 +1372,6 @@ public class SolidFireUtil {
             private RollbackToInitiateParams(final long lVolumeId, final long lSnapshotId) {
                 volumeID = lVolumeId;
                 snapshotID = lSnapshotId;
-            }
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private static final class CloneToCreateFromVolume {
-        private final String method = "CloneVolume";
-        private final CloneToCreateParams params;
-
-        private CloneToCreateFromVolume(final long lVolumeId, final String cloneName) {
-            params = new CloneToCreateParams(lVolumeId, cloneName);
-        }
-
-        private static final class CloneToCreateParams {
-            private final long volumeID;
-            private final String name;
-
-            private CloneToCreateParams(final long lVolumeId, final String cloneName) {
-                volumeID = lVolumeId;
-                name = cloneName;
-            }
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private static final class CloneToCreateFromSnapshot {
-        private final String method = "CloneVolume";
-        private final CloneToCreateParams params;
-
-        private CloneToCreateFromSnapshot(final long lVolumeId, final long lSnapshotId, final String cloneName) {
-            params = new CloneToCreateParams(lVolumeId, lSnapshotId, cloneName);
-        }
-
-        private static final class CloneToCreateParams {
-            private final long volumeID;
-            private final long snapshotID;
-            private final String name;
-
-            private CloneToCreateParams(final long lVolumeId, final long lSnapshotId, final String cloneName) {
-                volumeID = lVolumeId;
-                snapshotID = lSnapshotId;
-                name = cloneName;
             }
         }
     }
