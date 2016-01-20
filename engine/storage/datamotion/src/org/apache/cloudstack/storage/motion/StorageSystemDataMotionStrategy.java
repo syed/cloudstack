@@ -291,19 +291,22 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
     }
 
     private Void handleCreateVolumeFromSnapshotBothOnStorageSystem(SnapshotInfo snapshotInfo, VolumeInfo volumeInfo, AsyncCompletionCallback<CopyCommandResult> callback) {
-        HostVO hostVO = getXenServerHost(snapshotInfo);
-
-        boolean usingBackendSnapshot = usingBackendSnapshotFor(snapshotInfo);
-        boolean computeClusterSupportsResign = computeClusterSupportsResign(hostVO.getClusterId());
-
-        if (usingBackendSnapshot && !computeClusterSupportsResign) {
-            throw new CloudRuntimeException("Unable to locate an applicable host with which to perform a resignature operation");
-        }
-
-        boolean canStorageSystemCreateVolumeFromVolume = canStorageSystemCreateVolumeFromVolume(snapshotInfo);
-        boolean useCloning = usingBackendSnapshot || (canStorageSystemCreateVolumeFromVolume && computeClusterSupportsResign);
+        CopyCmdAnswer copyCmdAnswer = null;
+        String errMsg = null;
 
         try {
+            HostVO hostVO = getXenServerHost(snapshotInfo);
+
+            boolean usingBackendSnapshot = usingBackendSnapshotFor(snapshotInfo);
+            boolean computeClusterSupportsResign = computeClusterSupportsResign(hostVO.getClusterId());
+
+            if (usingBackendSnapshot && !computeClusterSupportsResign) {
+                throw new CloudRuntimeException("Unable to locate an applicable host with which to perform a resignature operation");
+            }
+
+            boolean canStorageSystemCreateVolumeFromVolume = canStorageSystemCreateVolumeFromVolume(snapshotInfo);
+            boolean useCloning = usingBackendSnapshot || (canStorageSystemCreateVolumeFromVolume && computeClusterSupportsResign);
+
             VolumeDetailVO volumeDetail = null;
 
             if (useCloning) {
@@ -335,39 +338,35 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
 
                 throw new CloudRuntimeException(result.getResult());
             }
-        }
-        catch (Exception ex) {
-            throw new CloudRuntimeException(ex.getMessage());
-        }
 
-        volumeInfo = _volumeDataFactory.getVolume(volumeInfo.getId(), volumeInfo.getDataStore());
+            volumeInfo = _volumeDataFactory.getVolume(volumeInfo.getId(), volumeInfo.getDataStore());
 
-        volumeInfo.processEvent(Event.MigrationRequested);
+            volumeInfo.processEvent(Event.MigrationRequested);
 
-        volumeInfo = _volumeDataFactory.getVolume(volumeInfo.getId(), volumeInfo.getDataStore());
+            volumeInfo = _volumeDataFactory.getVolume(volumeInfo.getId(), volumeInfo.getDataStore());
 
-        final CopyCmdAnswer copyCmdAnswer;
-
-        if (useCloning) {
-            copyCmdAnswer = performResignature(volumeInfo, hostVO);
-        }
-        else {
-            // asking for a XenServer host here so we don't always prefer to use XenServer hosts that support resigning
-            // even when we don't need those hosts to do this kind of copy work
-            hostVO = getXenServerHost(snapshotInfo.getDataCenterId(), false);
-
-            copyCmdAnswer = performCopyOfVdi(volumeInfo, snapshotInfo, hostVO);
-        }
-
-        String errMsg = null;
-
-        if (copyCmdAnswer == null || !copyCmdAnswer.getResult()) {
-            if (copyCmdAnswer != null && copyCmdAnswer.getDetails() != null && !copyCmdAnswer.getDetails().isEmpty()) {
-                errMsg = copyCmdAnswer.getDetails();
+            if (useCloning) {
+                copyCmdAnswer = performResignature(volumeInfo, hostVO);
             }
             else {
-                errMsg = "Unable to perform host-side operation";
+                // asking for a XenServer host here so we don't always prefer to use XenServer hosts that support resigning
+                // even when we don't need those hosts to do this kind of copy work
+                hostVO = getXenServerHost(snapshotInfo.getDataCenterId(), false);
+
+                copyCmdAnswer = performCopyOfVdi(volumeInfo, snapshotInfo, hostVO);
             }
+
+            if (copyCmdAnswer == null || !copyCmdAnswer.getResult()) {
+                if (copyCmdAnswer != null && copyCmdAnswer.getDetails() != null && !copyCmdAnswer.getDetails().isEmpty()) {
+                    errMsg = copyCmdAnswer.getDetails();
+                }
+                else {
+                    errMsg = "Unable to perform host-side operation";
+                }
+            }
+        }
+        catch (Exception ex) {
+            errMsg = ex.getMessage() != null ? ex.getMessage() : "Copy operation failed";
         }
 
         CopyCommandResult result = new CopyCommandResult(null, copyCmdAnswer);
