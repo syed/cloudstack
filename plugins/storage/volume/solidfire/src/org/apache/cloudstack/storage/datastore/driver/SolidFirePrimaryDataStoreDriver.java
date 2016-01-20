@@ -290,8 +290,13 @@ public class SolidFirePrimaryDataStoreDriver implements PrimaryDataStoreDriver {
 
         long volumeSize = getVolumeSizeIncludingHypervisorSnapshotReserve(volumeInfo, _storagePoolDao.findById(storagePoolId));
 
-        long sfVolumeId = SolidFireUtil.createSolidFireVolume(sfConnection, SolidFireUtil.getSolidFireVolumeName(volumeInfo.getName()), sfAccountId, volumeSize, true,
-                NumberFormat.getInstance().format(volumeInfo.getSize()), iops.getMinIops(), iops.getMaxIops(), iops.getBurstIops());
+        Map<String, String> mapAttributes = new HashMap<>();
+
+        mapAttributes.put(SolidFireUtil.CloudStackVolumeId, String.valueOf(volumeInfo.getId()));
+        mapAttributes.put(SolidFireUtil.CloudStackVolumeSize, NumberFormat.getInstance().format(volumeInfo.getSize()));
+
+        long sfVolumeId = SolidFireUtil.createSolidFireVolume(sfConnection, SolidFireUtil.getSolidFireVolumeName(volumeInfo.getName()), sfAccountId,
+                volumeSize, true, mapAttributes, iops.getMinIops(), iops.getMaxIops(), iops.getBurstIops());
 
         return SolidFireUtil.getSolidFireVolume(sfConnection, sfVolumeId);
     }
@@ -769,8 +774,13 @@ public class SolidFirePrimaryDataStoreDriver implements PrimaryDataStoreDriver {
             else {
                 String sfNewVolumeName = volumeInfo.getName() + "-" + snapshotInfo.getUuid();
 
-                long sfNewVolumeId = SolidFireUtil.createSolidFireVolume(sfConnection, sfNewVolumeName, sfVolume.getAccountId(), sfVolumeSize, sfVolume.isEnable512e(),
-                        NumberFormat.getInstance().format(volumeInfo.getSize()), sfVolume.getMinIops(), sfVolume.getMaxIops(), sfVolume.getBurstIops());
+                Map<String, String> mapAttributes = new HashMap<>();
+
+                mapAttributes.put(SolidFireUtil.CloudStackSnapshotId, String.valueOf(snapshotInfo.getId()));
+                mapAttributes.put(SolidFireUtil.CloudStackSnapshotSize, NumberFormat.getInstance().format(volumeInfo.getSize()));
+
+                long sfNewVolumeId = SolidFireUtil.createSolidFireVolume(sfConnection, sfNewVolumeName, sfVolume.getAccountId(), sfVolumeSize,
+                        sfVolume.isEnable512e(), mapAttributes, sfVolume.getMinIops(), sfVolume.getMaxIops(), sfVolume.getBurstIops());
 
                 SolidFireUtil.SolidFireVolume sfNewVolume = SolidFireUtil.getSolidFireVolume(sfConnection, sfNewVolumeId);
 
@@ -926,7 +936,12 @@ public class SolidFirePrimaryDataStoreDriver implements PrimaryDataStoreDriver {
 
             verifySufficientIopsForStoragePool(storagePoolId, volumeInfo.getId(), payload.newMinIops);
 
-            SolidFireUtil.modifySolidFireVolume(sfConnection, sfVolumeId, sfVolume.getTotalSize(), NumberFormat.getInstance().format(payload.newSize),
+            Map<String, String> mapAttributes = new HashMap<>();
+
+            mapAttributes.put(SolidFireUtil.CloudStackVolumeId, String.valueOf(volumeInfo.getId()));
+            mapAttributes.put(SolidFireUtil.CloudStackVolumeSize, NumberFormat.getInstance().format(payload.newSize));
+
+            SolidFireUtil.modifySolidFireVolume(sfConnection, sfVolumeId, sfVolume.getTotalSize(), mapAttributes,
                     payload.newMinIops, payload.newMaxIops, getDefaultBurstIops(storagePoolId, payload.newMaxIops));
 
             VolumeVO volume = _volumeDao.findById(volumeInfo.getId());
