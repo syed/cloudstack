@@ -168,7 +168,9 @@ import com.xensource.xenapi.XenAPIObject;
 public abstract class CitrixResourceBase implements ServerResource, HypervisorResource, VirtualRouterDeployer {
 
     public enum SRType {
-        EXT, FILE, ISCSI, ISO, LVM, LVMOHBA, LVMOISCSI, NFS;
+        // RELVMOISCSI = used for resigning metadata (like SR UUID and VDI UUID when a
+        // particular storage manager is installed on a XenServer host (for back-end snapshots to work))
+        EXT, FILE, ISCSI, ISO, LVM, LVMOHBA, LVMOISCSI, RELVMOISCSI, NFS;
 
         String _str;
 
@@ -2377,55 +2379,79 @@ public abstract class CitrixResourceBase implements ServerResource, HypervisorRe
 
                 deviceConfig.put("SCSIid", scsiid);
 
-                if (resignature) {
-                    deviceConfig.put("resign", "true");
+                String result = SR.probe(conn, host, deviceConfig, type, smConfig);
 
+                String pooluuid = null;
+
+                if (result.indexOf("<UUID>") != -1) {
+                    pooluuid = result.substring(result.indexOf("<UUID>") + 6, result.indexOf("</UUID>")).trim();
+                }
+
+                if (pooluuid == null || pooluuid.length() != 36) {
                     sr = SR.create(conn, host, deviceConfig, new Long(0), srNameLabel, srNameLabel, type, "user", true, smConfig);
                 }
                 else {
-                    final String result = SR.probe(conn, host, deviceConfig, type, smConfig);
-
-                    String pooluuid = null;
-
-                    if (result.indexOf("<UUID>") != -1) {
-                        pooluuid = result.substring(result.indexOf("<UUID>") + 6, result.indexOf("</UUID>")).trim();
-                    }
-
-                    if (pooluuid == null || pooluuid.length() != 36) {
-                        sr = SR.create(conn, host, deviceConfig, new Long(0), srNameLabel, srNameLabel, type, "user", true, smConfig);
-                    }
-                    else {
+                    if (resignature) {
                         try {
-                            sr = SR.introduce(conn, pooluuid, srNameLabel, srNameLabel, type, "user", true, smConfig);
-                        } catch (final XenAPIException ex) {
-                            if (ignoreIntroduceException) {
-                                return sr;
+                            SR.create(conn, host, deviceConfig, new Long(0), srNameLabel, srNameLabel, SRType.RELVMOISCSI.toString(), "user", true, smConfig);
+
+                            // The successful outcome of SR.create (right above) is to throw an exception of type XenAPIException (with expected
+                            // toString() text) after resigning the metadata (we indicated to perform a resign by passing in SRType.RELVMOISCSI.toString()).
+                            // That being the case, if this CloudRuntimeException statement is executed, there appears to have been some kind
+                            // of failure in the execution of the above SR.create (resign) method.
+                            throw new CloudRuntimeException("Problem resigning the metadata");
+                        }
+                        catch (XenAPIException ex) {
+                            String msg = ex.toString();
+
+                            if (!msg.contains("successfully resigned")) {
+                                throw ex;
                             }
 
-                            throw ex;
+                            result = SR.probe(conn, host, deviceConfig, type, smConfig);
+
+                            pooluuid = null;
+
+                            if (result.indexOf("<UUID>") != -1) {
+                                pooluuid = result.substring(result.indexOf("<UUID>") + 6, result.indexOf("</UUID>")).trim();
+                            }
+
+                            if (pooluuid == null || pooluuid.length() != 36) {
+                                throw new CloudRuntimeException("Non-existent or invalid SR UUID");
+                            }
+                        }
+                    }
+
+                    try {
+                        sr = SR.introduce(conn, pooluuid, srNameLabel, srNameLabel, type, "user", true, smConfig);
+                    } catch (final XenAPIException ex) {
+                        if (ignoreIntroduceException) {
+                            return sr;
                         }
 
-                        final Set<Host> setHosts = Host.getAll(conn);
+                        throw ex;
+                    }
 
-                        if (setHosts == null) {
-                            final String msg = "Unable to create iSCSI SR " + deviceConfig + " due to hosts not available.";
+                    final Set<Host> setHosts = Host.getAll(conn);
 
-                            s_logger.warn(msg);
+                    if (setHosts == null) {
+                        final String msg = "Unable to create iSCSI SR " + deviceConfig + " due to hosts not available.";
 
-                            throw new CloudRuntimeException(msg);
-                        }
+                        s_logger.warn(msg);
 
-                        for (final Host currentHost : setHosts) {
-                            final PBD.Record rec = new PBD.Record();
+                        throw new CloudRuntimeException(msg);
+                    }
 
-                            rec.deviceConfig = deviceConfig;
-                            rec.host = currentHost;
-                            rec.SR = sr;
+                    for (final Host currentHost : setHosts) {
+                        final PBD.Record rec = new PBD.Record();
 
-                            final PBD pbd = PBD.create(conn, rec);
+                        rec.deviceConfig = deviceConfig;
+                        rec.host = currentHost;
+                        rec.SR = sr;
 
-                            pbd.plug(conn);
-                        }
+                        final PBD pbd = PBD.create(conn, rec);
+
+                        pbd.plug(conn);
                     }
                 }
 
