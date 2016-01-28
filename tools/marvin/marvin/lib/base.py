@@ -1201,6 +1201,9 @@ class Template:
             random_gen()
         ]) if random_name else services["name"]
 
+	if services["ispublic"]:
+	    cmd.ispublic = services["ispublic"]
+
         if "ostypeid" in services:
             cmd.ostypeid = services["ostypeid"]
         elif "ostype" in services:
@@ -3572,6 +3575,8 @@ class VpnCustomerGateway:
             cmd.esplifetime = services["esplifetime"]
         if "dpd" in services:
             cmd.dpd = services["dpd"]
+        if "forceencap" in services:
+            cmd.forceencap = services["forceencap"]
         if account:
             cmd.account = account
         if domainid:
@@ -3599,6 +3604,8 @@ class VpnCustomerGateway:
             cmd.esplifetime = services["esplifetime"]
         if "dpd" in services:
             cmd.dpd = services["dpd"]
+        if "forceencap" in services:
+            cmd.forceencap = services["forceencap"]
         return(apiclient.updateVpnCustomerGateway(cmd))
 
     def delete(self, apiclient):
