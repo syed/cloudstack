@@ -353,7 +353,7 @@ public class ElastistorPrimaryDataStoreDriver extends CloudStackPrimaryDataStore
     }
 
     @Override
-    public ChapInfo getChapInfo(VolumeInfo volumeInfo) {
+    public ChapInfo getChapInfo(DataObject dataObject) {
         return null;
     }
 
