@@ -353,7 +353,7 @@ public class StorageSystemSnapshotStrategy extends SnapshotStrategyBase {
 
         HostVO hostVO = hostId != null ? _hostDao.findById(hostId) : getXenServerHost(volumeInfo.getDataCenterId(), false);
 
-        if (hostId == null) {
+        if (hostVO == null) {
             final String errMsg = "Unable to locate an applicable host";
 
             s_logger.error("performSnapshotAndCopyOnHostSide: " + errMsg);
