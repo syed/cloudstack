@@ -29,6 +29,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -54,6 +55,7 @@ import org.apache.log4j.Logger;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 
 import org.apache.cloudstack.storage.datastore.db.PrimaryDataStoreDao;
 import org.apache.cloudstack.storage.datastore.db.StoragePoolDetailVO;
@@ -96,10 +98,15 @@ public class SolidFireUtil {
 
     public static final String ACCOUNT_ID = "accountId";
     public static final String VOLUME_ID = "volumeId";
+    public static final String TEMP_VOLUME_ID = "tempVolumeId";
     public static final String SNAPSHOT_ID = "snapshotId";
 
+    public static final String CloudStackVolumeId = "CloudStackVolumeId";
+    public static final String CloudStackVolumeSize = "CloudStackVolumeSize";
+    public static final String CloudStackSnapshotId = "CloudStackSnapshotId";
+    public static final String CloudStackSnapshotSize = "CloudStackSnapshotSize";
+
     public static final String VOLUME_SIZE = "sfVolumeSize";
-    public static final String SNAPSHOT_SIZE = "sfSnapshotSize";
 
     public static final String STORAGE_POOL_ID = "sfStoragePoolId";
 
@@ -118,8 +125,6 @@ public class SolidFireUtil {
 
     private static final int DEFAULT_MANAGEMENT_PORT = 443;
     private static final int DEFAULT_STORAGE_PORT = 3260;
-
-
 
     public static class SolidFireConnection {
         private final String _managementVip;
@@ -461,13 +466,44 @@ public class SolidFireUtil {
     }
 
     public static long createSolidFireVolume(SolidFireConnection sfConnection, String strSfVolumeName, long lSfAccountId, long lTotalSize,
-            boolean bEnable512e, String strCloudStackVolumeSize, long minIops, long maxIops, long burstIops)
+            boolean bEnable512e, Map<String, String> mapAttributes, long minIops, long maxIops, long burstIops)
     {
-        final Gson gson = new GsonBuilder().create();
+        JsonObject volumeToCreate = new JsonObject();
 
-        Object volumeToCreate = strCloudStackVolumeSize != null && strCloudStackVolumeSize.trim().length() > 0 ?
-                new VolumeToCreateWithCloudStackVolumeSize(strSfVolumeName, lSfAccountId, lTotalSize, bEnable512e, strCloudStackVolumeSize, minIops, maxIops, burstIops) :
-                new VolumeToCreate(strSfVolumeName, lSfAccountId, lTotalSize, bEnable512e, minIops, maxIops, burstIops);
+        volumeToCreate.addProperty("method", "CreateVolume");
+
+        JsonObject params = new JsonObject();
+
+        volumeToCreate.add("params", params);
+
+        params.addProperty("name", strSfVolumeName);
+        params.addProperty("accountID", lSfAccountId);
+        params.addProperty("totalSize", lTotalSize);
+        params.addProperty("enable512e", bEnable512e);
+
+        JsonObject qos = new JsonObject();
+
+        params.add("qos", qos);
+
+        qos.addProperty("minIOPS", minIops);
+        qos.addProperty("maxIOPS", maxIops);
+        qos.addProperty("burstIOPS", burstIops);
+
+        if (mapAttributes != null && mapAttributes.size() > 0) {
+            JsonObject attributes = new JsonObject();
+
+            params.add("attributes", attributes);
+
+            Iterator<Map.Entry<String, String>> itr = mapAttributes.entrySet().iterator();
+
+            while (itr.hasNext()) {
+                Map.Entry<String, String> pair = itr.next();
+
+                attributes.addProperty(pair.getKey(), pair.getValue());
+            }
+        }
+
+        final Gson gson = new GsonBuilder().create();
 
         String strVolumeToCreateJson = gson.toJson(volumeToCreate);
 
@@ -480,14 +516,43 @@ public class SolidFireUtil {
         return volumeCreateResult.result.volumeID;
     }
 
-    public static void modifySolidFireVolume(SolidFireConnection sfConnection, long volumeId, long totalSize, String strCloudStackVolumeSize,
+    public static void modifySolidFireVolume(SolidFireConnection sfConnection, long volumeId, long totalSize, Map<String, String> mapAttributes,
             long minIops, long maxIops, long burstIops)
     {
-        final Gson gson = new GsonBuilder().create();
+        JsonObject volumeToModify = new JsonObject();
 
-        Object volumeToModify = strCloudStackVolumeSize != null && strCloudStackVolumeSize.trim().length() > 0 ?
-                new VolumeToModifyWithCloudStackVolumeSize(volumeId, totalSize, strCloudStackVolumeSize, minIops, maxIops, burstIops) :
-                new VolumeToModify(volumeId, totalSize, minIops, maxIops, burstIops);
+        volumeToModify.addProperty("method", "ModifyVolume");
+
+        JsonObject params = new JsonObject();
+
+        volumeToModify.add("params", params);
+
+        params.addProperty("volumeID", volumeId);
+        params.addProperty("totalSize", totalSize);
+
+        JsonObject qos = new JsonObject();
+
+        params.add("qos", qos);
+
+        qos.addProperty("minIOPS", minIops);
+        qos.addProperty("maxIOPS", maxIops);
+        qos.addProperty("burstIOPS", burstIops);
+
+        if (mapAttributes != null && mapAttributes.size() > 0) {
+            JsonObject attributes = new JsonObject();
+
+            params.add("attributes", attributes);
+
+            Iterator<Map.Entry<String, String>> itr = mapAttributes.entrySet().iterator();
+
+            while (itr.hasNext()) {
+                Map.Entry<String, String> pair = itr.next();
+
+                attributes.addProperty(pair.getKey(), pair.getValue());
+            }
+        }
+
+        final Gson gson = new GsonBuilder().create();
 
         String strVolumeToModifyJson = gson.toJson(volumeToModify);
 
@@ -498,28 +563,6 @@ public class SolidFireUtil {
         if (jsonError.error != null) {
             throw new IllegalStateException(jsonError.error.message);
         }
-    }
-
-    public static SolidFireSnapshot getSolidFireSnapshot(SolidFireConnection sfConnection, long lSnapshotId, long lVolumeId) {
-
-        final Gson gson = new GsonBuilder().create();
-
-        SnapshotToGet snapshotToGet = new SnapshotToGet(lVolumeId);
-
-        String strSnapshotToGetJson = gson.toJson(snapshotToGet);
-
-        String strSnapshotGetResultJson = executeJsonRpc(sfConnection, strSnapshotToGetJson);
-
-        SnapshotGetResult snapshotGetResult = gson.fromJson(strSnapshotGetResultJson, SnapshotGetResult.class);
-
-        verifyResult(snapshotGetResult.result, strSnapshotGetResultJson, gson);
-
-        String strSnapshotName = getSnapshotName(snapshotGetResult, lSnapshotId);
-        long lAccountId = getSnapshotAccountId(snapshotGetResult, lSnapshotId);
-        String strSnapshotStatus = getSnapshotStatus(snapshotGetResult, lSnapshotId);
-        long lTotalSize = getSnapshotTotalSize(snapshotGetResult, lSnapshotId);
-
-        return new SolidFireSnapshot(lSnapshotId, strSnapshotName, lAccountId, lVolumeId, strSnapshotStatus, lTotalSize);
     }
 
     public static SolidFireVolume getSolidFireVolume(SolidFireConnection sfConnection, long lVolumeId)
@@ -721,22 +764,13 @@ public class SolidFireUtil {
         }
     }
 
-        public static class SolidFireSnapshot {
+    public static class SolidFireSnapshot {
         private final long _id;
         private final String _name;
-        private final long _accountId;
-        private final long _volumeId;
-        private final String _status;
-        private final long _totalSize;
 
-        public SolidFireSnapshot(long id, String name, long accountId, long volumeId, String status, long totalSize)
-        {
+        public SolidFireSnapshot(long id, String name) {
             _id = id;
             _name = name;
-            _accountId = accountId;
-            _volumeId = volumeId;
-            _status = status;
-            _totalSize = totalSize;
         }
 
         public long getId() {
@@ -746,57 +780,35 @@ public class SolidFireUtil {
         public String getName() {
             return _name;
         }
-
-        public long getAccountId() {
-            return _accountId;
-        }
-
-        public long getVolumeId(){
-            return _volumeId;
-        }
-
-        public boolean isActive() {
-            return ACTIVE.equalsIgnoreCase(_status);
-        }
-
-        public long getTotalSize() {
-            return _totalSize;
-        }
-
-        @Override
-        public String toString() {
-            return _name;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == null) {
-                return false;
-            }
-
-            if (!obj.getClass().equals(SolidFireSnapshot.class)) {
-                return false;
-            }
-
-            SolidFireSnapshot sfv = (SolidFireSnapshot) obj;
-
-            if (_id == sfv._id && _name.equals(sfv._name) &&
-                _accountId == sfv._accountId &&
-                isActive() == sfv.isActive() &&
-                getTotalSize() == sfv.getTotalSize() && getVolumeId() == sfv.getVolumeId()) {
-                return true;
-            }
-
-            return false;
-        }
     }
 
+    public static long createSolidFireSnapshot(SolidFireConnection sfConnection, long lVolumeId, String snapshotName, Map<String, String> mapAttributes) {
+        JsonObject snapshotToCreate = new JsonObject();
 
+        snapshotToCreate.addProperty("method", "CreateSnapshot");
 
-    public static long createSolidFireSnapshot(SolidFireConnection sfConnection, long lVolumeId, String snapshotName) {
+        JsonObject params = new JsonObject();
+
+        snapshotToCreate.add("params", params);
+
+        params.addProperty("volumeID", lVolumeId);
+        params.addProperty("name", snapshotName);
+
+        if (mapAttributes != null && mapAttributes.size() > 0) {
+            JsonObject attributes = new JsonObject();
+
+            params.add("attributes", attributes);
+
+            Iterator<Map.Entry<String, String>> itr = mapAttributes.entrySet().iterator();
+
+            while (itr.hasNext()) {
+                Map.Entry<String, String> pair = itr.next();
+
+                attributes.addProperty(pair.getKey(), pair.getValue());
+            }
+        }
+
         final Gson gson = new GsonBuilder().create();
-
-        SnapshotToCreate snapshotToCreate = new SnapshotToCreate(lVolumeId, snapshotName);
 
         String strSnapshotToCreateJson = gson.toJson(snapshotToCreate);
 
@@ -807,6 +819,38 @@ public class SolidFireUtil {
         verifyResult(snapshotCreateResult.result, strSnapshotCreateResultJson, gson);
 
         return snapshotCreateResult.result.snapshotID;
+    }
+
+    public static SolidFireSnapshot getSolidFireSnapshot(SolidFireConnection sfConnection, long lVolumeId, long lSnapshotId) {
+        final Gson gson = new GsonBuilder().create();
+
+        SnapshotsToGet snapshotsToGet = new SnapshotsToGet(lVolumeId);
+
+        String strSnapshotsToGetJson = gson.toJson(snapshotsToGet);
+
+        String strSnapshotsGetResultJson = executeJsonRpc(sfConnection, strSnapshotsToGetJson);
+
+        SnapshotsGetResult snapshotsGetResult = gson.fromJson(strSnapshotsGetResultJson, SnapshotsGetResult.class);
+
+        verifyResult(snapshotsGetResult.result, strSnapshotsGetResultJson, gson);
+
+        String snapshotName = null;
+
+        if (snapshotsGetResult.result.snapshots != null) {
+            for (SnapshotsGetResult.Result.Snapshot snapshot : snapshotsGetResult.result.snapshots) {
+                if (snapshot.snapshotID == lSnapshotId) {
+                    snapshotName = snapshot.name;
+
+                    break;
+                }
+            }
+        }
+
+        if (snapshotName == null) {
+            throw new CloudRuntimeException("Could not find SolidFire snapshot ID: " + lSnapshotId + " for the following SolidFire volume ID: " + lVolumeId);
+        }
+
+        return new SolidFireSnapshot(lSnapshotId, snapshotName);
     }
 
     public static void deleteSolidFireSnapshot(SolidFireConnection sfConnection, long lSnapshotId)
@@ -834,27 +878,42 @@ public class SolidFireUtil {
         verifyResult(rollbackInitiatedResult.result, strRollbackInitiatedResultJson, gson);
     }
 
-    public static long createSolidFireCloneFromSnapshot(SolidFireConnection sfConnection, long lSnapshotId, long lVolumeId, String cloneName) {
-
-        final Gson gson = new GsonBuilder().create();
-        CloneToCreate cloneToCreate = new CloneToCreate(lVolumeId, lSnapshotId, cloneName);
-
-        String strCloneToCreateJson = gson.toJson(cloneToCreate);
-        String strCloneCreateResultJson = executeJsonRpc(sfConnection, strCloneToCreateJson);
-        CloneCreateResult cloneCreateResult = gson.fromJson(strCloneCreateResultJson, CloneCreateResult.class);
-
-        verifyResult(cloneCreateResult.result, strCloneCreateResultJson, gson);
-
-        // Clone is an async operation. Poll until we get data.
-        pollAsync(sfConnection, cloneCreateResult.result.asyncHandle);
-
-        return cloneCreateResult.result.volumeID;
+    public static long createSolidFireClone(SolidFireConnection sfConnection, long lVolumeId, String cloneName, Map<String, String> mapAttributes) {
+        return createSolidFireClone(sfConnection, lVolumeId, Long.MIN_VALUE, cloneName, mapAttributes);
     }
 
-    public static long createSolidFireClone(SolidFireConnection sfConnection, long lVolumeId, String cloneName) {
-        final Gson gson = new GsonBuilder().create();
+    public static long createSolidFireClone(SolidFireConnection sfConnection, long lVolumeId, long lSnapshotId, String cloneName, Map<String, String> mapAttributes) {
+        JsonObject cloneToCreate = new JsonObject();
 
-        CloneToCreate cloneToCreate = new CloneToCreate(lVolumeId, cloneName);
+        cloneToCreate.addProperty("method", "CloneVolume");
+
+        JsonObject params = new JsonObject();
+
+        cloneToCreate.add("params", params);
+
+        params.addProperty("volumeID", lVolumeId);
+
+        if (lSnapshotId > 0) {
+            params.addProperty("snapshotID", lSnapshotId);
+        }
+
+        params.addProperty("name", cloneName);
+
+        if (mapAttributes != null && mapAttributes.size() > 0) {
+            JsonObject attributes = new JsonObject();
+
+            params.add("attributes", attributes);
+
+            Iterator<Map.Entry<String, String>> itr = mapAttributes.entrySet().iterator();
+
+            while (itr.hasNext()) {
+                Map.Entry<String, String> pair = itr.next();
+
+                attributes.addProperty(pair.getKey(), pair.getValue());
+            }
+        }
+
+        final Gson gson = new GsonBuilder().create();
 
         String strCloneToCreateJson = gson.toJson(cloneToCreate);
 
@@ -865,7 +924,30 @@ public class SolidFireUtil {
         verifyResult(cloneCreateResult.result, strCloneCreateResultJson, gson);
 
         // Clone is an async operation. Poll until we get data.
-        pollAsync(sfConnection, cloneCreateResult.result.asyncHandle);
+
+        AsyncJobToPoll asyncJobToPoll = new AsyncJobToPoll(cloneCreateResult.result.asyncHandle);
+
+        String strAsyncJobToPollJson = gson.toJson(asyncJobToPoll);
+
+        do {
+            String strAsyncJobResultJson = executeJsonRpc(sfConnection, strAsyncJobToPollJson);
+
+            AsyncJobResult asyncJobResult = gson.fromJson(strAsyncJobResultJson, AsyncJobResult.class);
+
+            verifyResult(asyncJobResult.result, strAsyncJobResultJson, gson);
+
+            if (asyncJobResult.result.status.equals("complete")) {
+                break;
+            }
+
+            try {
+                Thread.sleep(500); // sleep for 1/2 of a second
+            }
+            catch (Exception ex) {
+                // ignore
+            }
+        }
+        while (true);
 
         return cloneCreateResult.result.volumeID;
     }
@@ -939,8 +1021,6 @@ public class SolidFireUtil {
 
         executeJsonRpc(sfConnection, strAccountToRemoveJson);
     }
-
-
 
     public static class SolidFireAccount
     {
@@ -1150,189 +1230,6 @@ public class SolidFireUtil {
     }
 
     @SuppressWarnings("unused")
-    private static final class VolumeToCreateWithCloudStackVolumeSize {
-        private final String method = "CreateVolume";
-        private final VolumeToCreateParams params;
-
-        private VolumeToCreateWithCloudStackVolumeSize(final String strVolumeName, final long lAccountId, final long lTotalSize,
-                final boolean bEnable512e, final String strCloudStackVolumeSize, final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS) {
-            params = new VolumeToCreateParams(strVolumeName, lAccountId, lTotalSize, bEnable512e, strCloudStackVolumeSize, lMinIOPS, lMaxIOPS, lBurstIOPS);
-        }
-
-        private static final class VolumeToCreateParams {
-            private final String name;
-            private final long accountID;
-            private final long totalSize;
-            private final boolean enable512e;
-            private final VolumeToCreateParamsAttributes attributes;
-            private final VolumeToCreateParamsQoS qos;
-
-            private VolumeToCreateParams(final String strVolumeName, final long lAccountId, final long lTotalSize, final boolean bEnable512e,
-                    final String strCloudStackVolumeSize, final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS) {
-                name = strVolumeName;
-                accountID = lAccountId;
-                totalSize = lTotalSize;
-                enable512e = bEnable512e;
-
-                attributes = new VolumeToCreateParamsAttributes(strCloudStackVolumeSize);
-                qos = new VolumeToCreateParamsQoS(lMinIOPS, lMaxIOPS, lBurstIOPS);
-            }
-
-            private static final class VolumeToCreateParamsAttributes {
-                private final String CloudStackVolumeSize;
-
-                private VolumeToCreateParamsAttributes(final String strCloudStackVolumeSize) {
-                    CloudStackVolumeSize = strCloudStackVolumeSize;
-                }
-            }
-
-            private static final class VolumeToCreateParamsQoS {
-                private final long minIOPS;
-                private final long maxIOPS;
-                private final long burstIOPS;
-
-                private VolumeToCreateParamsQoS(final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS) {
-                    minIOPS = lMinIOPS;
-                    maxIOPS = lMaxIOPS;
-                    burstIOPS = lBurstIOPS;
-                }
-            }
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private static final class VolumeToCreate {
-        private final String method = "CreateVolume";
-        private final VolumeToCreateParams params;
-
-        private VolumeToCreate(final String strVolumeName, final long lAccountId, final long lTotalSize, final boolean bEnable512e,
-                final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS) {
-            params = new VolumeToCreateParams(strVolumeName, lAccountId, lTotalSize, bEnable512e, lMinIOPS, lMaxIOPS, lBurstIOPS);
-        }
-
-        private static final class VolumeToCreateParams {
-            private final String name;
-            private final long accountID;
-            private final long totalSize;
-            private final boolean enable512e;
-            private final VolumeToCreateParamsQoS qos;
-
-            private VolumeToCreateParams(final String strVolumeName, final long lAccountId, final long lTotalSize, final boolean bEnable512e,
-                    final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS) {
-                name = strVolumeName;
-                accountID = lAccountId;
-                totalSize = lTotalSize;
-                enable512e = bEnable512e;
-
-                qos = new VolumeToCreateParamsQoS(lMinIOPS, lMaxIOPS, lBurstIOPS);
-            }
-
-            private static final class VolumeToCreateParamsQoS {
-                private final long minIOPS;
-                private final long maxIOPS;
-                private final long burstIOPS;
-
-                private VolumeToCreateParamsQoS(final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS) {
-                    minIOPS = lMinIOPS;
-                    maxIOPS = lMaxIOPS;
-                    burstIOPS = lBurstIOPS;
-                }
-            }
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private static final class VolumeToModifyWithCloudStackVolumeSize
-    {
-        private final String method = "ModifyVolume";
-        private final VolumeToModifyParams params;
-
-        private VolumeToModifyWithCloudStackVolumeSize(final long lVolumeId, final long lTotalSize, final String strCloudStackVolumeSize,
-                final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS)
-        {
-            params = new VolumeToModifyParams(lVolumeId, lTotalSize, strCloudStackVolumeSize, lMinIOPS, lMaxIOPS, lBurstIOPS);
-        }
-
-        private static final class VolumeToModifyParams
-        {
-            private final long volumeID;
-            private final long totalSize;
-            private final VolumeToModifyParamsAttributes attributes;
-            private final VolumeToModifyParamsQoS qos;
-
-            private VolumeToModifyParams(final long lVolumeId, final long lTotalSize, String strCloudStackVolumeSize, final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS)
-            {
-                volumeID = lVolumeId;
-
-                totalSize = lTotalSize;
-
-                attributes = new VolumeToModifyParamsAttributes(strCloudStackVolumeSize);
-                qos = new VolumeToModifyParamsQoS(lMinIOPS, lMaxIOPS, lBurstIOPS);
-            }
-        }
-
-        private static final class VolumeToModifyParamsAttributes {
-            private final String CloudStackVolumeSize;
-
-            private VolumeToModifyParamsAttributes(final String strCloudStackVolumeSize) {
-                CloudStackVolumeSize = strCloudStackVolumeSize;
-            }
-        }
-
-        private static final class VolumeToModifyParamsQoS {
-            private final long minIOPS;
-            private final long maxIOPS;
-            private final long burstIOPS;
-
-            private VolumeToModifyParamsQoS(final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS) {
-                minIOPS = lMinIOPS;
-                maxIOPS = lMaxIOPS;
-                burstIOPS = lBurstIOPS;
-            }
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private static final class VolumeToModify
-    {
-        private final String method = "ModifyVolume";
-        private final VolumeToModifyParams params;
-
-        private VolumeToModify(final long lVolumeId, final long lTotalSize, final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS)
-        {
-            params = new VolumeToModifyParams(lVolumeId, lTotalSize, lMinIOPS, lMaxIOPS, lBurstIOPS);
-        }
-
-        private static final class VolumeToModifyParams
-        {
-            private final long volumeID;
-            private final long totalSize;
-            private final VolumeToModifyParamsQoS qos;
-
-            private VolumeToModifyParams(final long lVolumeId, final long lTotalSize, final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS)
-            {
-                volumeID = lVolumeId;
-
-                totalSize = lTotalSize;
-
-                qos = new VolumeToModifyParamsQoS(lMinIOPS, lMaxIOPS, lBurstIOPS);
-            }
-        }
-
-        private static final class VolumeToModifyParamsQoS {
-            private final long minIOPS;
-            private final long maxIOPS;
-            private final long burstIOPS;
-
-            private VolumeToModifyParamsQoS(final long lMinIOPS, final long lMaxIOPS, final long lBurstIOPS) {
-                minIOPS = lMinIOPS;
-                maxIOPS = lMaxIOPS;
-                burstIOPS = lBurstIOPS;
-            }
-        }
-    }
-
-    @SuppressWarnings("unused")
     private static final class VolumeToGet
     {
         private final String method = "ListActiveVolumes";
@@ -1422,43 +1319,20 @@ public class SolidFireUtil {
     }
 
     @SuppressWarnings("unused")
-    private static final class SnapshotToGet
+    private static final class SnapshotsToGet
     {
         private final String method = "ListSnapshots";
-        private final SnapshotToGetParams params;
+        private final SnapshotsToGetParams params;
 
-        private SnapshotToGet(final long lSnapshotId)
-        {
-            params = new SnapshotToGetParams(lSnapshotId);
+        private SnapshotsToGet(final long lVolumeId) {
+            params = new SnapshotsToGetParams(lVolumeId);
         }
 
-        private static final class SnapshotToGetParams
-        {
+        private static final class SnapshotsToGetParams {
             private final long volumeID;
 
-            private SnapshotToGetParams(final long lVolumeId)
-            {
+            private SnapshotsToGetParams(final long lVolumeId) {
                 volumeID = lVolumeId;
-            }
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private static final class SnapshotToCreate {
-        private final String method = "CreateSnapshot";
-        private final SnapshotToCreateParams params;
-
-        private SnapshotToCreate(final long lVolumeId, final String snapshotName) {
-            params = new SnapshotToCreateParams(lVolumeId, snapshotName);
-        }
-
-        private static final class SnapshotToCreateParams {
-            private final long volumeID;
-            private final String name;
-
-            private SnapshotToCreateParams(final long lVolumeId, final String snapshotName) {
-                volumeID = lVolumeId;
-                name = snapshotName;
             }
         }
     }
@@ -1498,38 +1372,6 @@ public class SolidFireUtil {
             private RollbackToInitiateParams(final long lVolumeId, final long lSnapshotId) {
                 volumeID = lVolumeId;
                 snapshotID = lSnapshotId;
-            }
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private static final class CloneToCreate {
-        private final String method = "CloneVolume";
-        private final CloneToCreateParams params;
-
-        private CloneToCreate(final long lVolumeId, final String cloneName) {
-            params = new CloneToCreateParams(lVolumeId, cloneName);
-        }
-
-        private CloneToCreate(final long lVolumeId, long lSnapshotId, final String cloneName) {
-            params = new CloneToCreateParams(lVolumeId, cloneName);
-        }
-
-        private static final class CloneToCreateParams {
-            private final long volumeID;
-            private final long snapshotId;
-            private final String name;
-
-            private CloneToCreateParams(final long lVolumeId, final String cloneName) {
-                volumeID = lVolumeId;
-                name = cloneName;
-                snapshotId = 0; //FIXME: Validate if this is correct
-            }
-
-            private CloneToCreateParams(final long lVolumeId, long lSnapshotId, final String cloneName) {
-                volumeID = lVolumeId;
-                name = cloneName;
-                snapshotId = lSnapshotId;
             }
         }
     }
@@ -1790,7 +1632,7 @@ public class SolidFireUtil {
         }
     }
 
-    private static final class SnapshotGetResult {
+    private static final class SnapshotsGetResult {
         private Result result;
 
         private static final class Result {
@@ -1798,11 +1640,7 @@ public class SolidFireUtil {
 
             private static final class Snapshot {
                 private long snapshotID;
-                private long volumeID;
                 private String name;
-                private long accountID;
-                private String status;
-                private long totalSize;
             }
         }
     }
@@ -2002,37 +1840,6 @@ public class SolidFireUtil {
         throw new IllegalStateException("Problem with the following JSON: " + strJson);
     }
 
-
-    private static void pollAsync(SolidFireConnection sfConnection, long asyncHandle) {
-
-        final Gson gson = new GsonBuilder().create();
-        AsyncJobToPoll asyncJobToPoll = new AsyncJobToPoll(asyncHandle);
-
-        String strAsyncJobToPollJson = gson.toJson(asyncJobToPoll);
-
-        do {
-            String strAsyncJobResultJson = executeJsonRpc(sfConnection, strAsyncJobToPollJson);
-
-            AsyncJobResult asyncJobResult = gson.fromJson(strAsyncJobResultJson, AsyncJobResult.class);
-
-            verifyResult(asyncJobResult.result, strAsyncJobResultJson, gson);
-
-            if (asyncJobResult.result.status.equals("complete")) {
-                return;
-            }
-
-            try {
-                Thread.sleep(500); // sleep for 1/2 of a second
-            }
-            catch (Exception ex) {
-                // ignore
-            }
-
-        } while (true);
-
-
-    }
-
     private static String getVolumeName(VolumeGetResult volumeGetResult, long lVolumeId) {
         if (volumeGetResult.result.volumes != null && volumeGetResult.result.volumes.length == 1 && volumeGetResult.result.volumes[0].volumeID == lVolumeId) {
             return volumeGetResult.result.volumes[0].name;
@@ -2119,42 +1926,6 @@ public class SolidFireUtil {
 
         throw new CloudRuntimeException("Could not determine the total size of the volume for volume ID of " + lVolumeId + ".");
     }
-
-    private static String getSnapshotName(SnapshotGetResult snapshotGetResult, long lSnapshotId) {
-        if (snapshotGetResult.result.snapshots != null && snapshotGetResult.result.snapshots.length == 1 && snapshotGetResult.result.snapshots[0].volumeID == lSnapshotId) {
-            return snapshotGetResult.result.snapshots[0].name;
-        }
-
-        throw new CloudRuntimeException("Could not determine the name of the volume for volume ID of " + lSnapshotId + ".");
-    }
-
-    private static long getSnapshotTotalSize(SnapshotGetResult snapshotGetResult, long lSnapshotId)
-    {
-        if (snapshotGetResult.result.snapshots != null && snapshotGetResult.result.snapshots.length == 1 &&
-            snapshotGetResult.result.snapshots[0].volumeID == lSnapshotId)
-        {
-            return snapshotGetResult.result.snapshots[0].totalSize;
-        }
-
-        throw new CloudRuntimeException("Could not determine the total size of the volume for volume ID of " + lSnapshotId + ".");
-    }
-
-    private static long getSnapshotAccountId(SnapshotGetResult snapshotGetResult, long lVolumeId) {
-        if (snapshotGetResult.result.snapshots != null && snapshotGetResult.result.snapshots.length == 1 && snapshotGetResult.result.snapshots[0].volumeID == lVolumeId) {
-            return snapshotGetResult.result.snapshots[0].accountID;
-        }
-
-        throw new CloudRuntimeException("Could not determine the account ID of the volume for volume ID of " + lVolumeId + ".");
-    }
-
-    private static String getSnapshotStatus(SnapshotGetResult snapshotGetResult, long lSnapshotId) {
-        if (snapshotGetResult.result.snapshots != null && snapshotGetResult.result.snapshots.length == 1 && snapshotGetResult.result.snapshots[0].volumeID == lSnapshotId) {
-            return snapshotGetResult.result.snapshots[0].status;
-        }
-
-        throw new CloudRuntimeException("Could not determine the status of the volume for volume ID of " + lSnapshotId + ".");
-    }
-
 
     private static String[] getVagIqns(VagGetResult vagGetResult, long lVagId)
     {

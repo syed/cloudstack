@@ -1,3 +1,4 @@
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -14,24 +15,24 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package org.apache.cloudstack.api.response;
+//
 
-import com.cloud.serializer.Param;
+package com.cloud.agent.api;
 
-import com.google.gson.annotations.SerializedName;
+public class FindL2GatewayServiceAnswer extends Answer {
 
-import org.apache.cloudstack.api.BaseResponse;
+    private String gatewayServiceUuid;
 
-public class ApiSolidFireAccountIdResponse extends BaseResponse {
-    @SerializedName("solidFireAccountId")
-    @Param(description = "SolidFire Account ID")
-    private long solidFireAccountId;
-
-    public ApiSolidFireAccountIdResponse(long sfAccountId) {
-        solidFireAccountId = sfAccountId;
+    public FindL2GatewayServiceAnswer(final Command command, final boolean success, final String details, final String gatewayServiceUuid) {
+        super(command, success, details);
+        this.gatewayServiceUuid = gatewayServiceUuid;
     }
 
-    public long getSolidFireAccountId() {
-        return solidFireAccountId;
+    public FindL2GatewayServiceAnswer(final Command command, final Exception e) {
+        super(command, e);
+    }
+
+    public String getGatewayServiceUuid() {
+        return gatewayServiceUuid;
     }
 }

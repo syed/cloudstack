@@ -3001,7 +3001,7 @@ public class ApiResponseHelper implements ResponseGenerator {
         response.setIkeLifetime(result.getIkeLifetime());
         response.setEspLifetime(result.getEspLifetime());
         response.setDpd(result.getDpd());
-
+        response.setEncap(result.getEncap());
         response.setRemoved(result.getRemoved());
         response.setObjectName("vpncustomergateway");
 
@@ -3041,6 +3041,7 @@ public class ApiResponseHelper implements ResponseGenerator {
                 response.setIkeLifetime(customerGateway.getIkeLifetime());
                 response.setEspLifetime(customerGateway.getEspLifetime());
                 response.setDpd(customerGateway.getDpd());
+                response.setEncap(customerGateway.getEncap());
             }
         }
 
@@ -3467,6 +3468,15 @@ public class ApiResponseHelper implements ResponseGenerator {
         response.setDeviceId(String.valueOf(result.getDeviceId()));
 
         response.setIsDefault(result.isDefaultNic());
+
+        if (result instanceof NicVO){
+            if (((NicVO)result).getNsxLogicalSwitchUuid() != null){
+                response.setNsxLogicalSwitch(((NicVO)result).getNsxLogicalSwitchUuid());
+            }
+            if (((NicVO)result).getNsxLogicalSwitchPortUuid() != null){
+                response.setNsxLogicalSwitchPort(((NicVO)result).getNsxLogicalSwitchPortUuid());
+            }
+        }
         return response;
     }
 

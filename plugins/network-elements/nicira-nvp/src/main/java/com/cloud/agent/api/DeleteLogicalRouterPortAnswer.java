@@ -1,3 +1,4 @@
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -14,24 +15,17 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package org.apache.cloudstack.api.response;
+//
 
-import com.cloud.serializer.Param;
+package com.cloud.agent.api;
 
-import com.google.gson.annotations.SerializedName;
+public class DeleteLogicalRouterPortAnswer extends Answer {
 
-import org.apache.cloudstack.api.BaseResponse;
-
-public class ApiSolidFireVolumeSizeResponse extends BaseResponse {
-    @SerializedName("solidFireVolumeSize")
-    @Param(description = "SolidFire Volume Size Including Hypervisor Snapshot Reserve")
-    private long solidFireVolumeSize;
-
-    public ApiSolidFireVolumeSizeResponse(long sfVolumeSize) {
-        solidFireVolumeSize = sfVolumeSize;
+    public DeleteLogicalRouterPortAnswer(final Command command, final boolean success, final String details) {
+        super(command, success, details);
     }
 
-    public long getSolidFireVolumeSize() {
-        return solidFireVolumeSize;
+    public DeleteLogicalRouterPortAnswer(final Command command, final Exception e) {
+        super(command, e);
     }
 }

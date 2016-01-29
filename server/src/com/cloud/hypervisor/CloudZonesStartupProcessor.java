@@ -327,7 +327,7 @@ public class CloudZonesStartupProcessor extends AdapterBase implements StartupCo
     }
 
     private void updateHostDetails(HostVO host, StartupRoutingCommand startupRoutingCmd) {
-        final String name = "supportsClonedVolumes";
+        final String name = "supportsResign";
         final String value = String.valueOf(startupRoutingCmd.getSupportsClonedVolumes());
 
         DetailVO hostDetail = _hostDetailsDao.findDetail(host.getId(), name);
