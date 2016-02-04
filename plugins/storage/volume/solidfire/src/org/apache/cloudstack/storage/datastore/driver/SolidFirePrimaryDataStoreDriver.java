@@ -1028,7 +1028,11 @@ public class SolidFirePrimaryDataStoreDriver implements PrimaryDataStoreDriver {
 
             for (SnapshotVO snapshotVo : lstSnapshots) {
                 if (snapshotVo.getId() != csSnapshotId) {
-                    lstSnapshots2.add(snapshotVo);
+                    SnapshotDetailsVO snapshotDetails = _snapshotDetailsDao.findDetail(snapshotVo.getId(), SolidFireUtil.SNAPSHOT_ID);
+
+                    if (snapshotDetails != null && snapshotDetails.getValue() != null) {
+                        lstSnapshots2.add(snapshotVo);
+                    }
                 }
             }
 
