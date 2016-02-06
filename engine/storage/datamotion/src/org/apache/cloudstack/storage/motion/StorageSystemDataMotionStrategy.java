@@ -34,6 +34,7 @@ import org.apache.cloudstack.engine.subsystem.api.storage.DataObject;
 import org.apache.cloudstack.engine.subsystem.api.storage.DataStore;
 import org.apache.cloudstack.engine.subsystem.api.storage.DataStoreCapabilities;
 import org.apache.cloudstack.engine.subsystem.api.storage.DataStoreManager;
+import org.apache.cloudstack.engine.subsystem.api.storage.ObjectInDataStoreStateMachine.Event;
 import org.apache.cloudstack.engine.subsystem.api.storage.SnapshotInfo;
 import org.apache.cloudstack.engine.subsystem.api.storage.StrategyPriority;
 import org.apache.cloudstack.engine.subsystem.api.storage.TemplateInfo;
@@ -160,7 +161,9 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
 
                 if (canHandleSrc && canHandleDest) {
                     if (snapshotInfo.getDataStore().getId() == volumeInfo.getDataStore().getId()) {
-                        return handleCreateVolumeFromSnapshotBothOnStorageSystem(snapshotInfo, volumeInfo, callback);
+                        handleCreateVolumeFromSnapshotBothOnStorageSystem(snapshotInfo, volumeInfo, callback);
+
+                        return;
                     }
                     else {
                         throw new UnsupportedOperationException("This operation is not supported (DataStoreCapabilities.STORAGE_SYSTEM_SNAPSHOT " +
@@ -290,7 +293,7 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
         return null;
     }
 
-    private Void handleCreateVolumeFromSnapshotBothOnStorageSystem(SnapshotInfo snapshotInfo, VolumeInfo volumeInfo, AsyncCompletionCallback<CopyCommandResult> callback) {
+    private void handleCreateVolumeFromSnapshotBothOnStorageSystem(SnapshotInfo snapshotInfo, VolumeInfo volumeInfo, AsyncCompletionCallback<CopyCommandResult> callback) {
         CopyCmdAnswer copyCmdAnswer = null;
         String errMsg = null;
 
@@ -374,8 +377,6 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
         result.setResult(errMsg);
 
         callback.complete(result);
-
-        return null;
     }
 
     // If the underlying storage system is making use of read-only snapshots, this gives the storage system the opportunity to
