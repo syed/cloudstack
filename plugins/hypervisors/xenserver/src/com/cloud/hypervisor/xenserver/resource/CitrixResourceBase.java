@@ -166,10 +166,11 @@ import com.xensource.xenapi.XenAPIObject;
  */
 @Local(value = ServerResource.class)
 public abstract class CitrixResourceBase implements ServerResource, HypervisorResource, VirtualRouterDeployer {
-
+    /**
+     * RELVMOISCSI = used for resigning metadata (like SR UUID and VDI UUID when a
+     * particular storage manager is installed on a XenServer host (for back-end snapshots to work))
+     */
     public enum SRType {
-        // RELVMOISCSI = used for resigning metadata (like SR UUID and VDI UUID when a
-        // particular storage manager is installed on a XenServer host (for back-end snapshots to work))
         EXT, FILE, ISCSI, ISO, LVM, LVMOHBA, LVMOISCSI, RELVMOISCSI, NFS;
 
         String _str;
