@@ -43,7 +43,6 @@ import com.cloud.agent.api.to.DataStoreTO;
 import com.cloud.agent.api.to.DataTO;
 import com.cloud.host.Host;
 import com.cloud.storage.StoragePool;
-import com.cloud.storage.Volume;
 import com.cloud.storage.dao.StoragePoolHostDao;
 import com.cloud.utils.exception.CloudRuntimeException;
 
@@ -97,8 +96,8 @@ public class SamplePrimaryDataStoreDriverImpl implements PrimaryDataStoreDriver 
     }
 
     @Override
-    public long getVolumeSizeIncludingHypervisorSnapshotReserve(Volume volume, StoragePool pool) {
-        return volume.getSize();
+    public long getVolumeSizeIncludingHypervisorSnapshotReserve(DataObject dataObject, StoragePool pool) {
+        return dataObject.getSize();
     }
 
     private class CreateVolumeContext<T> extends AsyncRpcContext<T> {
