@@ -27,6 +27,7 @@ import java.util.Random;
 
 import javax.inject.Inject;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Component;
 
@@ -290,7 +291,7 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
                 }
 
                 if (copyCmdAnswer == null || !copyCmdAnswer.getResult()) {
-                    if (copyCmdAnswer != null && copyCmdAnswer.getDetails() != null && !copyCmdAnswer.getDetails().isEmpty()) {
+                    if (copyCmdAnswer != null && !StringUtils.isEmpty(copyCmdAnswer.getDetails())) {
                         errMsg = copyCmdAnswer.getDetails();
                     }
                     else {
@@ -381,7 +382,7 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
             copyCmdAnswer = performResignature(volumeInfo, hostVO);
 
             if (copyCmdAnswer == null || !copyCmdAnswer.getResult()) {
-                if (copyCmdAnswer != null && copyCmdAnswer.getDetails() != null && !copyCmdAnswer.getDetails().isEmpty()) {
+                if (copyCmdAnswer != null && !StringUtils.isEmpty(copyCmdAnswer.getDetails())) {
                     throw new CloudRuntimeException(copyCmdAnswer.getDetails());
                 }
                 else {
@@ -474,7 +475,7 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
             }
 
             if (copyCmdAnswer == null || !copyCmdAnswer.getResult()) {
-                if (copyCmdAnswer != null && copyCmdAnswer.getDetails() != null && !copyCmdAnswer.getDetails().isEmpty()) {
+                if (copyCmdAnswer != null && !StringUtils.isEmpty(copyCmdAnswer.getDetails())) {
                     errMsg = copyCmdAnswer.getDetails();
                 }
                 else {
@@ -493,15 +494,16 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
         callback.complete(result);
     }
 
-    /** If the underlying storage system is making use of read-only snapshots, this gives the storage system the opportunity to
-    * create a volume from the snapshot so that we can copy the VHD file that should be inside of the snapshot to secondary storage.
-    *
-    * The resultant volume must be writable because we need to resign the SR and the VDI that should be inside of it before we copy
-    * the VHD file to secondary storage.
-    *
-    * If the storage system is using writable snapshots, then nothing need be done by that storage system here because we can just
-    * resign the SR and the VDI that should be inside of the snapshot before copying the VHD file to secondary storage.
-    **/
+    /**
+     * If the underlying storage system is making use of read-only snapshots, this gives the storage system the opportunity to
+     * create a volume from the snapshot so that we can copy the VHD file that should be inside of the snapshot to secondary storage.
+     *
+     * The resultant volume must be writable because we need to resign the SR and the VDI that should be inside of it before we copy
+     * the VHD file to secondary storage.
+     *
+     * If the storage system is using writable snapshots, then nothing need be done by that storage system here because we can just
+     * resign the SR and the VDI that should be inside of the snapshot before copying the VHD file to secondary storage.
+     */
     private void createVolumeFromSnapshot(HostVO hostVO, SnapshotInfo snapshotInfo, boolean keepGrantedAccess) {
         SnapshotDetailsVO snapshotDetails = handleSnapshotDetails(snapshotInfo.getId(), "tempVolume", "create");
 
@@ -515,7 +517,7 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
         CopyCmdAnswer copyCmdAnswer = performResignature(snapshotInfo, hostVO, keepGrantedAccess);
 
         if (copyCmdAnswer == null || !copyCmdAnswer.getResult()) {
-            if (copyCmdAnswer != null && copyCmdAnswer.getDetails() != null && !copyCmdAnswer.getDetails().isEmpty()) {
+            if (copyCmdAnswer != null && !StringUtils.isEmpty(copyCmdAnswer.getDetails())) {
                 throw new CloudRuntimeException(copyCmdAnswer.getDetails());
             }
             else {
@@ -524,10 +526,11 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
         }
     }
 
-    /** If the underlying storage system needed to create a volume from a snapshot for createVolumeFromSnapshot(HostVO, SnapshotInfo), then
+    /**
+     * If the underlying storage system needed to create a volume from a snapshot for createVolumeFromSnapshot(HostVO, SnapshotInfo), then
      * this is its opportunity to delete that temporary volume and restore properties in snapshot_details to the way they were before the
      * invocation of createVolumeFromSnapshot(HostVO, SnapshotInfo).
-     **/
+     */
     private void deleteVolumeFromSnapshot(SnapshotInfo snapshotInfo) {
         SnapshotDetailsVO snapshotDetails = handleSnapshotDetails(snapshotInfo.getId(), "tempVolume", "delete");
 
