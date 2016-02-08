@@ -31,7 +31,6 @@ import org.apache.cloudstack.engine.subsystem.api.storage.EndPoint;
 import org.apache.cloudstack.engine.subsystem.api.storage.EndPointSelector;
 import org.apache.cloudstack.engine.subsystem.api.storage.PrimaryDataStoreDriver;
 import org.apache.cloudstack.engine.subsystem.api.storage.SnapshotInfo;
-import org.apache.cloudstack.engine.subsystem.api.storage.VolumeInfo;
 import org.apache.cloudstack.framework.async.AsyncCallbackDispatcher;
 import org.apache.cloudstack.framework.async.AsyncCompletionCallback;
 import org.apache.cloudstack.framework.async.AsyncRpcContext;
@@ -77,7 +76,7 @@ public class SamplePrimaryDataStoreDriverImpl implements PrimaryDataStoreDriver 
     }
 
     @Override
-    public ChapInfo getChapInfo(VolumeInfo volumeInfo) {
+    public ChapInfo getChapInfo(DataObject dataObject) {
         return null;
     }
 
