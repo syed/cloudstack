@@ -850,7 +850,11 @@ public class SolidFirePrimaryDataStoreDriver implements PrimaryDataStoreDriver {
             }
         } else if (dataObject.getType() == DataObjectType.SNAPSHOT) {
             // should return null when no error message
-            errMsg = deleteSnapshot((SnapshotInfo)dataObject, dataStore.getId());
+            errMsg = deleteSnapshot((SnapshotInfo) dataObject, dataStore.getId());
+        } else if (dataObject.getType() == DataObjectType.TEMPLATE) {
+            // should return null when no error message
+            errMsg = deleteTemplate((TemplateInfo) dataObject, dataStore.getId());
+
         } else {
             errMsg = "Invalid DataObjectType (" + dataObject.getType() + ") passed to deleteAsync";
         }
@@ -861,6 +865,31 @@ public class SolidFirePrimaryDataStoreDriver implements PrimaryDataStoreDriver {
 
         callback.complete(result);
     }
+
+    private String deleteTemplate(TemplateInfo template, long dataStoreId) {
+        String errMsg = null;
+
+        try {
+
+            VMTemplateStoragePoolVO templatePoolRef = _tmpltPoolDao.findByPoolTemplate(dataStoreId, template.getId());
+
+            SolidFireUtil.SolidFireConnection sfConnection = SolidFireUtil.getSolidFireConnection(dataStoreId, _storagePoolDetailsDao);
+
+            long sfTemplateVolumeId = getVolumeIdFromIscsiPath(template.getInstallPath());
+
+            SolidFireUtil.deleteSolidFireVolume(sfConnection, sfTemplateVolumeId);
+
+            // XXX: getUsedBytes currently only counts volumes, should it count templates too?
+            // getUsedBytes(StoragePool) will not include the snapshot to delete because it has already been deleted by this point
+        }
+        catch (Exception ex) {
+            s_logger.debug(SolidFireUtil.LOG_PREFIX + "Failed to delete SolidFire volume. CloudStack TemplateId ID: " + template.getId(), ex);
+            errMsg = ex.getMessage();
+        }
+
+        return errMsg;
+    }
+
 
     @Override
     public void copyAsync(DataObject srcData, DataObject destData, AsyncCompletionCallback<CopyCommandResult> callback) {
