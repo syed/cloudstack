@@ -517,6 +517,20 @@ public class SolidFirePrimaryDataStoreDriver implements PrimaryDataStoreDriver {
             } else if (csTemplateId > 0){
                 // Clone from template
                 sfVolume = createClone(sfConnection, csTemplateId, volumeInfo, dataStore, DataObjectType.TEMPLATE);
+
+                long volumeSize = getVolumeSizeIncludingHypervisorSnapshotReserve(volumeInfo, _storagePoolDao.findById(storagePoolId));
+
+                if (volumeSize > sfVolume.getTotalSize()) {
+                    //expand the volume to include HSR
+                    Map<String, String> mapAttributes = new HashMap<>();
+
+                    mapAttributes.put(SolidFireUtil.CloudStackVolumeId, String.valueOf(volumeInfo.getId()));
+                    mapAttributes.put(SolidFireUtil.CloudStackVolumeSize, NumberFormat.getInstance().format(volumeInfo.getSize()));
+
+                    SolidFireUtil.modifySolidFireVolume(sfConnection, sfVolume.getId(), volumeSize, mapAttributes,
+                            sfVolume.getMinIops(), sfVolume.getMaxIops(), sfVolume.getBurstIops());
+                }
+
             }
             else {
                 AccountDetailVO accountDetail = SolidFireUtil.getAccountDetail(volumeInfo.getAccountId(), storagePoolId, _accountDetailsDao);
