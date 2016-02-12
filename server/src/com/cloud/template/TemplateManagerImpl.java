@@ -901,8 +901,12 @@ public class TemplateManagerImpl extends ManagerBase implements TemplateManager,
                 if (result.isFailed()) {
                     s_logger.debug("Failed to delete template " + template.getId() +
                         " from storage pool " + pool.getId() + ":" );
+                } else {
+                     // Remove the templatePoolVO
+                    if (_tmpltPoolDao.remove(templatePoolVO.getId())) {
+                        s_logger.debug("Successfully evicted template: " + template.getName() + " from storage pool: " + pool.getName());
+                    }
                 }
-
             } else {
 
                 DestroyCommand cmd = new DestroyCommand(pool, templatePoolVO);
