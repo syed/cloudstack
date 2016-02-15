@@ -26,6 +26,8 @@ import java.util.Map;
 
 import javax.inject.Inject;
 
+import com.cloud.host.DetailVO;
+import com.cloud.host.dao.HostDetailsDao;
 import com.cloud.offering.DiskOffering;
 import com.cloud.storage.RegisterVolumePayload;
 import com.cloud.utils.Pair;
@@ -136,6 +138,8 @@ public class VolumeServiceImpl implements VolumeService {
     EndPointSelector _epSelector;
     @Inject
     HostDao _hostDao;
+    @Inject
+    HostDetailsDao _hostDetailsDao;
 
     public VolumeServiceImpl() {
     }
@@ -1013,9 +1017,13 @@ public class VolumeServiceImpl implements VolumeService {
                 destPrimaryDataStore.getDriver().getCapabilities().get(DataStoreCapabilities.CAN_CREATE_VOLUME_FROM_VOLUME.toString())
         );
 
+        DetailVO hostDetail = _hostDetailsDao.findDetail(destHostId, "supportsResign");
+        boolean hostSupportsResign = hostDetail != null? Boolean.valueOf(hostDetail.getValue()): false;
+
+
         AsyncCallFuture<VolumeApiResult> future = new AsyncCallFuture<>();
 
-        if(storageCanCloneVolume) {
+        if(storageCanCloneVolume && hostSupportsResign) {
 
             s_logger.debug("Storage " + destDataStoreId + " can support cloning using cached template ");
             DataObject templateOnPrimary = destPrimaryDataStore.getTemplate(srcTemplateInfo.getId());
