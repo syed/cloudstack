@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 
+import com.cloud.consoleproxy.vnc.ConsoleProxyNewConsoleHandler;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.log4j.xml.DOMConfigurator;
 
@@ -357,6 +358,7 @@ public class ConsoleProxy {
             server.createContext("/getscreen", new ConsoleProxyThumbnailHandler());
             server.createContext("/resource/", new ConsoleProxyResourceHandler());
             server.createContext("/ajax", new ConsoleProxyAjaxHandler());
+            server.createContext("/newconsole", new ConsoleProxyNewConsoleHandler());
             server.createContext("/ajaximg", new ConsoleProxyAjaxImageHandler());
             server.setExecutor(new ThreadExecutor()); // creates a default executor
             server.start();

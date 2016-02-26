@@ -16,28 +16,6 @@
 // under the License.
 package com.cloud.agent.resource.consoleproxy;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.net.URL;
-import java.net.URLConnection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-
-import javax.naming.ConfigurationException;
-
-import org.apache.log4j.Logger;
-
-import com.google.gson.Gson;
-
-import org.apache.cloudstack.managed.context.ManagedContextRunnable;
-
 import com.cloud.agent.Agent.ExitStatus;
 import com.cloud.agent.api.AgentControlAnswer;
 import com.cloud.agent.api.Answer;
@@ -64,6 +42,24 @@ import com.cloud.resource.ServerResourceBase;
 import com.cloud.utils.NumbersUtil;
 import com.cloud.utils.net.NetUtils;
 import com.cloud.utils.script.Script;
+import com.google.gson.Gson;
+import org.apache.cloudstack.managed.context.ManagedContextRunnable;
+import org.apache.log4j.Logger;
+
+import javax.naming.ConfigurationException;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLConnection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
 
 /**
  *
@@ -353,6 +349,7 @@ public class ConsoleProxyResource extends ServerResourceBase implements ServerRe
             }, "Console-Proxy-Main");
             _consoleProxyMain.setDaemon(true);
             _consoleProxyMain.start();
+
         } else {
             s_logger.info("com.cloud.consoleproxy.ConsoleProxy is already running");
 
@@ -379,6 +376,19 @@ public class ConsoleProxyResource extends ServerResourceBase implements ServerRe
                 s_logger.error("Unable to launch console proxy due to ClassNotFoundException", e);
                 System.exit(ExitStatus.Error.value());
             }
+        }
+
+        //setup the  novnc console proxy too
+        //XXX: I don't know what ksPassword and ksBits do so I am not using them
+        try {
+
+            String uri   = "http://127.0.0.1:9090/setEncryptorPassword?secret=" + encryptorPassword;
+            URL url = new URL(uri);
+            URLConnection conn = url.openConnection();
+            InputStream in = conn.getInputStream();
+            in.close();
+        } catch (IOException e) {
+            s_logger.debug("Error sending password to NOVNC proxy");
         }
     }
 

@@ -16,35 +16,6 @@
 // under the License.
 package com.cloud.servlet;
 
-import java.io.IOException;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import javax.inject.Inject;
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
-
-import org.apache.commons.codec.binary.Base64;
-import org.apache.log4j.Logger;
-import org.springframework.stereotype.Component;
-import org.springframework.web.context.support.SpringBeanAutowiringSupport;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-
-import org.apache.cloudstack.framework.security.keys.KeysManager;
-
 import com.cloud.exception.PermissionDeniedException;
 import com.cloud.host.HostVO;
 import com.cloud.hypervisor.Hypervisor;
@@ -63,6 +34,31 @@ import com.cloud.vm.UserVmDetailVO;
 import com.cloud.vm.VirtualMachine;
 import com.cloud.vm.VirtualMachineManager;
 import com.cloud.vm.dao.UserVmDetailsDao;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import org.apache.cloudstack.framework.security.keys.KeysManager;
+import org.apache.commons.codec.binary.Base64;
+import org.apache.log4j.Logger;
+import org.springframework.stereotype.Component;
+import org.springframework.web.context.support.SpringBeanAutowiringSupport;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import javax.inject.Inject;
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Thumbnail access : /console?cmd=thumbnail&vm=xxx&w=xxx&h=xxx
@@ -181,10 +177,13 @@ public class ConsoleProxyServlet extends HttpServlet {
                 return;
             }
 
+
+            String websocketConsole = req.getParameter("websocketconsole");
+
             if (cmd.equalsIgnoreCase("thumbnail")) {
                 handleThumbnailRequest(req, resp, vmId);
             } else if (cmd.equalsIgnoreCase("access")) {
-                handleAccessRequest(req, resp, vmId);
+                handleAccessRequest(req, resp, vmId, Boolean.valueOf(websocketConsole));
             } else {
                 handleAuthRequest(req, resp, vmId);
             }
@@ -245,7 +244,7 @@ public class ConsoleProxyServlet extends HttpServlet {
         }
     }
 
-    private void handleAccessRequest(HttpServletRequest req, HttpServletResponse resp, long vmId) {
+    private void handleAccessRequest(HttpServletRequest req, HttpServletResponse resp, long vmId, Boolean websocketConsole) {
         VirtualMachine vm = _vmMgr.findById(vmId);
         if (vm == null) {
             s_logger.warn("VM " + vmId + " does not exist, sending blank response for console access request");
@@ -287,7 +286,7 @@ public class ConsoleProxyServlet extends HttpServlet {
         }
 
         StringBuffer sb = new StringBuffer();
-        sb.append("<html><title>").append(escapeHTML(vmName)).append("</title><frameset><frame src=\"").append(composeConsoleAccessUrl(rootUrl, vm, host));
+        sb.append("<html><title>").append(escapeHTML(vmName)).append("</title><frameset><frame src=\"").append(composeConsoleAccessUrl(rootUrl, vm, host, websocketConsole));
         sb.append("\"></frame></frameset></html>");
         s_logger.debug("the console url is :: " + sb.toString());
         sendResponse(resp, sb.toString());
@@ -414,7 +413,7 @@ public class ConsoleProxyServlet extends HttpServlet {
         return sb.toString();
     }
 
-    private String composeConsoleAccessUrl(String rootUrl, VirtualMachine vm, HostVO hostVo) {
+    private String composeConsoleAccessUrl(String rootUrl, VirtualMachine vm, HostVO hostVo, Boolean websocketConsole) {
         StringBuffer sb = new StringBuffer(rootUrl);
         String host = hostVo.getPrivateIpAddress();
 
@@ -461,7 +460,11 @@ public class ConsoleProxyServlet extends HttpServlet {
             param.setClientTunnelSession(parsedHostInfo.third());
         }
 
-        sb.append("/ajax?token=" + encryptor.encryptObject(ConsoleProxyClientParam.class, param));
+        if (websocketConsole) {
+            sb.append(":9090/console?token=" + encryptor.encryptObject(ConsoleProxyClientParam.class, param));
+        } else {
+            sb.append("/ajax?token=" + encryptor.encryptObject(ConsoleProxyClientParam.class, param));
+        }
 
         // for console access, we need guest OS type to help implement keyboard
         long guestOs = vm.getGuestOSId();

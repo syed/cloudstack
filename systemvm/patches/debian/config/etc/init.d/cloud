@@ -102,6 +102,8 @@ start() {
    then
      if [ "$pid" == "" ]
      then
+       (nohup /opt/cloud/bin/go-xen-console-proxy > $LOG_FILE 2>&1 & )
+       sleep 1
        (cd $CLOUDSTACK_HOME/systemvm; nohup ./run.sh > $LOG_FILE 2>&1 & )
        pid=$(get_pids)
        echo $pid > /var/run/cloud.pid 
@@ -121,6 +123,12 @@ stop() {
   do
     kill $pid
   done
+
+  for pid in $(get_pids_go_proxy)
+  do
+    kill $pid
+  done
+
   _success
   echo
   echo 'stop' > $CLOUDSTACK_HOME/systemvm/user_request
