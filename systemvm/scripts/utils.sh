@@ -29,7 +29,7 @@ get_pids() {
 
 get_pids_go_proxy() {
   local i
-  for i in $(ps -ef| grep go-xen-console-proxy | grep -v grep | awk '{print $2}';
+  for i in $(ps -ef| grep go-xen-console-proxy | grep -v grep | awk '{print $2}');
   do
     echo $i;
   done
