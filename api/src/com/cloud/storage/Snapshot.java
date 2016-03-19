@@ -67,6 +67,10 @@ public interface Snapshot extends ControlledEntity, Identity, InternalIdentity, 
         CreateRequested, OperationNotPerformed, BackupToSecondary, BackedupToSecondary, DestroyRequested, CopyingRequested, OperationSucceeded, OperationFailed
     }
 
+    enum LocationType {
+        Primary, Archive
+    }
+
     public static final long MANUAL_POLICY_ID = 0L;
 
     @Override
@@ -89,4 +93,5 @@ public interface Snapshot extends ControlledEntity, Identity, InternalIdentity, 
 
     short getsnapshotType();
 
+    LocationType getLocationType(); // This type is in reference to the location where the snapshot resides (ex. primary storage, archive on secondary storage, etc.)
 }

@@ -358,7 +358,7 @@ public class VolumeApiServiceImplTest {
     public void testTakeSnapshotF1() throws ResourceAllocationException {
         when(_volFactory.getVolume(anyLong())).thenReturn(volumeInfoMock);
         when(volumeInfoMock.getState()).thenReturn(Volume.State.Allocated);
-        _svc.takeSnapshot(5L, Snapshot.MANUAL_POLICY_ID, 3L, null, false);
+        _svc.takeSnapshot(5L, Snapshot.MANUAL_POLICY_ID, 3L, null, false, null);
     }
 
     @Test
@@ -367,7 +367,7 @@ public class VolumeApiServiceImplTest {
         when(volumeInfoMock.getState()).thenReturn(Volume.State.Ready);
         when(volumeInfoMock.getInstanceId()).thenReturn(null);
         when (volService.takeSnapshot(Mockito.any(VolumeInfo.class))).thenReturn(snapshotInfoMock);
-        _svc.takeSnapshot(5L, Snapshot.MANUAL_POLICY_ID, 3L, null, false);
+        _svc.takeSnapshot(5L, Snapshot.MANUAL_POLICY_ID, 3L, null, false, null);
     }
 
     @Test

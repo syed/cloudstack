@@ -999,6 +999,9 @@ public class SnapshotManagerImpl extends MutualExclusiveIdsManagerBase implement
     @DB
     public SnapshotInfo takeSnapshot(VolumeInfo volume) throws ResourceAllocationException {
         CreateSnapshotPayload payload = (CreateSnapshotPayload)volume.getpayload();
+
+        updateSnapshotPayload(volume.getPoolId(), payload);
+
         Long snapshotId = payload.getSnapshotId();
         Account snapshotOwner = payload.getAccount();
         SnapshotInfo snapshot = snapshotFactory.getSnapshot(snapshotId, volume.getDataStore());
@@ -1034,6 +1037,21 @@ public class SnapshotManagerImpl extends MutualExclusiveIdsManagerBase implement
             throw new CloudRuntimeException("Failed to create snapshot", e);
         }
         return snapshot;
+    }
+
+    private void updateSnapshotPayload(long storagePoolId, CreateSnapshotPayload payload) {
+        StoragePoolVO storagePoolVO = _storagePoolDao.findById(storagePoolId);
+
+        if (storagePoolVO.isManaged()) {
+            Snapshot.LocationType locationType = payload.getLocationType();
+
+            if (locationType == null) {
+                payload.setLocationType(Snapshot.LocationType.Primary);
+            }
+        }
+        else {
+            payload.setLocationType(null);
+        }
     }
 
     private static DataStoreRole getDataStoreRole(Snapshot snapshot, SnapshotDataStoreDao snapshotStoreDao, DataStoreManager dataStoreMgr) {

@@ -74,6 +74,10 @@ public class CreateSnapshotCmd extends BaseAsyncCreateCmd {
     @Parameter(name = ApiConstants.SNAPSHOT_QUIESCEVM, type = CommandType.BOOLEAN, required = false, description = "quiesce vm if true")
     private Boolean quiescevm;
 
+    @Parameter(name = ApiConstants.LOCATION_TYPE, type = CommandType.SHORT, required = false, description = "Currently applicable only for managed storage. " +
+            "Valid location types: 1 = 'primary'; 2 = 'archive'. Default = 1.")
+    private Short locationType;
+
     @Parameter(name = ApiConstants.NAME, type = CommandType.STRING, description = "the name of the snapshot")
     private String snapshotName;
 
@@ -108,7 +112,7 @@ public class CreateSnapshotCmd extends BaseAsyncCreateCmd {
     }
 
     public String getVolumeUuid() {
-        Volume volume = (Volume)this._entityMgr.findById(Volume.class, getVolumeId());
+        Volume volume = _entityMgr.findById(Volume.class, getVolumeId());
         if (volume == null) {
             throw new InvalidParameterValueException("Unable to find volume's UUID");
         }
@@ -200,7 +204,7 @@ public class CreateSnapshotCmd extends BaseAsyncCreateCmd {
         Snapshot snapshot;
         try {
             snapshot =
-                _volumeService.takeSnapshot(getVolumeId(), getPolicyId(), getEntityId(), _accountService.getAccount(getEntityOwnerId()), getQuiescevm());
+                _volumeService.takeSnapshot(getVolumeId(), getPolicyId(), getEntityId(), _accountService.getAccount(getEntityOwnerId()), getQuiescevm(), getLocationType());
             if (snapshot != null) {
                 SnapshotResponse response = _responseGenerator.createSnapshotResponse(snapshot);
                 response.setResponseName(getCommandName());
@@ -211,6 +215,20 @@ public class CreateSnapshotCmd extends BaseAsyncCreateCmd {
         } catch (Exception e) {
             throw new ServerApiException(ApiErrorCode.INTERNAL_ERROR, "Failed to create snapshot due to an internal error creating snapshot for volume " + volumeId);
         }
+    }
+
+    private Snapshot.LocationType getLocationType() {
+        if (Snapshot.LocationType.values() == null || Snapshot.LocationType.values().length == 0) {
+            return null;
+        }
+
+        Snapshot.LocationType locationTypeToReturn = Snapshot.LocationType.values()[0];
+
+        if (locationType != null && locationType >= 0 && locationType < Snapshot.LocationType.values().length) {
+            locationTypeToReturn = Snapshot.LocationType.values()[locationType];
+        }
+
+        return locationTypeToReturn;
     }
 
     @Override

@@ -57,6 +57,7 @@ import com.cloud.org.Cluster;
 import com.cloud.org.Grouping.AllocationState;
 import com.cloud.resource.ResourceState;
 import com.cloud.server.ManagementService;
+import com.cloud.storage.CreateSnapshotPayload;
 import com.cloud.storage.DataStoreRole;
 import com.cloud.storage.Snapshot;
 import com.cloud.storage.SnapshotVO;
@@ -212,6 +213,8 @@ public class StorageSystemSnapshotStrategy extends SnapshotStrategyBase {
                 performSnapshotAndCopyOnHostSide(volumeInfo, snapshotInfo);
             }
 
+            updateLocationTypeInDb(snapshotInfo);
+
             markAsBackedUp((SnapshotObject)result.getSnashot());
         }
         finally {
@@ -226,6 +229,20 @@ public class StorageSystemSnapshotStrategy extends SnapshotStrategyBase {
         }
 
         return snapshotInfo;
+    }
+
+    private void updateLocationTypeInDb(SnapshotInfo snapshotInfo) {
+        Object objPayload = snapshotInfo.getPayload();
+
+        if (objPayload instanceof CreateSnapshotPayload) {
+            CreateSnapshotPayload payload = (CreateSnapshotPayload)objPayload;
+
+            SnapshotVO snapshot = _snapshotDao.findById(snapshotInfo.getId());
+
+            snapshot.setLocationType(payload.getLocationType());
+
+            _snapshotDao.update(snapshotInfo.getId(), snapshot);
+        }
     }
 
     private boolean canStorageSystemCreateVolumeFromSnapshot(long storagePoolId) {

@@ -69,6 +69,11 @@ public class SnapshotVO implements Snapshot {
     @Column(name = "snapshot_type")
     short snapshotType;
 
+    @Expose
+    @Column(name = "location_type", updatable = true, nullable = true)
+    @Enumerated(value = EnumType.STRING)
+    private LocationType locationType;
+
     @Column(name = "type_description")
     String typeDescription;
 
@@ -169,6 +174,15 @@ public class SnapshotVO implements Snapshot {
             return null;
         }
         return Type.values()[snapshotType];
+    }
+
+    @Override
+    public LocationType getLocationType() {
+        return locationType;
+    }
+
+    public void setLocationType(LocationType locationType) {
+        this.locationType = locationType;
     }
 
     @Override
