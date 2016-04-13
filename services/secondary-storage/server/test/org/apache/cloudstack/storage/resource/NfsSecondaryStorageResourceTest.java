@@ -18,6 +18,18 @@
  */
 package org.apache.cloudstack.storage.resource;
 
+import com.cloud.utils.PropertiesUtil;
+import com.cloud.utils.exception.CloudRuntimeException;
+import junit.framework.Assert;
+import junit.framework.TestCase;
+import org.apache.cloudstack.storage.command.DeleteCommand;
+import org.apache.cloudstack.storage.to.TemplateObjectTO;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.junit.Before;
+import org.junit.Test;
+
+import javax.naming.ConfigurationException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -26,18 +38,8 @@ import java.net.URI;
 import java.util.Map;
 import java.util.Properties;
 
-import javax.naming.ConfigurationException;
-
-import junit.framework.Assert;
-import junit.framework.TestCase;
-
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-import org.junit.Before;
-import org.junit.Test;
-
-import com.cloud.utils.PropertiesUtil;
-import com.cloud.utils.exception.CloudRuntimeException;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.when;
 
 public class NfsSecondaryStorageResourceTest extends TestCase {
     private static Map<String, Object> testParams;
@@ -56,7 +58,7 @@ public class NfsSecondaryStorageResourceTest extends TestCase {
         resource.configureStorageLayerClass(testParams);
         Object testLocalRoot = testParams.get("testLocalRoot");
         if (testLocalRoot != null) {
-            resource.setParentPath((String)testLocalRoot);
+            resource.setParentPath((String) testLocalRoot);
         }
     }
 
@@ -86,6 +88,20 @@ public class NfsSecondaryStorageResourceTest extends TestCase {
         } else {
             s_logger.info("no entry for testCifsMount in " + "./conf/agent.properties - skip functional test");
         }
+    }
+
+    @Test
+    /**
+     *  Cleaning up NFS staging should not throw an exception
+     */
+    public void testCleanupNfsStaging(){
+
+        TemplateObjectTO template = new TemplateObjectTO();
+
+        when(resource.execute(any(DeleteCommand.class))).thenThrow(new Exception("Test"));
+        //no exception should be thrown
+        resource.cleanupStagingNfs(template);
+
     }
 
     public static Properties loadProperties() throws ConfigurationException {

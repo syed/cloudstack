@@ -631,7 +631,7 @@ public class NfsSecondaryStorageResource extends ServerResourceBase implements S
      * clean up template data on staging area
      * @param newTemplate: The template on the secondary storage that needs to be cleaned up
      */
-    private void cleanupStagingNfs(TemplateObjectTO newTemplate) {
+    protected void cleanupStagingNfs(TemplateObjectTO newTemplate) {
         try {
             DeleteCommand deleteCommand = new DeleteCommand(newTemplate);
             execute(deleteCommand);
