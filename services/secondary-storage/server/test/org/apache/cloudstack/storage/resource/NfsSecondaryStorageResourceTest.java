@@ -18,18 +18,8 @@
  */
 package org.apache.cloudstack.storage.resource;
 
-import com.cloud.utils.PropertiesUtil;
-import com.cloud.utils.exception.CloudRuntimeException;
-import junit.framework.Assert;
-import junit.framework.TestCase;
-import org.apache.cloudstack.storage.command.DeleteCommand;
-import org.apache.cloudstack.storage.to.TemplateObjectTO;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-import org.junit.Before;
-import org.junit.Test;
+import static org.mockito.Matchers.any;
 
-import javax.naming.ConfigurationException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -38,8 +28,21 @@ import java.net.URI;
 import java.util.Map;
 import java.util.Properties;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.when;
+import javax.naming.ConfigurationException;
+
+import org.apache.cloudstack.storage.command.DeleteCommand;
+import org.apache.cloudstack.storage.to.TemplateObjectTO;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mockito;
+
+import com.cloud.utils.PropertiesUtil;
+import com.cloud.utils.exception.CloudRuntimeException;
+
+import junit.framework.Assert;
+import junit.framework.TestCase;
 
 public class NfsSecondaryStorageResourceTest extends TestCase {
     private static Map<String, Object> testParams;
@@ -91,17 +94,16 @@ public class NfsSecondaryStorageResourceTest extends TestCase {
     }
 
     @Test
-    /**
-     *  Cleaning up NFS staging should not throw an exception
-     */
     public void testCleanupNfsStaging(){
+        TemplateObjectTO templateMock = Mockito.mock(TemplateObjectTO.class);
+        Exception exception = new Exception();
+        resource.logger = Mockito.mock(Logger.class);
 
-        TemplateObjectTO template = new TemplateObjectTO();
+        Mockito.doNothing().when(resource.logger).debug("Failed to clean up staging area:", exception);
+        Mockito.when(resource.execute(any(DeleteCommand.class))).thenThrow(exception);
 
-        when(resource.execute(any(DeleteCommand.class))).thenThrow(new Exception("Test"));
-        //no exception should be thrown
-        resource.cleanupStagingNfs(template);
-
+        resource.cleanupStagingNfs(templateMock);
+        Mockito.verify(resource.logger).debug("Failed to clean up staging area:", exception);
     }
 
     public static Properties loadProperties() throws ConfigurationException {
