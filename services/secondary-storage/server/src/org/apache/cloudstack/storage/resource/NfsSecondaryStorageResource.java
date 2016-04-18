@@ -498,10 +498,10 @@ public class NfsSecondaryStorageResource extends ServerResourceBase implements S
             String destFileFullPath = destFile.getAbsolutePath() + File.separator + fileName;
             logger.debug("copy snapshot " + srcFile.getAbsolutePath() + " to template " + destFileFullPath);
             Script.runSimpleBashScript("cp " + srcFile.getAbsolutePath() + " " + destFileFullPath);
-            String metaFileName = destFile.getAbsolutePath() + File.separator + "template.properties";
+            String metaFileName = destFile.getAbsolutePath() + File.separator + _tmpltpp;
             File metaFile = new File(metaFileName);
             try {
-                _storage.create(destFile.getAbsolutePath(), "template.properties");
+                _storage.create(destFile.getAbsolutePath(), _tmpltpp);
                 try ( // generate template.properties file
                      FileWriter writer = new FileWriter(metaFile);
                      BufferedWriter bufferWriter = new BufferedWriter(writer);
@@ -749,24 +749,18 @@ public class NfsSecondaryStorageResource extends ServerResourceBase implements S
             String container = "T-" + cmd.getId();
             String swiftPath = SwiftUtil.putObject(swiftTO, file, container, null);
 
+            long virtualSize = getVirtualSize(file, getTemplateFormat(file.getName()));
+            long size = file.length();
+            String uniqueName = cmd.getName();
+
             //put metda file
             File uniqDir = _storage.createUniqDir();
-            String metaFileName = uniqDir.getAbsolutePath() + File.separator + "template.properties";
-            _storage.create(uniqDir.getAbsolutePath(), "template.properties");
-            File metaFile = new File(metaFileName);
-            FileWriter writer = new FileWriter(metaFile);
-            long virtualSize = getVirtualSize(file, getTemplateFormat(file.getName()));
-            BufferedWriter bufferWriter = new BufferedWriter(writer);
-            bufferWriter.write("uniquename=" + cmd.getName());
-            bufferWriter.write("\n");
-            bufferWriter.write("filename=" + fileName);
-            bufferWriter.write("\n");
-            bufferWriter.write("size=" + file.length());
-            bufferWriter.write("\n");
-            bufferWriter.write("virtualsize=" + virtualSize);
-            bufferWriter.close();
-            writer.close();
-            SwiftUtil.putObject(swiftTO, metaFile, container, "template.properties");
+            String metaFileName = uniqDir.getAbsolutePath() + File.separator + _tmpltpp;
+            _storage.create(uniqDir.getAbsolutePath(), _tmpltpp);
+
+            File metaFile = swiftWriteMetadataFile(metaFileName, uniqueName, fileName, size, virtualSize);
+
+            SwiftUtil.putObject(swiftTO, metaFile, container, _tmpltpp);
             metaFile.delete();
             uniqDir.delete();
             String md5sum = null;
@@ -934,6 +928,34 @@ public class NfsSecondaryStorageResource extends ServerResourceBase implements S
         }
     }
 
+    /***
+     *
+     * @param metaFileName : The path of the metadata file
+     * @param uniqueName    :attribute:  Unique name of the template
+     * @param filename      :attribute:  Filename of the template
+     * @param size          :attribute:  physical size of the template
+     * @param virtualSize   :attribute:  virtual size of the template
+     * @return File representing the metadata file
+     * @throws IOException
+     */
+
+    protected File swiftWriteMetadataFile(String metaFileName, String uniqueName, String filename, long size, long virtualSize) throws IOException {
+
+        File metaFile = new File(metaFileName);
+        FileWriter writer = new FileWriter(metaFile);
+        BufferedWriter bufferWriter = new BufferedWriter(writer);
+        bufferWriter.write("uniquename=" + uniqueName);
+        bufferWriter.write("\n");
+        bufferWriter.write("filename=" + filename);
+        bufferWriter.write("\n");
+        bufferWriter.write("size=" + size);
+        bufferWriter.write("\n");
+        bufferWriter.write("virtualsize=" + virtualSize);
+        bufferWriter.close();
+        writer.close();
+        return metaFile;
+    }
+
     /**
      * Creates a template.properties for Swift with its correct unique name
      *
@@ -944,23 +966,19 @@ public class NfsSecondaryStorageResource extends ServerResourceBase implements S
      */
     protected boolean swiftUploadMetadataFile(SwiftTO swift, File srcFile, String containerName) throws IOException {
 
-        File uniqDir = _storage.createUniqDir();
-        String metaFileName = uniqDir.getAbsolutePath() + File.separator + "template.properties";
-        _storage.create(uniqDir.getAbsolutePath(), "template.properties");
-
         String uniqueName = FilenameUtils.getBaseName(srcFile.getName());
-        File metaFile = new File(metaFileName);
-        FileWriter writer = new FileWriter(metaFile);
-        BufferedWriter bufferWriter = new BufferedWriter(writer);
-        bufferWriter.write("uniquename=" + uniqueName);
-        bufferWriter.write("\n");
-        bufferWriter.write("filename=" + srcFile.getName());
-        bufferWriter.write("\n");
-        bufferWriter.write("size=" + srcFile.length());
-        bufferWriter.write("\n");
-        bufferWriter.write("virtualsize=" + getVirtualSize(srcFile, getTemplateFormat(srcFile.getName())));
-        bufferWriter.close();
-        writer.close();
+
+        File uniqDir = _storage.createUniqDir();
+        String metaFileName = uniqDir.getAbsolutePath() + File.separator + _tmpltpp;
+        _storage.create(uniqDir.getAbsolutePath(), _tmpltpp);
+
+        long virtualSize = getVirtualSize(srcFile, getTemplateFormat(srcFile.getName()));
+
+        File metaFile = swiftWriteMetadataFile(metaFileName,
+                                                uniqueName,
+                                                srcFile.getName(),
+                                                srcFile.length(),
+                                                virtualSize);
 
         SwiftUtil.putObject(swift, metaFile, containerName, _tmpltpp);
         metaFile.delete();
@@ -1537,13 +1555,13 @@ public class NfsSecondaryStorageResource extends ServerResourceBase implements S
         Map<String, TemplateProp> tmpltInfos = new HashMap<String, TemplateProp>();
         for (String container : containers) {
             if (container.startsWith("T-")) {
-                String[] files = SwiftUtil.list(swift, container, "template.properties");
+                String[] files = SwiftUtil.list(swift, container, _tmpltpp);
                 if (files.length != 1) {
                     continue;
                 }
                 try {
                     File tempFile = File.createTempFile("template", ".tmp");
-                    File tmpFile = SwiftUtil.getObject(swift, tempFile, container + File.separator + "template.properties");
+                    File tmpFile = SwiftUtil.getObject(swift, tempFile, container + File.separator + _tmpltpp);
                     if (tmpFile == null) {
                         continue;
                     }
@@ -1858,7 +1876,7 @@ public class NfsSecondaryStorageResource extends ServerResourceBase implements S
             } else {
                 boolean found = false;
                 for (File f : tmpltFiles) {
-                    if (!found && f.getName().equals("template.properties")) {
+                    if (!found && f.getName().equals(_tmpltpp)) {
                         found = true;
                     }
 
