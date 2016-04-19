@@ -18,18 +18,10 @@
  */
 package org.apache.cloudstack.storage.resource;
 
-import static org.mockito.Matchers.any;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.net.URI;
-import java.util.Map;
-import java.util.Properties;
-
-import javax.naming.ConfigurationException;
-
+import com.cloud.utils.PropertiesUtil;
+import com.cloud.utils.exception.CloudRuntimeException;
+import junit.framework.Assert;
+import junit.framework.TestCase;
 import org.apache.cloudstack.storage.command.DeleteCommand;
 import org.apache.cloudstack.storage.to.TemplateObjectTO;
 import org.apache.log4j.Level;
@@ -37,12 +29,25 @@ import org.apache.log4j.Logger;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
+import org.powermock.api.mockito.PowerMockito;
 
-import com.cloud.utils.PropertiesUtil;
-import com.cloud.utils.exception.CloudRuntimeException;
+import javax.naming.ConfigurationException;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 
-import junit.framework.Assert;
-import junit.framework.TestCase;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyString;
 
 public class NfsSecondaryStorageResourceTest extends TestCase {
     private static Map<String, Object> testParams;
@@ -91,6 +96,40 @@ public class NfsSecondaryStorageResourceTest extends TestCase {
         } else {
             s_logger.info("no entry for testCifsMount in " + "./conf/agent.properties - skip functional test");
         }
+    }
+
+    @Test
+    public void testSwiftWriteMetadataFile() throws Exception {
+
+        String expected = "uniquename=test\nfilename=testfile\nsize=100\nvirtualsize=1000";
+        final List<String> resultArray = new ArrayList<String>();
+
+        File mockedFile = Mockito.mock(File.class);
+        FileWriter mockedFileWriter = Mockito.mock(FileWriter.class);
+        BufferedWriter mockedBufferedWriter = Mockito.mock(BufferedWriter.class);
+
+        PowerMockito.whenNew(File.class).withAnyArguments().thenReturn(mockedFile);
+        PowerMockito.whenNew(FileWriter.class).withAnyArguments().thenReturn(mockedFileWriter);
+        PowerMockito.whenNew(BufferedWriter.class).withAnyArguments().thenReturn(mockedBufferedWriter);
+
+        Mockito.doNothing().when(mockedFileWriter).close();
+        Mockito.doNothing().when(mockedBufferedWriter).close();
+        Mockito.doAnswer(new Answer() {
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                resultArray.add((String) invocation.getArguments()[0]);
+                return null;
+            }
+        }).when(mockedBufferedWriter).write(anyString());
+
+        resource.swiftWriteMetadataFile("testfile", "test", "testfile", 100, 1000);
+
+        String output = "";
+        for (String o : resultArray) {
+            output = output.concat(o);
+        }
+
+        assertEquals(expected, output);
     }
 
     @Test
