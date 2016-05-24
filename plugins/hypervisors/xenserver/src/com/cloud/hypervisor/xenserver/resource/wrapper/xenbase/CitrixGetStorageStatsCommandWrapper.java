@@ -21,13 +21,13 @@ package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
 import java.util.Set;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 import org.apache.xmlrpc.XmlRpcException;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.GetStorageStatsAnswer;
 import com.cloud.agent.api.GetStorageStatsCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
@@ -35,13 +35,13 @@ import com.xensource.xenapi.SR;
 import com.xensource.xenapi.Types.XenAPIException;
 
 @ResourceWrapper(handles =  GetStorageStatsCommand.class)
-public final class CitrixGetStorageStatsCommandWrapper extends CommandWrapper<GetStorageStatsCommand, Answer, CitrixResourceBase> {
+public final class CitrixGetStorageStatsCommandWrapper extends CommandWrapper<GetStorageStatsCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixGetStorageStatsCommandWrapper.class);
 
     @Override
-    public Answer execute(final GetStorageStatsCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final GetStorageStatsCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         try {
             final Set<SR> srs = SR.getByNameLabel(conn, command.getStorageId());
             if (srs.size() != 1) {
@@ -55,15 +55,15 @@ public final class CitrixGetStorageStatsCommandWrapper extends CommandWrapper<Ge
             final long used = sr.getPhysicalUtilisation(conn);
             return new GetStorageStatsAnswer(command, capacity, used);
         } catch (final XenAPIException e) {
-            final String msg = "GetStorageStats Exception:" + e.toString() + "host:" + citrixResourceBase.getHost().getUuid() + "storageid: " + command.getStorageId();
+            final String msg = "GetStorageStats Exception:" + e.toString() + "host:" + xenServerResourceBase.getHost().getUuid() + "storageid: " + command.getStorageId();
             s_logger.warn(msg);
             return new GetStorageStatsAnswer(command, msg);
         } catch (final XmlRpcException e) {
-            final String msg = "GetStorageStats Exception:" + e.getMessage() + "host:" + citrixResourceBase.getHost().getUuid() + "storageid: " + command.getStorageId();
+            final String msg = "GetStorageStats Exception:" + e.getMessage() + "host:" + xenServerResourceBase.getHost().getUuid() + "storageid: " + command.getStorageId();
             s_logger.warn(msg);
             return new GetStorageStatsAnswer(command, msg);
         }  catch (final Exception e) {
-            final String msg = "GetStorageStats Exception:" + e.getMessage() + "host:" + citrixResourceBase.getHost().getUuid() + "storageid: " + command.getStorageId();
+            final String msg = "GetStorageStats Exception:" + e.getMessage() + "host:" + xenServerResourceBase.getHost().getUuid() + "storageid: " + command.getStorageId();
             s_logger.warn(msg);
             return new GetStorageStatsAnswer(command, msg);
         }

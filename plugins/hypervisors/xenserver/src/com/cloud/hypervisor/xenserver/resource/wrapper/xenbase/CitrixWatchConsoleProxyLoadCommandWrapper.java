@@ -22,12 +22,12 @@ package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.Command;
 import com.cloud.agent.api.proxy.WatchConsoleProxyLoadCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.resource.ServerResource;
 
 @ResourceWrapper(handles =  WatchConsoleProxyLoadCommand.class)
-public final class CitrixWatchConsoleProxyLoadCommandWrapper extends CitrixConsoleProxyLoadCommandWrapper<WatchConsoleProxyLoadCommand, Answer, CitrixResourceBase> {
+public final class CitrixWatchConsoleProxyLoadCommandWrapper extends CitrixConsoleProxyLoadCommandWrapper<WatchConsoleProxyLoadCommand, Answer, XenServerResourceBase> {
 
     @Override
     public Answer execute(final Command command, final ServerResource serverResource) {

@@ -19,35 +19,35 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.SecurityGroupRuleAnswer;
 import com.cloud.agent.api.SecurityGroupRulesCmd;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
 
 @ResourceWrapper(handles =  SecurityGroupRulesCmd.class)
-public final class CitrixSecurityGroupRulesCommandWrapper extends CommandWrapper<SecurityGroupRulesCmd, Answer, CitrixResourceBase> {
+public final class CitrixSecurityGroupRulesCommandWrapper extends CommandWrapper<SecurityGroupRulesCmd, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixSecurityGroupRulesCommandWrapper.class);
 
     @Override
-    public Answer execute(final SecurityGroupRulesCmd command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final SecurityGroupRulesCmd command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         if (s_logger.isTraceEnabled()) {
-            s_logger.trace("Sending network rules command to " + citrixResourceBase.getHost().getIp());
+            s_logger.trace("Sending network rules command to " + xenServerResourceBase.getHost().getIp());
         }
 
-        if (!citrixResourceBase.canBridgeFirewall()) {
-            s_logger.warn("Host " + citrixResourceBase.getHost().getIp() + " cannot do bridge firewalling");
-            return new SecurityGroupRuleAnswer(command, false, "Host " + citrixResourceBase.getHost().getIp() + " cannot do bridge firewalling",
+        if (!xenServerResourceBase.canBridgeFirewall()) {
+            s_logger.warn("Host " + xenServerResourceBase.getHost().getIp() + " cannot do bridge firewalling");
+            return new SecurityGroupRuleAnswer(command, false, "Host " + xenServerResourceBase.getHost().getIp() + " cannot do bridge firewalling",
                     SecurityGroupRuleAnswer.FailureReason.CANNOT_BRIDGE_FIREWALL);
         }
 
-        final String result = citrixResourceBase.callHostPlugin(conn, "vmops", "network_rules", "vmName", command.getVmName(), "vmIP", command.getGuestIp(), "vmMAC",
+        final String result = xenServerResourceBase.callHostPlugin(conn, "vmops", "network_rules", "vmName", command.getVmName(), "vmIP", command.getGuestIp(), "vmMAC",
                 command.getGuestMac(), "vmID", Long.toString(command.getVmId()), "signature", command.getSignature(), "seqno", Long.toString(command.getSeqNum()), "deflated",
                 "true", "rules", command.compressStringifiedRules(), "secIps", command.getSecIpsString());
 

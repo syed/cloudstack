@@ -28,7 +28,7 @@ import com.cloud.agent.api.storage.CreateAnswer;
 import com.cloud.agent.api.storage.CreateCommand;
 import com.cloud.agent.api.to.StorageFilerTO;
 import com.cloud.agent.api.to.VolumeTO;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.vm.DiskProfile;
@@ -38,23 +38,23 @@ import com.xensource.xenapi.Types;
 import com.xensource.xenapi.VDI;
 
 @ResourceWrapper(handles =  CreateCommand.class)
-public final class CitrixCreateCommandWrapper extends CommandWrapper<CreateCommand, Answer, CitrixResourceBase> {
+public final class CitrixCreateCommandWrapper extends CommandWrapper<CreateCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixCreateCommandWrapper.class);
 
     @Override
-    public Answer execute(final CreateCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final CreateCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         final StorageFilerTO pool = command.getPool();
         final DiskProfile dskch = command.getDiskCharacteristics();
 
         VDI vdi = null;
         try {
-            final SR poolSr = citrixResourceBase.getStorageRepository(conn, pool.getUuid());
+            final SR poolSr = xenServerResourceBase.getStorageRepository(conn, pool.getUuid());
             if (command.getTemplateUrl() != null) {
                 VDI tmpltvdi = null;
 
-                tmpltvdi = citrixResourceBase.getVDIbyUuid(conn, command.getTemplateUrl());
+                tmpltvdi = xenServerResourceBase.getVDIbyUuid(conn, command.getTemplateUrl());
                 vdi = tmpltvdi.createClone(conn, new HashMap<String, String>());
                 vdi.setNameLabel(conn, dskch.getName());
             } else {

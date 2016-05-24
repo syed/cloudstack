@@ -19,12 +19,12 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 import org.apache.xmlrpc.XmlRpcException;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.OvsDeleteFlowCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
@@ -33,19 +33,19 @@ import com.xensource.xenapi.Types.BadServerResponse;
 import com.xensource.xenapi.Types.XenAPIException;
 
 @ResourceWrapper(handles =  OvsDeleteFlowCommand.class)
-public final class CitrixOvsDeleteFlowCommandWrapper extends CommandWrapper<OvsDeleteFlowCommand, Answer, CitrixResourceBase> {
+public final class CitrixOvsDeleteFlowCommandWrapper extends CommandWrapper<OvsDeleteFlowCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixOvsDeleteFlowCommandWrapper.class);
 
     @Override
-    public Answer execute(final OvsDeleteFlowCommand command, final CitrixResourceBase citrixResourceBase) {
-        citrixResourceBase.setIsOvs(true);
+    public Answer execute(final OvsDeleteFlowCommand command, final XenServerResourceBase xenServerResourceBase) {
+        xenServerResourceBase.setIsOvs(true);
 
-        final Connection conn = citrixResourceBase.getConnection();
+        final Connection conn = xenServerResourceBase.getConnection();
         try {
-            final Network nw = citrixResourceBase.setupvSwitchNetwork(conn);
+            final Network nw = xenServerResourceBase.setupvSwitchNetwork(conn);
             final String bridge = nw.getBridge(conn);
-            final String result = citrixResourceBase.callHostPlugin(conn, "ovsgre", "ovs_delete_flow", "bridge", bridge, "vmName", command.getVmName());
+            final String result = xenServerResourceBase.callHostPlugin(conn, "ovsgre", "ovs_delete_flow", "bridge", bridge, "vmName", command.getVmName());
 
             if (result.equalsIgnoreCase("SUCCESS")) {
                 return new Answer(command, true, "success to delete flows for " + command.getVmName());

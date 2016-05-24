@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.cloud.agent.api.AttachOrDettachConfigDriveCommand;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.VBD;
@@ -32,18 +33,17 @@ import com.xensource.xenapi.Types;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import org.apache.xmlrpc.XmlRpcException;
 
 @ResourceWrapper(handles =  AttachOrDettachConfigDriveCommand.class)
-public final class CitrixAttachOrDettachConfigDriveCommandWrapper extends CommandWrapper<AttachOrDettachConfigDriveCommand, Answer, CitrixResourceBase> {
+public final class CitrixAttachOrDettachConfigDriveCommandWrapper extends CommandWrapper<AttachOrDettachConfigDriveCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixAttachOrDettachConfigDriveCommandWrapper.class);
 
     @Override
-    public Answer execute(final AttachOrDettachConfigDriveCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final AttachOrDettachConfigDriveCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
 
         String vmName = command.getVmName();
         List<String[]> vmData = command.getVmData();
@@ -54,7 +54,7 @@ public final class CitrixAttachOrDettachConfigDriveCommandWrapper extends Comman
             Set<VM> vms = VM.getByNameLabel(conn, vmName);
             for (VM vm : vms) {
                 if (isAttach) {
-                    if (!citrixResourceBase.createAndAttachConfigDriveIsoForVM(conn, vm, vmData, label)) {
+                    if (!xenServerResourceBase.createAndAttachConfigDriveIsoForVM(conn, vm, vmData, label)) {
                         s_logger.debug("Failed to attach config drive iso to VM " + vmName);
                     }
                 } else {
@@ -69,7 +69,7 @@ public final class CitrixAttachOrDettachConfigDriveCommandWrapper extends Comman
                         for (VBD vbd : vbds) {
                             VBD.Record vbdRec = vbd.getRecord(conn);
 
-                            if (vbdRec.type.equals(Types.VbdType.CD) && !vbdRec.empty && !vbdRec.userdevice.equals(citrixResourceBase._attachIsoDeviceNum)) {
+                            if (vbdRec.type.equals(Types.VbdType.CD) && !vbdRec.empty && !vbdRec.userdevice.equals(xenServerResourceBase._attachIsoDeviceNum)) {
                                 if (vbdRec.currentlyAttached) {
                                     vbd.eject(conn);
                                 }

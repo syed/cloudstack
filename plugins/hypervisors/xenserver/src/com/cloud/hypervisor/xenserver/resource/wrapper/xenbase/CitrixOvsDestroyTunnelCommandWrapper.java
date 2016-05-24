@@ -19,33 +19,33 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.OvsDestroyTunnelCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.Network;
 
 @ResourceWrapper(handles =  OvsDestroyTunnelCommand.class)
-public final class CitrixOvsDestroyTunnelCommandWrapper extends CommandWrapper<OvsDestroyTunnelCommand, Answer, CitrixResourceBase> {
+public final class CitrixOvsDestroyTunnelCommandWrapper extends CommandWrapper<OvsDestroyTunnelCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixOvsDestroyTunnelCommandWrapper.class);
 
     @Override
-    public Answer execute(final OvsDestroyTunnelCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final OvsDestroyTunnelCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         try {
-            final Network nw = citrixResourceBase.findOrCreateTunnelNetwork(conn, command.getBridgeName());
+            final Network nw = xenServerResourceBase.findOrCreateTunnelNetwork(conn, command.getBridgeName());
             if (nw == null) {
                 s_logger.warn("Unable to find tunnel network for GRE key:" + command.getBridgeName());
                 return new Answer(command, false, "No network found");
             }
 
             final String bridge = nw.getBridge(conn);
-            final String result = citrixResourceBase.callHostPlugin(conn, "ovstunnel", "destroy_tunnel", "bridge", bridge, "in_port", command.getInPortName());
+            final String result = xenServerResourceBase.callHostPlugin(conn, "ovstunnel", "destroy_tunnel", "bridge", bridge, "in_port", command.getInPortName());
 
             if (result.equalsIgnoreCase("SUCCESS")) {
                 return new Answer(command, true, result);

@@ -19,6 +19,7 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
@@ -26,7 +27,6 @@ import com.cloud.agent.api.PrepareForMigrationAnswer;
 import com.cloud.agent.api.PrepareForMigrationCommand;
 import com.cloud.agent.api.to.NicTO;
 import com.cloud.agent.api.to.VirtualMachineTO;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
@@ -34,13 +34,13 @@ import com.xensource.xenapi.Connection;
 import java.util.List;
 
 @ResourceWrapper(handles =  PrepareForMigrationCommand.class)
-public final class CitrixPrepareForMigrationCommandWrapper extends CommandWrapper<PrepareForMigrationCommand, Answer, CitrixResourceBase> {
+public final class CitrixPrepareForMigrationCommandWrapper extends CommandWrapper<PrepareForMigrationCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixPrepareForMigrationCommandWrapper.class);
 
     @Override
-    public Answer execute(final PrepareForMigrationCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final PrepareForMigrationCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
 
         final VirtualMachineTO vm = command.getVirtualMachine();
         List<String[]> vmDataList = vm.getVmData();
@@ -56,10 +56,10 @@ public final class CitrixPrepareForMigrationCommandWrapper extends CommandWrappe
 
         final NicTO[] nics = vm.getNics();
         try {
-            citrixResourceBase.prepareISO(conn, vm.getName(), vmDataList, configDriveLabel);
+            xenServerResourceBase.prepareISO(conn, vm.getName(), vmDataList, configDriveLabel);
 
             for (final NicTO nic : nics) {
-                citrixResourceBase.getNetwork(conn, nic);
+                xenServerResourceBase.getNetwork(conn, nic);
             }
             s_logger.debug("4. The VM " + vm.getName() + " is in Migrating state");
 

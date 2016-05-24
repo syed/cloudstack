@@ -25,7 +25,7 @@ import org.apache.xmlrpc.XmlRpcException;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.OvsCreateGreTunnelAnswer;
 import com.cloud.agent.api.OvsCreateGreTunnelCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
@@ -34,36 +34,36 @@ import com.xensource.xenapi.Types.BadServerResponse;
 import com.xensource.xenapi.Types.XenAPIException;
 
 @ResourceWrapper(handles =  OvsCreateGreTunnelCommand.class)
-public final class CitrixOvsCreateGreTunnelCommandWrapper extends CommandWrapper<OvsCreateGreTunnelCommand, Answer, CitrixResourceBase> {
+public final class CitrixOvsCreateGreTunnelCommandWrapper extends CommandWrapper<OvsCreateGreTunnelCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixOvsCreateGreTunnelCommandWrapper.class);
 
     @Override
-    public Answer execute(final OvsCreateGreTunnelCommand command, final CitrixResourceBase citrixResourceBase) {
-        citrixResourceBase.setIsOvs(true);
+    public Answer execute(final OvsCreateGreTunnelCommand command, final XenServerResourceBase xenServerResourceBase) {
+        xenServerResourceBase.setIsOvs(true);
 
-        final Connection conn = citrixResourceBase.getConnection();
+        final Connection conn = xenServerResourceBase.getConnection();
         String bridge = "unkonwn";
         try {
-            final Network nw = citrixResourceBase.setupvSwitchNetwork(conn);
+            final Network nw = xenServerResourceBase.setupvSwitchNetwork(conn);
             bridge = nw.getBridge(conn);
 
-            final String result = citrixResourceBase.callHostPlugin(conn, "ovsgre", "ovs_create_gre", "bridge", bridge, "remoteIP", command.getRemoteIp(), "greKey",
+            final String result = xenServerResourceBase.callHostPlugin(conn, "ovsgre", "ovs_create_gre", "bridge", bridge, "remoteIP", command.getRemoteIp(), "greKey",
                     command.getKey(), "from", Long.toString(command.getFrom()), "to", Long.toString(command.getTo()));
             final String[] res = result.split(":");
             if (res.length != 2 || res.length == 2 && res[1].equalsIgnoreCase("[]")) {
-                return new OvsCreateGreTunnelAnswer(command, false, result, citrixResourceBase.getHost().getIp(), bridge);
+                return new OvsCreateGreTunnelAnswer(command, false, result, xenServerResourceBase.getHost().getIp(), bridge);
             } else {
-                return new OvsCreateGreTunnelAnswer(command, true, result, citrixResourceBase.getHost().getIp(), bridge, Integer.parseInt(res[1]));
+                return new OvsCreateGreTunnelAnswer(command, true, result, xenServerResourceBase.getHost().getIp(), bridge, Integer.parseInt(res[1]));
             }
         } catch (final BadServerResponse e) {
-            s_logger.error("An error occurred while creating a GRE tunnel to " + command.getRemoteIp() + " on host " + citrixResourceBase.getHost().getIp(), e);
+            s_logger.error("An error occurred while creating a GRE tunnel to " + command.getRemoteIp() + " on host " + xenServerResourceBase.getHost().getIp(), e);
         } catch (final XenAPIException e) {
-            s_logger.error("An error occurred while creating a GRE tunnel to " + command.getRemoteIp() + " on host " + citrixResourceBase.getHost().getIp(), e);
+            s_logger.error("An error occurred while creating a GRE tunnel to " + command.getRemoteIp() + " on host " + xenServerResourceBase.getHost().getIp(), e);
         } catch (final XmlRpcException e) {
-            s_logger.error("An error occurred while creating a GRE tunnel to " + command.getRemoteIp() + " on host " + citrixResourceBase.getHost().getIp(), e);
+            s_logger.error("An error occurred while creating a GRE tunnel to " + command.getRemoteIp() + " on host " + xenServerResourceBase.getHost().getIp(), e);
         }
 
-        return new OvsCreateGreTunnelAnswer(command, false, "EXCEPTION", citrixResourceBase.getHost().getIp(), bridge);
+        return new OvsCreateGreTunnelAnswer(command, false, "EXCEPTION", xenServerResourceBase.getHost().getIp(), bridge);
     }
 }

@@ -31,18 +31,18 @@ public class XsLocalNetwork {
 
     private static final Logger s_logger = Logger.getLogger(XsLocalNetwork.class);
 
-    private final CitrixResourceBase _citrixResourceBase;
+    private final XenServerResourceBase _xenServerResourceBase;
     private final Network _n;
     private Network.Record _nr;
     private PIF _p;
     private PIF.Record _pr;
 
-    public XsLocalNetwork(final CitrixResourceBase citrixResourceBase, final Network n) {
-        this(citrixResourceBase, n, null, null, null);
+    public XsLocalNetwork(final XenServerResourceBase xenServerResourceBase, final Network n) {
+        this(xenServerResourceBase, n, null, null, null);
     }
 
-    public XsLocalNetwork(final CitrixResourceBase citrixResourceBase, final Network n, final Network.Record nr, final PIF p, final PIF.Record pr) {
-        _citrixResourceBase = citrixResourceBase;
+    public XsLocalNetwork(final XenServerResourceBase xenServerResourceBase, final Network n, final Network.Record nr, final PIF p, final PIF.Record pr) {
+        _xenServerResourceBase = xenServerResourceBase;
         _n = n;
         _nr = nr;
         _p = p;
@@ -66,9 +66,9 @@ public class XsLocalNetwork {
             final Network.Record nr = getNetworkRecord(conn);
             for (final PIF pif : nr.PIFs) {
                 final PIF.Record pr = pif.getRecord(conn);
-                if (_citrixResourceBase.getHost().getUuid().equals(pr.host.getUuid(conn))) {
+                if (_xenServerResourceBase.getHost().getUuid().equals(pr.host.getUuid(conn))) {
                     if (s_logger.isDebugEnabled()) {
-                        s_logger.debug("Found a network called " + nr.nameLabel + " on host=" + _citrixResourceBase.getHost().getIp() + ";  Network=" + nr.uuid + "; pif=" + pr.uuid);
+                        s_logger.debug("Found a network called " + nr.nameLabel + " on host=" + _xenServerResourceBase.getHost().getIp() + ";  Network=" + nr.uuid + "; pif=" + pr.uuid);
                     }
                     _p = pif;
                     _pr = pr;

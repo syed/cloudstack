@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
@@ -32,7 +33,6 @@ import com.cloud.agent.api.StopAnswer;
 import com.cloud.agent.api.StopCommand;
 import com.cloud.agent.api.VgpuTypesInfo;
 import com.cloud.agent.api.to.GPUDeviceTO;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.utils.StringUtils;
@@ -46,16 +46,16 @@ import com.xensource.xenapi.VIF;
 import com.xensource.xenapi.VM;
 
 @ResourceWrapper(handles =  StopCommand.class)
-public final class CitrixStopCommandWrapper extends CommandWrapper<StopCommand, Answer, CitrixResourceBase> {
+public final class CitrixStopCommandWrapper extends CommandWrapper<StopCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixStopCommandWrapper.class);
 
     @Override
-    public Answer execute(final StopCommand command, final CitrixResourceBase citrixResourceBase) {
+    public Answer execute(final StopCommand command, final XenServerResourceBase xenServerResourceBase) {
         final String vmName = command.getVmName();
         String platformstring = null;
         try {
-            final Connection conn = citrixResourceBase.getConnection();
+            final Connection conn = xenServerResourceBase.getConnection();
             final Set<VM> vms = VM.getByNameLabel(conn, vmName);
             // stop vm which is running on this host or is in halted state
             final Iterator<VM> iter = vms.iterator();
@@ -65,10 +65,10 @@ public final class CitrixStopCommandWrapper extends CommandWrapper<StopCommand, 
                 if (vmr.powerState != VmPowerState.RUNNING) {
                     continue;
                 }
-                if (citrixResourceBase.isRefNull(vmr.residentOn)) {
+                if (xenServerResourceBase.isRefNull(vmr.residentOn)) {
                     continue;
                 }
-                if (vmr.residentOn.getUuid(conn).equals(citrixResourceBase.getHost().getUuid())) {
+                if (vmr.residentOn.getUuid(conn).equals(xenServerResourceBase.getHost().getUuid())) {
                     continue;
                 }
                 iter.remove();
@@ -86,8 +86,8 @@ public final class CitrixStopCommandWrapper extends CommandWrapper<StopCommand, 
                     return new StopAnswer(command, msg, false);
                 }
 
-                if (vmr.powerState == VmPowerState.RUNNING && !citrixResourceBase.isRefNull(vmr.residentOn) && !vmr.residentOn.getUuid(conn).equals(citrixResourceBase.getHost().getUuid())) {
-                    final String msg = "Stop Vm " + vmName + " failed due to this vm is not running on this host: " + citrixResourceBase.getHost().getUuid() + " but host:" + vmr.residentOn.getUuid(conn);
+                if (vmr.powerState == VmPowerState.RUNNING && !xenServerResourceBase.isRefNull(vmr.residentOn) && !vmr.residentOn.getUuid(conn).equals(xenServerResourceBase.getHost().getUuid())) {
+                    final String msg = "Stop Vm " + vmName + " failed due to this vm is not running on this host: " + xenServerResourceBase.getHost().getUuid() + " but host:" + vmr.residentOn.getUuid(conn);
                     s_logger.warn(msg);
                     return new StopAnswer(command, msg, platformstring, false);
                 }
@@ -105,15 +105,15 @@ public final class CitrixStopCommandWrapper extends CommandWrapper<StopCommand, 
                         /* when stop a vm, set affinity to current xenserver */
                         vm.setAffinity(conn, vm.getResidentOn(conn));
 
-                        if (citrixResourceBase.canBridgeFirewall()) {
-                            final String result = citrixResourceBase.callHostPlugin(conn, "vmops", "destroy_network_rules_for_vm", "vmName", command.getVmName());
+                        if (xenServerResourceBase.canBridgeFirewall()) {
+                            final String result = xenServerResourceBase.callHostPlugin(conn, "vmops", "destroy_network_rules_for_vm", "vmName", command.getVmName());
                             if (result == null || result.isEmpty() || !Boolean.parseBoolean(result)) {
                                 s_logger.warn("Failed to remove  network rules for vm " + command.getVmName());
                             } else {
                                 s_logger.info("Removed  network rules for vm " + command.getVmName());
                             }
                         }
-                        citrixResourceBase.shutdownVM(conn, vm, vmName);
+                        xenServerResourceBase.shutdownVM(conn, vm, vmName);
                     }
                 } catch (final Exception e) {
                     final String msg = "Catch exception " + e.getClass().getName() + " when stop VM:" + command.getVmName() + " due to " + e.toString();
@@ -131,7 +131,7 @@ public final class CitrixStopCommandWrapper extends CommandWrapper<StopCommand, 
                                 s_logger.debug("VM " + vmName + " does not have GPU support.");
                             }
                             if (vGPUs != null && !vGPUs.isEmpty()) {
-                                final HashMap<String, HashMap<String, VgpuTypesInfo>> groupDetails = citrixResourceBase.getGPUGroupDetails(conn);
+                                final HashMap<String, HashMap<String, VgpuTypesInfo>> groupDetails = xenServerResourceBase.getGPUGroupDetails(conn);
                                 command.setGpuDevice(new GPUDeviceTO(null, null, groupDetails));
                             }
 
@@ -141,14 +141,14 @@ public final class CitrixStopCommandWrapper extends CommandWrapper<StopCommand, 
                                 networks.add(vif.getNetwork(conn));
                             }
                             vm.destroy(conn);
-                            final SR sr = citrixResourceBase.getISOSRbyVmName(conn, command.getVmName());
-                            citrixResourceBase.removeSR(conn, sr);
+                            final SR sr = xenServerResourceBase.getISOSRbyVmName(conn, command.getVmName());
+                            xenServerResourceBase.removeSR(conn, sr);
                             // Disable any VLAN networks that aren't used
                             // anymore
                             for (final Network network : networks) {
                                 try {
                                     if (network.getNameLabel(conn).startsWith("VLAN")) {
-                                        citrixResourceBase.disableVlanNetwork(conn, network);
+                                        xenServerResourceBase.disableVlanNetwork(conn, network);
                                     }
                                 } catch (final Exception e) {
                                     // network might be destroyed by other host

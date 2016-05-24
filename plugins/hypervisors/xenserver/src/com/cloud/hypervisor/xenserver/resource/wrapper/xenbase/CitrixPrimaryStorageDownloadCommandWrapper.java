@@ -23,12 +23,12 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.Set;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.storage.PrimaryStorageDownloadAnswer;
 import com.cloud.agent.api.storage.PrimaryStorageDownloadCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
@@ -36,19 +36,19 @@ import com.xensource.xenapi.SR;
 import com.xensource.xenapi.VDI;
 
 @ResourceWrapper(handles =  PrimaryStorageDownloadCommand.class)
-public final class CitrixPrimaryStorageDownloadCommandWrapper extends CommandWrapper<PrimaryStorageDownloadCommand, Answer, CitrixResourceBase> {
+public final class CitrixPrimaryStorageDownloadCommandWrapper extends CommandWrapper<PrimaryStorageDownloadCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixPrimaryStorageDownloadCommandWrapper.class);
 
     @Override
-    public Answer execute(final PrimaryStorageDownloadCommand command, final CitrixResourceBase citrixResourceBase) {
+    public Answer execute(final PrimaryStorageDownloadCommand command, final XenServerResourceBase xenServerResourceBase) {
         final String tmplturl = command.getUrl();
         final String poolName = command.getPoolUuid();
         final int wait = command.getWait();
         try {
             final URI uri = new URI(tmplturl);
             final String tmplpath = uri.getHost() + ":" + uri.getPath();
-            final Connection conn = citrixResourceBase.getConnection();
+            final Connection conn = xenServerResourceBase.getConnection();
             SR poolsr = null;
             final Set<SR> srs = SR.getByNameLabel(conn, poolName);
             if (srs.size() != 1) {
@@ -59,14 +59,14 @@ public final class CitrixPrimaryStorageDownloadCommandWrapper extends CommandWra
                 poolsr = srs.iterator().next();
             }
             final String pUuid = poolsr.getUuid(conn);
-            final boolean isISCSI = citrixResourceBase.IsISCSI(poolsr.getType(conn));
-            final String uuid = citrixResourceBase.copyVhdFromSecondaryStorage(conn, tmplpath, pUuid, wait);
-            final VDI tmpl = citrixResourceBase.getVDIbyUuid(conn, uuid);
+            final boolean isISCSI = xenServerResourceBase.IsISCSI(poolsr.getType(conn));
+            final String uuid = xenServerResourceBase.copyVhdFromSecondaryStorage(conn, tmplpath, pUuid, wait);
+            final VDI tmpl = xenServerResourceBase.getVDIbyUuid(conn, uuid);
             final VDI snapshotvdi = tmpl.snapshot(conn, new HashMap<String, String>());
             final String snapshotUuid = snapshotvdi.getUuid(conn);
             snapshotvdi.setNameLabel(conn, "Template " + command.getName());
-            final String parentuuid = citrixResourceBase.getVhdParent(conn, pUuid, snapshotUuid, isISCSI);
-            final VDI parent = citrixResourceBase.getVDIbyUuid(conn, parentuuid);
+            final String parentuuid = xenServerResourceBase.getVhdParent(conn, pUuid, snapshotUuid, isISCSI);
+            final VDI parent = xenServerResourceBase.getVDIbyUuid(conn, parentuuid);
             final Long phySize = parent.getPhysicalUtilisation(conn);
             tmpl.destroy(conn);
             poolsr.scan(conn);
@@ -76,7 +76,7 @@ public final class CitrixPrimaryStorageDownloadCommandWrapper extends CommandWra
             }
             return new PrimaryStorageDownloadAnswer(snapshotvdi.getUuid(conn), phySize);
         } catch (final Exception e) {
-            final String msg = "Catch Exception " + e.getClass().getName() + " on host:" + citrixResourceBase.getHost().getUuid() + " for template: " + tmplturl + " due to "
+            final String msg = "Catch Exception " + e.getClass().getName() + " on host:" + xenServerResourceBase.getHost().getUuid() + " for template: " + tmplturl + " due to "
                     + e.toString();
             s_logger.warn(msg, e);
             return new PrimaryStorageDownloadAnswer(msg);

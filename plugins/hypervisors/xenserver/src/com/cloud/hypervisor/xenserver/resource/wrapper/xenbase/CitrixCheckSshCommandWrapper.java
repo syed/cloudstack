@@ -19,24 +19,24 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.check.CheckSshAnswer;
 import com.cloud.agent.api.check.CheckSshCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
 
 @ResourceWrapper(handles =  CheckSshCommand.class)
-public final class CitrixCheckSshCommandWrapper extends CommandWrapper<CheckSshCommand, Answer, CitrixResourceBase> {
+public final class CitrixCheckSshCommandWrapper extends CommandWrapper<CheckSshCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixCheckSshCommandWrapper.class);
 
     @Override
-    public Answer execute(final CheckSshCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final CheckSshCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         final String vmName = command.getName();
         final String privateIp = command.getIp();
         final int cmdPort = command.getPort();
@@ -46,7 +46,7 @@ public final class CitrixCheckSshCommandWrapper extends CommandWrapper<CheckSshC
         }
 
         try {
-            final String result = citrixResourceBase.connect(conn, command.getName(), privateIp, cmdPort);
+            final String result = xenServerResourceBase.connect(conn, command.getName(), privateIp, cmdPort);
             if (result != null) {
                 return new CheckSshAnswer(command, "Can not ping System vm " + vmName + "due to:" + result);
             }

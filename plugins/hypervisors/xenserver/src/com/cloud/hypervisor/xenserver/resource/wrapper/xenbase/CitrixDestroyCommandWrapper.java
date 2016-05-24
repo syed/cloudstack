@@ -26,7 +26,7 @@ import org.apache.log4j.Logger;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.storage.DestroyCommand;
 import com.cloud.agent.api.to.VolumeTO;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
@@ -34,19 +34,19 @@ import com.xensource.xenapi.VBD;
 import com.xensource.xenapi.VDI;
 
 @ResourceWrapper(handles =  DestroyCommand.class)
-public final class CitrixDestroyCommandWrapper extends CommandWrapper<DestroyCommand, Answer, CitrixResourceBase> {
+public final class CitrixDestroyCommandWrapper extends CommandWrapper<DestroyCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixDestroyCommandWrapper.class);
 
     @Override
-    public Answer execute(final DestroyCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final DestroyCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         final VolumeTO vol = command.getVolume();
         // Look up the VDI
         final String volumeUUID = vol.getPath();
         VDI vdi = null;
         try {
-            vdi = citrixResourceBase.getVDIbyUuid(conn, volumeUUID);
+            vdi = xenServerResourceBase.getVDIbyUuid(conn, volumeUUID);
         } catch (final Exception e) {
             return new Answer(command, true, "Success");
         }

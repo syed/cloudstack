@@ -38,12 +38,12 @@ public class XenserverHelperTest {
         String pvBootLoaderArgs_32 = "--kernel /boot/vmlinuz-xenpae --ramdisk /boot/initrd-xenpae";
         String pvBootLoaderArgs_64 = "--kernel /boot/vmlinuz-xen --ramdisk /boot/initrd-xen";
 
-        Assert.assertEquals(XenserverHelper.getPVbootloaderArgs(os_name_Suse10Sp2_32), pvBootLoaderArgs_32);
-        Assert.assertEquals(XenserverHelper.getPVbootloaderArgs(os_name_Suse10Sp2_64),pvBootLoaderArgs_64);
-        Assert.assertEquals(XenserverHelper.getPVbootloaderArgs(os_name_Suse11Sp3_32),pvBootLoaderArgs_32);
-        Assert.assertEquals(XenserverHelper.getPVbootloaderArgs(os_name_Suse11Sp3_64),pvBootLoaderArgs_64);
+        Assert.assertEquals(XenServerHelper.getPVbootloaderArgs(os_name_Suse10Sp2_32), pvBootLoaderArgs_32);
+        Assert.assertEquals(XenServerHelper.getPVbootloaderArgs(os_name_Suse10Sp2_64),pvBootLoaderArgs_64);
+        Assert.assertEquals(XenServerHelper.getPVbootloaderArgs(os_name_Suse11Sp3_32),pvBootLoaderArgs_32);
+        Assert.assertEquals(XenServerHelper.getPVbootloaderArgs(os_name_Suse11Sp3_64),pvBootLoaderArgs_64);
 
-        Assert.assertEquals(XenserverHelper.getPVbootloaderArgs(os_name_Windows8_32),"");
-        Assert.assertEquals(XenserverHelper.getPVbootloaderArgs(os_name_Windows8_64),"");
+        Assert.assertEquals(XenServerHelper.getPVbootloaderArgs(os_name_Windows8_32),"");
+        Assert.assertEquals(XenServerHelper.getPVbootloaderArgs(os_name_Windows8_64),"");
     }
 }

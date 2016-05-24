@@ -21,6 +21,7 @@ package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
 import java.util.Map;
 import com.cloud.agent.api.GetVmIpAddressCommand;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.utils.net.NetUtils;
 import com.xensource.xenapi.Connection;
@@ -30,18 +31,17 @@ import com.xensource.xenapi.Types;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import org.apache.xmlrpc.XmlRpcException;
 
 @ResourceWrapper(handles =  GetVmIpAddressCommand.class)
-public final class CitrixGetVmIpAddressCommandWrapper extends CommandWrapper<GetVmIpAddressCommand, Answer, CitrixResourceBase> {
+public final class CitrixGetVmIpAddressCommandWrapper extends CommandWrapper<GetVmIpAddressCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixGetVmIpAddressCommandWrapper.class);
 
     @Override
-    public Answer execute(final GetVmIpAddressCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final GetVmIpAddressCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
 
         String vmName = command.getVmName();
         String networkCidr = command.getVmNetworkCidr();
@@ -50,7 +50,7 @@ public final class CitrixGetVmIpAddressCommandWrapper extends CommandWrapper<Get
         String vmIp = null;
 
         try {
-            VM vm = citrixResourceBase.getVM(conn, vmName);
+            VM vm = xenServerResourceBase.getVM(conn, vmName);
             VMGuestMetrics mtr = vm.getGuestMetrics(conn);
             VMGuestMetrics.Record rec = mtr.getRecord(conn);
             Map<String, String> vmIpsMap = rec.networks;

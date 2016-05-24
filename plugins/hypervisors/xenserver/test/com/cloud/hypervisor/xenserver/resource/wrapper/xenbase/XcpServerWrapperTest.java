@@ -16,24 +16,23 @@
 // under the License.
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
+import com.cloud.agent.api.Answer;
+import com.cloud.agent.api.NetworkUsageCommand;
+import com.cloud.hypervisor.xenserver.resource.release.XcpServerResource;
+import com.cloud.utils.exception.CloudRuntimeException;
+import com.xensource.xenapi.Connection;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import com.cloud.agent.api.Answer;
-import com.cloud.agent.api.NetworkUsageCommand;
-import com.cloud.hypervisor.xenserver.resource.XcpServerResource;
-import com.cloud.utils.exception.CloudRuntimeException;
-import com.xensource.xenapi.Connection;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @RunWith(PowerMockRunner.class)
 public class XcpServerWrapperTest {

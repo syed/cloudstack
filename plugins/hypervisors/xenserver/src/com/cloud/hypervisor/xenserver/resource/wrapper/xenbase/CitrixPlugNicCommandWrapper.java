@@ -21,13 +21,13 @@ package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
 import java.util.Set;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.PlugNicAnswer;
 import com.cloud.agent.api.PlugNicCommand;
 import com.cloud.agent.api.to.NicTO;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
@@ -35,13 +35,13 @@ import com.xensource.xenapi.VIF;
 import com.xensource.xenapi.VM;
 
 @ResourceWrapper(handles =  PlugNicCommand.class)
-public final class CitrixPlugNicCommandWrapper extends CommandWrapper<PlugNicCommand, Answer, CitrixResourceBase> {
+public final class CitrixPlugNicCommandWrapper extends CommandWrapper<PlugNicCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixPlugNicCommandWrapper.class);
 
     @Override
-    public Answer execute(final PlugNicCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final PlugNicCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         final String vmName = command.getVmName();
         try {
             final Set<VM> vms = VM.getByNameLabel(conn, vmName);
@@ -79,9 +79,9 @@ public final class CitrixPlugNicCommandWrapper extends CommandWrapper<PlugNicCom
             // return new PlugNicAnswer(cmd, false, msg);
             // }
 
-            final String deviceId = citrixResourceBase.getLowestAvailableVIFDeviceNum(conn, vm);
+            final String deviceId = xenServerResourceBase.getLowestAvailableVIFDeviceNum(conn, vm);
             nic.setDeviceId(Integer.parseInt(deviceId));
-            final VIF vif = citrixResourceBase.createVif(conn, vmName, vm, null, nic);
+            final VIF vif = xenServerResourceBase.createVif(conn, vmName, vm, null, nic);
             // vif = createVif(conn, vmName, vm, null, nic);
             vif.plug(conn);
             return new PlugNicAnswer(command, true, "success");

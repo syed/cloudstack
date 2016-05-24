@@ -19,12 +19,12 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.storage.ResizeVolumeAnswer;
 import com.cloud.agent.api.storage.ResizeVolumeCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.utils.exception.CloudRuntimeException;
@@ -37,12 +37,12 @@ import java.util.HashSet;
 import java.util.Set;
 
 @ResourceWrapper(handles =  ResizeVolumeCommand.class)
-public final class CitrixResizeVolumeCommandWrapper extends CommandWrapper<ResizeVolumeCommand, Answer, CitrixResourceBase> {
+public final class CitrixResizeVolumeCommandWrapper extends CommandWrapper<ResizeVolumeCommand, Answer, XenServerResourceBase> {
     private static final Logger s_logger = Logger.getLogger(CitrixResizeVolumeCommandWrapper.class);
 
     @Override
-    public Answer execute(final ResizeVolumeCommand command, final CitrixResourceBase citrixResourceBase) {
-        Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final ResizeVolumeCommand command, final XenServerResourceBase xenServerResourceBase) {
+        Connection conn = xenServerResourceBase.getConnection();
 
         String volId = command.getPath();
         long newSize = command.getNewSize();
@@ -52,7 +52,7 @@ public final class CitrixResizeVolumeCommandWrapper extends CommandWrapper<Resiz
                 resizeSr(conn, command);
             }
 
-            VDI vdi = citrixResourceBase.getVDIbyUuid(conn, volId);
+            VDI vdi = xenServerResourceBase.getVDIbyUuid(conn, volId);
 
             vdi.resize(conn, newSize);
 
@@ -77,7 +77,7 @@ public final class CitrixResizeVolumeCommandWrapper extends CommandWrapper<Resiz
             Set<PBD> allPbds = new HashSet<>();
 
             for (SR sr : srs) {
-                if (!CitrixResourceBase.SRType.LVMOISCSI.equals(sr.getType(conn))) {
+                if (!XenServerResourceBase.SRType.LVMOISCSI.equals(sr.getType(conn))) {
                     continue;
                 }
 

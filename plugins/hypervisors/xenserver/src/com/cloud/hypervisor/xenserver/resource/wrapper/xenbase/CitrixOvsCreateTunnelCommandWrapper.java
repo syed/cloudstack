@@ -19,37 +19,37 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.OvsCreateTunnelAnswer;
 import com.cloud.agent.api.OvsCreateTunnelCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.Network;
 
 @ResourceWrapper(handles =  OvsCreateTunnelCommand.class)
-public final class CitrixOvsCreateTunnelCommandWrapper extends CommandWrapper<OvsCreateTunnelCommand, Answer, CitrixResourceBase> {
+public final class CitrixOvsCreateTunnelCommandWrapper extends CommandWrapper<OvsCreateTunnelCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixOvsCreateTunnelCommandWrapper.class);
 
     @Override
-    public Answer execute(final OvsCreateTunnelCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final OvsCreateTunnelCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         String bridge = "unknown";
         try {
-            final Network nw = citrixResourceBase.findOrCreateTunnelNetwork(conn, command.getNetworkName());
+            final Network nw = xenServerResourceBase.findOrCreateTunnelNetwork(conn, command.getNetworkName());
             if (nw == null) {
                 s_logger.debug("Error during bridge setup");
                 return new OvsCreateTunnelAnswer(command, false, "Cannot create network", bridge);
             }
 
-            citrixResourceBase.configureTunnelNetwork(conn, command.getNetworkId(), command.getFrom(), command.getNetworkName());
+            xenServerResourceBase.configureTunnelNetwork(conn, command.getNetworkId(), command.getFrom(), command.getNetworkName());
             bridge = nw.getBridge(conn);
             final String result =
-                    citrixResourceBase.callHostPlugin(conn, "ovstunnel", "create_tunnel", "bridge", bridge, "remote_ip", command.getRemoteIp(),
+                    xenServerResourceBase.callHostPlugin(conn, "ovstunnel", "create_tunnel", "bridge", bridge, "remote_ip", command.getRemoteIp(),
                             "key", command.getKey().toString(), "from",
                             command.getFrom().toString(), "to", command.getTo().toString(), "cloudstack-network-id",
                             command.getNetworkUuid());

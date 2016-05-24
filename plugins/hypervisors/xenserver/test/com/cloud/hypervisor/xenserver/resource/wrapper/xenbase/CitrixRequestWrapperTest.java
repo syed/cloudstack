@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.cloudstack.storage.command.AttachAnswer;
 import org.apache.cloudstack.storage.command.AttachCommand;
 import org.apache.cloudstack.storage.datastore.db.StoragePoolVO;
@@ -122,7 +123,6 @@ import com.cloud.agent.api.to.VirtualMachineTO;
 import com.cloud.agent.resource.virtualnetwork.VRScripts;
 import com.cloud.agent.resource.virtualnetwork.VirtualRoutingResource;
 import com.cloud.host.HostEnvironment;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.hypervisor.xenserver.resource.XsHost;
 import com.cloud.hypervisor.xenserver.resource.XsLocalNetwork;
 import com.cloud.network.Networks.TrafficType;
@@ -148,7 +148,7 @@ import com.xensource.xenapi.VMGuestMetrics;
 public class CitrixRequestWrapperTest {
 
     @Mock
-    private CitrixResourceBase citrixResourceBase;
+    private XenServerResourceBase xenServerResourceBase;
     @Mock
     private RebootAnswer rebootAnswer;
     @Mock
@@ -166,7 +166,7 @@ public class CitrixRequestWrapperTest {
         assertNotNull(wrapper);
 
         try {
-            wrapper.execute(new NotAValidCommand(), citrixResourceBase);
+            wrapper.execute(new NotAValidCommand(), xenServerResourceBase);
         } catch (final Exception e) {
             assertTrue(e instanceof NullPointerException);
         }
@@ -179,9 +179,9 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(rebootRouterCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(rebootRouterCommand, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(2)).getConnection();
+        verify(xenServerResourceBase, times(2)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -195,9 +195,9 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(createCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(createCommand, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -209,7 +209,7 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(consoleProxyCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(consoleProxyCommand, xenServerResourceBase);
 
         assertFalse(answer.getResult());
     }
@@ -221,7 +221,7 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(watchConsoleProxyCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(watchConsoleProxyCommand, xenServerResourceBase);
 
         assertFalse(answer.getResult());
     }
@@ -233,7 +233,7 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(readyCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(readyCommand, xenServerResourceBase);
 
         assertFalse(answer.getResult());
     }
@@ -245,7 +245,7 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(statsCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(statsCommand, xenServerResourceBase);
 
         assertTrue(answer.getResult());
     }
@@ -257,7 +257,7 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(statsCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(statsCommand, xenServerResourceBase);
 
         assertTrue(answer.getResult());
     }
@@ -269,7 +269,7 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(diskStatsCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(diskStatsCommand, xenServerResourceBase);
 
         assertTrue(answer.getResult());
     }
@@ -281,7 +281,7 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(checkHealthCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(checkHealthCommand, xenServerResourceBase);
 
         assertFalse(answer.getResult());
     }
@@ -293,7 +293,7 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(stopCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(stopCommand, xenServerResourceBase);
 
         assertFalse(answer.getResult());
     }
@@ -305,9 +305,9 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(rebootCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(rebootCommand, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -319,8 +319,8 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(virtualMachineCommand, citrixResourceBase);
-        verify(citrixResourceBase, times(1)).getConnection();
+        final Answer answer = wrapper.execute(virtualMachineCommand, xenServerResourceBase);
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertTrue(answer.getResult());
     }
@@ -333,8 +333,8 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(prepareCommand, citrixResourceBase);
-        verify(citrixResourceBase, times(1)).getConnection();
+        final Answer answer = wrapper.execute(prepareCommand, xenServerResourceBase);
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -347,8 +347,8 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(migrateCommand, citrixResourceBase);
-        verify(citrixResourceBase, times(1)).getConnection();
+        final Answer answer = wrapper.execute(migrateCommand, xenServerResourceBase);
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -364,8 +364,8 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(destroyCommand, citrixResourceBase);
-        verify(citrixResourceBase, times(1)).getConnection();
+        final Answer answer = wrapper.execute(destroyCommand, xenServerResourceBase);
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -380,10 +380,10 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
 
-        final Answer answer = wrapper.execute(createStorageCommand, citrixResourceBase);
-        verify(citrixResourceBase, times(1)).getConnection();
+        final Answer answer = wrapper.execute(createStorageCommand, xenServerResourceBase);
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -398,10 +398,10 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
 
-        final Answer answer = wrapper.execute(modifyStorageCommand, citrixResourceBase);
-        verify(citrixResourceBase, times(1)).getConnection();
+        final Answer answer = wrapper.execute(modifyStorageCommand, xenServerResourceBase);
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -416,10 +416,10 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
 
-        final Answer answer = wrapper.execute(deleteStorageCommand, citrixResourceBase);
-        verify(citrixResourceBase, times(1)).getConnection();
+        final Answer answer = wrapper.execute(deleteStorageCommand, xenServerResourceBase);
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertTrue(answer.getResult());
     }
@@ -433,8 +433,8 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(resizeCommand, citrixResourceBase);
-        verify(citrixResourceBase, times(1)).getConnection();
+        final Answer answer = wrapper.execute(resizeCommand, xenServerResourceBase);
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -446,8 +446,8 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(attachCommand, citrixResourceBase);
-        verify(citrixResourceBase, times(1)).getConnection();
+        final Answer answer = wrapper.execute(attachCommand, xenServerResourceBase);
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -462,8 +462,8 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(upgradeSnapshotCommand, citrixResourceBase);
-        verify(citrixResourceBase, times(1)).getConnection();
+        final Answer answer = wrapper.execute(upgradeSnapshotCommand, xenServerResourceBase);
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertTrue(answer.getResult());
     }
@@ -478,8 +478,8 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(upgradeSnapshotCommand, citrixResourceBase);
-        verify(citrixResourceBase, times(0)).getConnection();
+        final Answer answer = wrapper.execute(upgradeSnapshotCommand, xenServerResourceBase);
+        verify(xenServerResourceBase, times(0)).getConnection();
 
         assertTrue(answer.getResult());
     }
@@ -494,10 +494,10 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
 
-        final Answer answer = wrapper.execute(storageStatsCommand, citrixResourceBase);
-        verify(citrixResourceBase, times(1)).getConnection();
+        final Answer answer = wrapper.execute(storageStatsCommand, xenServerResourceBase);
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -512,10 +512,10 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
 
-        final Answer answer = wrapper.execute(storageDownloadCommand, citrixResourceBase);
-        verify(citrixResourceBase, times(1)).getConnection();
+        final Answer answer = wrapper.execute(storageDownloadCommand, xenServerResourceBase);
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -527,8 +527,8 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(vncPortCommand, citrixResourceBase);
-        verify(citrixResourceBase, times(1)).getConnection();
+        final Answer answer = wrapper.execute(vncPortCommand, xenServerResourceBase);
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -543,10 +543,10 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
 
-        final Answer answer = wrapper.execute(setupCommand, citrixResourceBase);
-        verify(citrixResourceBase, times(1)).getConnection();
+        final Answer answer = wrapper.execute(setupCommand, xenServerResourceBase);
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -574,8 +574,8 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
-        when(citrixResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
         when(xsHost.getUuid()).thenReturn(uuid);
         when(conn.getSessionReference()).thenReturn("befc4dcd");
 
@@ -618,7 +618,7 @@ public class CitrixRequestWrapperTest {
         // fail(e.getMessage());
         // }
 
-        final Answer answer = wrapper.execute(maintainCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(maintainCommand, xenServerResourceBase);
 
         assertFalse(answer.getResult());
     }
@@ -630,8 +630,8 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(pingTestCommand, citrixResourceBase);
-        verify(citrixResourceBase, times(1)).getConnection();
+        final Answer answer = wrapper.execute(pingTestCommand, xenServerResourceBase);
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -643,9 +643,9 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(pingTestCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(pingTestCommand, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -658,7 +658,7 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(onHostCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(onHostCommand, xenServerResourceBase);
 
         assertFalse(answer.getResult());
     }
@@ -670,7 +670,7 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(sshKeysCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(sshKeysCommand, xenServerResourceBase);
 
         assertTrue(answer.getResult());
     }
@@ -685,9 +685,9 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(startCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(startCommand, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -702,8 +702,8 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
-        when(citrixResourceBase.setupvSwitchNetwork(conn)).thenReturn(network);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.setupvSwitchNetwork(conn)).thenReturn(network);
         try {
             when(network.getBridge(conn)).thenReturn("br0");
         } catch (final BadServerResponse e) {
@@ -714,11 +714,11 @@ public class CitrixRequestWrapperTest {
             fail(e.getMessage());
         }
 
-        final Answer answer = wrapper.execute(tagAndFlowCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(tagAndFlowCommand, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
-        verify(citrixResourceBase, times(1)).setupvSwitchNetwork(conn);
-        verify(citrixResourceBase, times(1)).setIsOvs(true);
+        verify(xenServerResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).setupvSwitchNetwork(conn);
+        verify(xenServerResourceBase, times(1)).setIsOvs(true);
 
         assertFalse(answer.getResult());
     }
@@ -730,9 +730,9 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(sshCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(sshCommand, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertTrue(answer.getResult());
     }
@@ -757,12 +757,12 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
-        when(citrixResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
 
-        final Answer answer = wrapper.execute(sshCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(sshCommand, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -785,10 +785,10 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.isXcp()).thenReturn(true);
-        when(citrixResourceBase.getLabel()).thenReturn("[abc]");
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
-        when(citrixResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.isXcp()).thenReturn(true);
+        when(xenServerResourceBase.getLabel()).thenReturn("[abc]");
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
 
         try {
             when(network.getNetwork()).thenReturn(network2);
@@ -796,16 +796,16 @@ public class CitrixRequestWrapperTest {
             when(network.getPif(conn)).thenReturn(pif);
             when(pif.getRecord(conn)).thenReturn(pifRec);
             when(network.getNetwork().getUuid(conn)).thenReturn(uuid);
-            when(citrixResourceBase.getNetworkByName(conn, label)).thenReturn(network);
+            when(xenServerResourceBase.getNetworkByName(conn, label)).thenReturn(network);
         } catch (final XenAPIException e) {
             fail(e.getMessage());
         } catch (final XmlRpcException e) {
             fail(e.getMessage());
         }
 
-        final Answer answer = wrapper.execute(fetchInterCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(fetchInterCommand, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertTrue(answer.getResult());
     }
@@ -822,13 +822,13 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
-        when(citrixResourceBase.getHost()).thenReturn(xsHost);
-        when(citrixResourceBase.setupvSwitchNetwork(conn)).thenReturn(network);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.setupvSwitchNetwork(conn)).thenReturn(network);
         try {
             when(network.getBridge(conn)).thenReturn(bridge);
             when(
-                            citrixResourceBase.callHostPlugin(conn, "ovsgre", "ovs_create_gre", "bridge", bridge, "remoteIP", createGreCommand.getRemoteIp(), "greKey",
+                            xenServerResourceBase.callHostPlugin(conn, "ovsgre", "ovs_create_gre", "bridge", bridge, "remoteIP", createGreCommand.getRemoteIp(), "greKey",
                                             createGreCommand.getKey(), "from", Long.toString(createGreCommand.getFrom()), "to", Long.toString(createGreCommand.getTo()))).thenReturn(
                             "1:2");
 
@@ -840,10 +840,10 @@ public class CitrixRequestWrapperTest {
             fail(e.getMessage());
         }
 
-        final Answer answer = wrapper.execute(createGreCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(createGreCommand, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
-        verify(citrixResourceBase, times(1)).setIsOvs(true);
+        verify(xenServerResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).setIsOvs(true);
 
         assertTrue(answer.getResult());
     }
@@ -859,11 +859,11 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
-        when(citrixResourceBase.setupvSwitchNetwork(conn)).thenReturn(network);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.setupvSwitchNetwork(conn)).thenReturn(network);
         try {
             when(network.getBridge(conn)).thenReturn(bridge);
-            when(citrixResourceBase.callHostPlugin(conn, "ovsgre", "ovs_delete_flow", "bridge", bridge, "vmName", deleteFlowCommand.getVmName())).thenReturn("SUCCESS");
+            when(xenServerResourceBase.callHostPlugin(conn, "ovsgre", "ovs_delete_flow", "bridge", bridge, "vmName", deleteFlowCommand.getVmName())).thenReturn("SUCCESS");
 
         } catch (final BadServerResponse e) {
             fail(e.getMessage());
@@ -873,10 +873,10 @@ public class CitrixRequestWrapperTest {
             fail(e.getMessage());
         }
 
-        final Answer answer = wrapper.execute(deleteFlowCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(deleteFlowCommand, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
-        verify(citrixResourceBase, times(1)).setIsOvs(true);
+        verify(xenServerResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).setIsOvs(true);
 
         assertTrue(answer.getResult());
     }
@@ -892,11 +892,11 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
-        when(citrixResourceBase.setupvSwitchNetwork(conn)).thenReturn(network);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.setupvSwitchNetwork(conn)).thenReturn(network);
         try {
             when(network.getBridge(conn)).thenReturn(bridge);
-            when(citrixResourceBase.callHostPlugin(conn, "ovsgre", "ovs_delete_flow", "bridge", bridge, "vmName", deleteFlowCommand.getVmName())).thenReturn("FAILED");
+            when(xenServerResourceBase.callHostPlugin(conn, "ovsgre", "ovs_delete_flow", "bridge", bridge, "vmName", deleteFlowCommand.getVmName())).thenReturn("FAILED");
 
         } catch (final BadServerResponse e) {
             fail(e.getMessage());
@@ -906,10 +906,10 @@ public class CitrixRequestWrapperTest {
             fail(e.getMessage());
         }
 
-        final Answer answer = wrapper.execute(deleteFlowCommand, citrixResourceBase);
+        final Answer answer = wrapper.execute(deleteFlowCommand, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
-        verify(citrixResourceBase, times(1)).setIsOvs(true);
+        verify(xenServerResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).setIsOvs(true);
 
         assertFalse(answer.getResult());
     }
@@ -929,13 +929,13 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
         try {
-            when(citrixResourceBase.findOrCreateTunnelNetwork(conn, physicalTopology.getBridgeName())).thenReturn(network);
+            when(xenServerResourceBase.findOrCreateTunnelNetwork(conn, physicalTopology.getBridgeName())).thenReturn(network);
             when(network.getBridge(conn)).thenReturn(bridge);
 
             when(
-                            citrixResourceBase.callHostPlugin(conn, "ovstunnel", "configure_ovs_bridge_for_network_topology", "bridge", bridge, "config",
+                            xenServerResourceBase.callHostPlugin(conn, "ovstunnel", "configure_ovs_bridge_for_network_topology", "bridge", bridge, "config",
                                             physicalTopology.getVpcConfigInJson(), "host-id", ((Long) physicalTopology.getHostId()).toString(), "seq-no", Long.toString(1))).thenReturn(
                             "SUCCESS");
 
@@ -947,9 +947,9 @@ public class CitrixRequestWrapperTest {
             fail(e.getMessage());
         }
 
-        final Answer answer = wrapper.execute(physicalTopology, citrixResourceBase);
+        final Answer answer = wrapper.execute(physicalTopology, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -968,13 +968,13 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
         try {
-            when(citrixResourceBase.findOrCreateTunnelNetwork(conn, routingPolicy.getBridgeName())).thenReturn(network);
+            when(xenServerResourceBase.findOrCreateTunnelNetwork(conn, routingPolicy.getBridgeName())).thenReturn(network);
             when(network.getBridge(conn)).thenReturn(bridge);
 
             when(
-                            citrixResourceBase.callHostPlugin(conn, "ovstunnel", "configure_ovs_bridge_for_routing_policies", "bridge", bridge, "host-id",
+                            xenServerResourceBase.callHostPlugin(conn, "ovstunnel", "configure_ovs_bridge_for_routing_policies", "bridge", bridge, "host-id",
                                             ((Long) routingPolicy.getHostId()).toString(), "config", routingPolicy.getVpcConfigInJson(), "seq-no", Long.toString(1))).thenReturn(
                             "SUCCESS");
 
@@ -986,9 +986,9 @@ public class CitrixRequestWrapperTest {
             fail(e.getMessage());
         }
 
-        final Answer answer = wrapper.execute(routingPolicy, citrixResourceBase);
+        final Answer answer = wrapper.execute(routingPolicy, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -1003,15 +1003,15 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.canBridgeFirewall()).thenReturn(true);
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
-        when(citrixResourceBase.getHost()).thenReturn(xsHost);
-        when(citrixResourceBase.getVMInstanceName()).thenReturn("VM");
-        when(citrixResourceBase.callHostPlugin(conn, "vmops", "cleanup_rules", "instance", citrixResourceBase.getVMInstanceName())).thenReturn("1");
+        when(xenServerResourceBase.canBridgeFirewall()).thenReturn(true);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getVMInstanceName()).thenReturn("VM");
+        when(xenServerResourceBase.callHostPlugin(conn, "vmops", "cleanup_rules", "instance", xenServerResourceBase.getVMInstanceName())).thenReturn("1");
 
-        final Answer answer = wrapper.execute(cleanupNets, citrixResourceBase);
+        final Answer answer = wrapper.execute(cleanupNets, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertTrue(answer.getResult());
     }
@@ -1026,15 +1026,15 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.canBridgeFirewall()).thenReturn(true);
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
-        when(citrixResourceBase.getHost()).thenReturn(xsHost);
-        when(citrixResourceBase.getVMInstanceName()).thenReturn("VM");
-        when(citrixResourceBase.callHostPlugin(conn, "vmops", "cleanup_rules", "instance", citrixResourceBase.getVMInstanceName())).thenReturn("-1");
+        when(xenServerResourceBase.canBridgeFirewall()).thenReturn(true);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getVMInstanceName()).thenReturn("VM");
+        when(xenServerResourceBase.callHostPlugin(conn, "vmops", "cleanup_rules", "instance", xenServerResourceBase.getVMInstanceName())).thenReturn("-1");
 
-        final Answer answer = wrapper.execute(cleanupNets, citrixResourceBase);
+        final Answer answer = wrapper.execute(cleanupNets, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
         verify(xsHost, times(1)).getIp();
 
         assertFalse(answer.getResult());
@@ -1048,8 +1048,8 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.canBridgeFirewall()).thenReturn(false);
-        final Answer answer = wrapper.execute(cleanupNets, citrixResourceBase);
+        when(xenServerResourceBase.canBridgeFirewall()).thenReturn(false);
+        final Answer answer = wrapper.execute(cleanupNets, xenServerResourceBase);
 
         assertTrue(answer.getResult());
         assertNull(answer.getDetails());
@@ -1064,11 +1064,11 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
 
-        final Answer answer = wrapper.execute(netRules, citrixResourceBase);
+        final Answer answer = wrapper.execute(netRules, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertTrue(answer.getResult());
     }
@@ -1082,12 +1082,12 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
-        when(citrixResourceBase.callHostPlugin(conn, "vmops", "default_network_rules_systemvm", "vmName", netRules.getVmName())).thenReturn("true");
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.callHostPlugin(conn, "vmops", "default_network_rules_systemvm", "vmName", netRules.getVmName())).thenReturn("true");
 
-        final Answer answer = wrapper.execute(netRules, citrixResourceBase);
+        final Answer answer = wrapper.execute(netRules, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertTrue(answer.getResult());
     }
@@ -1101,12 +1101,12 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
-        when(citrixResourceBase.callHostPlugin(conn, "vmops", "default_network_rules_systemvm", "vmName", netRules.getVmName())).thenReturn("false");
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.callHostPlugin(conn, "vmops", "default_network_rules_systemvm", "vmName", netRules.getVmName())).thenReturn("false");
 
-        final Answer answer = wrapper.execute(netRules, citrixResourceBase);
+        final Answer answer = wrapper.execute(netRules, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -1122,12 +1122,12 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
         try {
-            when(citrixResourceBase.findOrCreateTunnelNetwork(conn, createTunnel.getNetworkName())).thenReturn(network);
+            when(xenServerResourceBase.findOrCreateTunnelNetwork(conn, createTunnel.getNetworkName())).thenReturn(network);
             when(network.getBridge(conn)).thenReturn(bridge);
 
-            when(citrixResourceBase.callHostPlugin(conn, "ovstunnel", "create_tunnel", "bridge", bridge, "remote_ip", createTunnel.getRemoteIp(),
+            when(xenServerResourceBase.callHostPlugin(conn, "ovstunnel", "create_tunnel", "bridge", bridge, "remote_ip", createTunnel.getRemoteIp(),
                             "key", createTunnel.getKey().toString(), "from",
                             createTunnel.getFrom().toString(), "to", createTunnel.getTo().toString(), "cloudstack-network-id",
                             createTunnel.getNetworkUuid())).thenReturn("SUCCESS:0");
@@ -1140,10 +1140,10 @@ public class CitrixRequestWrapperTest {
             fail(e.getMessage());
         }
 
-        final Answer answer = wrapper.execute(createTunnel, citrixResourceBase);
+        final Answer answer = wrapper.execute(createTunnel, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
-        verify(citrixResourceBase, times(1)).configureTunnelNetwork(conn, createTunnel.getNetworkId(), createTunnel.getFrom(), createTunnel.getNetworkName());
+        verify(xenServerResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).configureTunnelNetwork(conn, createTunnel.getNetworkId(), createTunnel.getFrom(), createTunnel.getNetworkName());
 
         assertTrue(answer.getResult());
     }
@@ -1159,12 +1159,12 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
         try {
-            when(citrixResourceBase.findOrCreateTunnelNetwork(conn, createTunnel.getNetworkName())).thenReturn(network);
+            when(xenServerResourceBase.findOrCreateTunnelNetwork(conn, createTunnel.getNetworkName())).thenReturn(network);
             when(network.getBridge(conn)).thenReturn(bridge);
 
-            when(citrixResourceBase.callHostPlugin(conn, "ovstunnel", "create_tunnel", "bridge", bridge, "remote_ip", createTunnel.getRemoteIp(),
+            when(xenServerResourceBase.callHostPlugin(conn, "ovstunnel", "create_tunnel", "bridge", bridge, "remote_ip", createTunnel.getRemoteIp(),
                             "key", createTunnel.getKey().toString(), "from",
                             createTunnel.getFrom().toString(), "to", createTunnel.getTo().toString(), "cloudstack-network-id",
                             createTunnel.getNetworkUuid())).thenReturn("FAIL:1");
@@ -1177,10 +1177,10 @@ public class CitrixRequestWrapperTest {
             fail(e.getMessage());
         }
 
-        final Answer answer = wrapper.execute(createTunnel, citrixResourceBase);
+        final Answer answer = wrapper.execute(createTunnel, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
-        verify(citrixResourceBase, times(1)).configureTunnelNetwork(conn, createTunnel.getNetworkId(), createTunnel.getFrom(), createTunnel.getNetworkName());
+        verify(xenServerResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).configureTunnelNetwork(conn, createTunnel.getNetworkId(), createTunnel.getFrom(), createTunnel.getNetworkName());
 
         assertFalse(answer.getResult());
     }
@@ -1194,12 +1194,12 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
-        when(citrixResourceBase.findOrCreateTunnelNetwork(conn, createTunnel.getNetworkName())).thenReturn(null);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.findOrCreateTunnelNetwork(conn, createTunnel.getNetworkName())).thenReturn(null);
 
-        final Answer answer = wrapper.execute(createTunnel, citrixResourceBase);
+        final Answer answer = wrapper.execute(createTunnel, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -1213,13 +1213,13 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
 
-        final Answer answer = wrapper.execute(setupBridge, citrixResourceBase);
+        final Answer answer = wrapper.execute(setupBridge, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
-        verify(citrixResourceBase, times(1)).findOrCreateTunnelNetwork(conn, setupBridge.getBridgeName());
-        verify(citrixResourceBase, times(1)).configureTunnelNetwork(conn, setupBridge.getNetworkId(), setupBridge.getHostId(), setupBridge.getBridgeName());
+        verify(xenServerResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).findOrCreateTunnelNetwork(conn, setupBridge.getBridgeName());
+        verify(xenServerResourceBase, times(1)).configureTunnelNetwork(conn, setupBridge.getNetworkId(), setupBridge.getHostId(), setupBridge.getBridgeName());
 
         assertTrue(answer.getResult());
     }
@@ -1234,20 +1234,20 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
-        when(citrixResourceBase.findOrCreateTunnelNetwork(conn, destroyBridge.getBridgeName())).thenReturn(network);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.findOrCreateTunnelNetwork(conn, destroyBridge.getBridgeName())).thenReturn(network);
 
-        final Answer answer = wrapper.execute(destroyBridge, citrixResourceBase);
+        final Answer answer = wrapper.execute(destroyBridge, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
         try {
-            verify(citrixResourceBase, times(1)).cleanUpTmpDomVif(conn, network);
+            verify(xenServerResourceBase, times(1)).cleanUpTmpDomVif(conn, network);
         } catch (final XenAPIException e) {
             fail(e.getMessage());
         } catch (final XmlRpcException e) {
             fail(e.getMessage());
         }
-        verify(citrixResourceBase, times(1)).destroyTunnelNetwork(conn, network, destroyBridge.getHostId());
+        verify(xenServerResourceBase, times(1)).destroyTunnelNetwork(conn, network, destroyBridge.getHostId());
 
         assertTrue(answer.getResult());
     }
@@ -1263,12 +1263,12 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
         try {
-            when(citrixResourceBase.findOrCreateTunnelNetwork(conn, destroyTunnel.getBridgeName())).thenReturn(network);
+            when(xenServerResourceBase.findOrCreateTunnelNetwork(conn, destroyTunnel.getBridgeName())).thenReturn(network);
             when(network.getBridge(conn)).thenReturn(bridge);
 
-            when(citrixResourceBase.callHostPlugin(conn, "ovstunnel", "destroy_tunnel", "bridge", bridge, "in_port", destroyTunnel.getInPortName())).thenReturn("SUCCESS");
+            when(xenServerResourceBase.callHostPlugin(conn, "ovstunnel", "destroy_tunnel", "bridge", bridge, "in_port", destroyTunnel.getInPortName())).thenReturn("SUCCESS");
 
         } catch (final BadServerResponse e) {
             fail(e.getMessage());
@@ -1278,9 +1278,9 @@ public class CitrixRequestWrapperTest {
             fail(e.getMessage());
         }
 
-        final Answer answer = wrapper.execute(destroyTunnel, citrixResourceBase);
+        final Answer answer = wrapper.execute(destroyTunnel, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertTrue(answer.getResult());
     }
@@ -1296,12 +1296,12 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
         try {
-            when(citrixResourceBase.findOrCreateTunnelNetwork(conn, destroyTunnel.getBridgeName())).thenReturn(network);
+            when(xenServerResourceBase.findOrCreateTunnelNetwork(conn, destroyTunnel.getBridgeName())).thenReturn(network);
             when(network.getBridge(conn)).thenReturn(bridge);
 
-            when(citrixResourceBase.callHostPlugin(conn, "ovstunnel", "destroy_tunnel", "bridge", bridge, "in_port", destroyTunnel.getInPortName())).thenReturn("FAILED");
+            when(xenServerResourceBase.callHostPlugin(conn, "ovstunnel", "destroy_tunnel", "bridge", bridge, "in_port", destroyTunnel.getInPortName())).thenReturn("FAILED");
 
         } catch (final BadServerResponse e) {
             fail(e.getMessage());
@@ -1311,9 +1311,9 @@ public class CitrixRequestWrapperTest {
             fail(e.getMessage());
         }
 
-        final Answer answer = wrapper.execute(destroyTunnel, citrixResourceBase);
+        final Answer answer = wrapper.execute(destroyTunnel, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -1326,17 +1326,17 @@ public class CitrixRequestWrapperTest {
 
         final UpdateHostPasswordCommand updatePwd = new UpdateHostPasswordCommand("test", "123", "127.0.0.1");
 
-        when(citrixResourceBase.getPwdFromQueue()).thenReturn("password");
+        when(xenServerResourceBase.getPwdFromQueue()).thenReturn("password");
 
         final String hostIp = updatePwd.getHostIp();
         final String username = updatePwd.getUsername();
-        final String hostPasswd = citrixResourceBase.getPwdFromQueue();
+        final String hostPasswd = xenServerResourceBase.getPwdFromQueue();
         final String newPassword = updatePwd.getNewPassword();
 
         final StringBuilder cmdLine = new StringBuilder();
         cmdLine.append(XenServerUtilitiesHelper.SCRIPT_CMD_PATH).append(VRScripts.UPDATE_HOST_PASSWD).append(' ').append(username).append(' ').append(newPassword);
 
-        when(citrixResourceBase.getXenServerUtilitiesHelper()).thenReturn(xenServerUtilitiesHelper);
+        when(xenServerResourceBase.getXenServerUtilitiesHelper()).thenReturn(xenServerUtilitiesHelper);
         when(xenServerUtilitiesHelper.buildCommandLine(XenServerUtilitiesHelper.SCRIPT_CMD_PATH, VRScripts.UPDATE_HOST_PASSWD, username, newPassword)).thenReturn(
                         cmdLine.toString());
 
@@ -1351,10 +1351,10 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(updatePwd, citrixResourceBase);
+        final Answer answer = wrapper.execute(updatePwd, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(2)).getPwdFromQueue();
-        verify(citrixResourceBase, times(1)).getXenServerUtilitiesHelper();
+        verify(xenServerResourceBase, times(2)).getPwdFromQueue();
+        verify(xenServerResourceBase, times(1)).getXenServerUtilitiesHelper();
         verify(xenServerUtilitiesHelper, times(1)).buildCommandLine(XenServerUtilitiesHelper.SCRIPT_CMD_PATH, VRScripts.UPDATE_HOST_PASSWD, username, newPassword);
         try {
             verify(xenServerUtilitiesHelper, times(1)).executeSshWrapper(hostIp, 22, username, null, hostPasswd, cmdLine.toString());
@@ -1375,17 +1375,17 @@ public class CitrixRequestWrapperTest {
 
         final UpdateHostPasswordCommand updatePwd = new UpdateHostPasswordCommand("test", "123", "127.0.0.1");
 
-        when(citrixResourceBase.getPwdFromQueue()).thenReturn("password");
+        when(xenServerResourceBase.getPwdFromQueue()).thenReturn("password");
 
         final String hostIp = updatePwd.getHostIp();
         final String username = updatePwd.getUsername();
-        final String hostPasswd = citrixResourceBase.getPwdFromQueue();
+        final String hostPasswd = xenServerResourceBase.getPwdFromQueue();
         final String newPassword = updatePwd.getNewPassword();
 
         final StringBuilder cmdLine = new StringBuilder();
         cmdLine.append(XenServerUtilitiesHelper.SCRIPT_CMD_PATH).append(VRScripts.UPDATE_HOST_PASSWD).append(' ').append(username).append(' ').append(newPassword);
 
-        when(citrixResourceBase.getXenServerUtilitiesHelper()).thenReturn(xenServerUtilitiesHelper);
+        when(xenServerResourceBase.getXenServerUtilitiesHelper()).thenReturn(xenServerUtilitiesHelper);
         when(xenServerUtilitiesHelper.buildCommandLine(XenServerUtilitiesHelper.SCRIPT_CMD_PATH, VRScripts.UPDATE_HOST_PASSWD, username, newPassword)).thenReturn(
                         cmdLine.toString());
 
@@ -1400,10 +1400,10 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(updatePwd, citrixResourceBase);
+        final Answer answer = wrapper.execute(updatePwd, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(2)).getPwdFromQueue();
-        verify(citrixResourceBase, times(1)).getXenServerUtilitiesHelper();
+        verify(xenServerResourceBase, times(2)).getPwdFromQueue();
+        verify(xenServerResourceBase, times(1)).getXenServerUtilitiesHelper();
         verify(xenServerUtilitiesHelper, times(1)).buildCommandLine(XenServerUtilitiesHelper.SCRIPT_CMD_PATH, VRScripts.UPDATE_HOST_PASSWD, username, newPassword);
         try {
             verify(xenServerUtilitiesHelper, times(1)).executeSshWrapper(hostIp, 22, username, null, hostPasswd, cmdLine.toString());
@@ -1422,17 +1422,17 @@ public class CitrixRequestWrapperTest {
 
         final UpdateHostPasswordCommand updatePwd = new UpdateHostPasswordCommand("test", "123", "127.0.0.1");
 
-        when(citrixResourceBase.getPwdFromQueue()).thenReturn("password");
+        when(xenServerResourceBase.getPwdFromQueue()).thenReturn("password");
 
         final String hostIp = updatePwd.getHostIp();
         final String username = updatePwd.getUsername();
-        final String hostPasswd = citrixResourceBase.getPwdFromQueue();
+        final String hostPasswd = xenServerResourceBase.getPwdFromQueue();
         final String newPassword = updatePwd.getNewPassword();
 
         final StringBuilder cmdLine = new StringBuilder();
         cmdLine.append(XenServerUtilitiesHelper.SCRIPT_CMD_PATH).append(VRScripts.UPDATE_HOST_PASSWD).append(' ').append(username).append(' ').append(newPassword);
 
-        when(citrixResourceBase.getXenServerUtilitiesHelper()).thenReturn(xenServerUtilitiesHelper);
+        when(xenServerResourceBase.getXenServerUtilitiesHelper()).thenReturn(xenServerUtilitiesHelper);
         when(xenServerUtilitiesHelper.buildCommandLine(XenServerUtilitiesHelper.SCRIPT_CMD_PATH, VRScripts.UPDATE_HOST_PASSWD, username, newPassword)).thenReturn(
                         cmdLine.toString());
 
@@ -1445,10 +1445,10 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(updatePwd, citrixResourceBase);
+        final Answer answer = wrapper.execute(updatePwd, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(2)).getPwdFromQueue();
-        verify(citrixResourceBase, times(1)).getXenServerUtilitiesHelper();
+        verify(xenServerResourceBase, times(2)).getPwdFromQueue();
+        verify(xenServerResourceBase, times(1)).getXenServerUtilitiesHelper();
         verify(xenServerUtilitiesHelper, times(1)).buildCommandLine(XenServerUtilitiesHelper.SCRIPT_CMD_PATH, VRScripts.UPDATE_HOST_PASSWD, username, newPassword);
         try {
             verify(xenServerUtilitiesHelper, times(1)).executeSshWrapper(hostIp, 22, username, null, hostPasswd, cmdLine.toString());
@@ -1476,10 +1476,10 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
         try {
-            when(citrixResourceBase.getHost()).thenReturn(xsHost);
-            when(citrixResourceBase.getHost().getUuid()).thenReturn(uuid);
+            when(xenServerResourceBase.getHost()).thenReturn(xsHost);
+            when(xenServerResourceBase.getHost().getUuid()).thenReturn(uuid);
 
             PowerMockito.mockStatic(Pool.Record.class);
 
@@ -1496,9 +1496,9 @@ public class CitrixRequestWrapperTest {
             fail(e.getMessage());
         }
 
-        final Answer answer = wrapper.execute(vmDataSync, citrixResourceBase);
+        final Answer answer = wrapper.execute(vmDataSync, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertTrue(answer.getResult());
     }
@@ -1512,7 +1512,7 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(checkNet, citrixResourceBase);
+        final Answer answer = wrapper.execute(checkNet, xenServerResourceBase);
 
         assertTrue(answer.getResult());
     }
@@ -1529,7 +1529,7 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(checkNet, citrixResourceBase);
+        final Answer answer = wrapper.execute(checkNet, xenServerResourceBase);
 
         assertFalse(answer.getResult());
     }
@@ -1544,11 +1544,11 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
 
-        final Answer answer = wrapper.execute(plugNic, citrixResourceBase);
+        final Answer answer = wrapper.execute(plugNic, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -1563,11 +1563,11 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
 
-        final Answer answer = wrapper.execute(unplugNic, citrixResourceBase);
+        final Answer answer = wrapper.execute(unplugNic, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -1584,11 +1584,11 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
 
-        final Answer answer = wrapper.execute(vmSnapshot, citrixResourceBase);
+        final Answer answer = wrapper.execute(vmSnapshot, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertTrue(answer.getResult());
     }
@@ -1605,11 +1605,11 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
 
-        final Answer answer = wrapper.execute(vmSnapshot, citrixResourceBase);
+        final Answer answer = wrapper.execute(vmSnapshot, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertTrue(answer.getResult());
     }
@@ -1626,11 +1626,11 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
 
-        final Answer answer = wrapper.execute(vmSnapshot, citrixResourceBase);
+        final Answer answer = wrapper.execute(vmSnapshot, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -1644,13 +1644,13 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
-        when(citrixResourceBase.callHostPlugin(conn, "vmops", "network_rules_vmSecondaryIp", "vmName", rulesVm.getVmName(), "vmMac", rulesVm.getVmMac(),
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.callHostPlugin(conn, "vmops", "network_rules_vmSecondaryIp", "vmName", rulesVm.getVmName(), "vmMac", rulesVm.getVmMac(),
                         "vmSecIp", rulesVm.getVmSecIp(), "action", rulesVm.getAction())).thenReturn("true");
 
-        final Answer answer = wrapper.execute(rulesVm, citrixResourceBase);
+        final Answer answer = wrapper.execute(rulesVm, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertTrue(answer.getResult());
     }
@@ -1664,13 +1664,13 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
-        when(citrixResourceBase.callHostPlugin(conn, "vmops", "network_rules_vmSecondaryIp", "vmName", rulesVm.getVmName(), "vmMac", rulesVm.getVmMac(),
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.callHostPlugin(conn, "vmops", "network_rules_vmSecondaryIp", "vmName", rulesVm.getVmName(), "vmMac", rulesVm.getVmMac(),
                         "vmSecIp", rulesVm.getVmSecIp(), "action", rulesVm.getAction())).thenReturn("false");
 
-        final Answer answer = wrapper.execute(rulesVm, citrixResourceBase);
+        final Answer answer = wrapper.execute(rulesVm, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -1689,21 +1689,21 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
-        when(citrixResourceBase.getHost()).thenReturn(xsHost);
-        when(citrixResourceBase.getHost().getUuid()).thenReturn(uuid);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getHost().getUuid()).thenReturn(uuid);
 
         try {
-            when(citrixResourceBase.isDmcEnabled(conn, host)).thenReturn(true);
+            when(xenServerResourceBase.isDmcEnabled(conn, host)).thenReturn(true);
         } catch (final XenAPIException e) {
             fail(e.getMessage());
         } catch (final XmlRpcException e) {
             fail(e.getMessage());
         }
 
-        final Answer answer = wrapper.execute(scaleVm, citrixResourceBase);
+        final Answer answer = wrapper.execute(scaleVm, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -1728,9 +1728,9 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
         try {
-            when(citrixResourceBase.getNativeNetworkForTraffic(conn, TrafficType.Guest, "tag")).thenReturn(network);
+            when(xenServerResourceBase.getNativeNetworkForTraffic(conn, TrafficType.Guest, "tag")).thenReturn(network);
             when(network.getNetwork()).thenReturn(network2);
             when(network2.getNameLabel(conn)).thenReturn(label);
         } catch (final XenAPIException e) {
@@ -1739,12 +1739,12 @@ public class CitrixRequestWrapperTest {
             fail(e.getMessage());
         }
 
-        when(citrixResourceBase.callHostPlugin(conn, "ovs-pvlan", "setup-pvlan-dhcp", "op", op, "nw-label", label, "primary-pvlan", primaryPvlan, "isolated-pvlan",
+        when(xenServerResourceBase.callHostPlugin(conn, "ovs-pvlan", "setup-pvlan-dhcp", "op", op, "nw-label", label, "primary-pvlan", primaryPvlan, "isolated-pvlan",
                         isolatedPvlan, "dhcp-name", dhcpName, "dhcp-ip", dhcpIp, "dhcp-mac", dhcpMac)).thenReturn("true");
 
-        final Answer answer = wrapper.execute(lanSetup, citrixResourceBase);
+        final Answer answer = wrapper.execute(lanSetup, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertTrue(answer.getResult());
     }
@@ -1769,9 +1769,9 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
         try {
-            when(citrixResourceBase.getNativeNetworkForTraffic(conn, TrafficType.Guest, "tag")).thenReturn(network);
+            when(xenServerResourceBase.getNativeNetworkForTraffic(conn, TrafficType.Guest, "tag")).thenReturn(network);
             when(network.getNetwork()).thenReturn(network2);
             when(network2.getNameLabel(conn)).thenReturn(label);
         } catch (final XenAPIException e) {
@@ -1780,12 +1780,12 @@ public class CitrixRequestWrapperTest {
             fail(e.getMessage());
         }
 
-        when(citrixResourceBase.callHostPlugin(conn, "ovs-pvlan", "setup-pvlan-dhcp", "op", op, "nw-label", label, "primary-pvlan", primaryPvlan, "isolated-pvlan",
+        when(xenServerResourceBase.callHostPlugin(conn, "ovs-pvlan", "setup-pvlan-dhcp", "op", op, "nw-label", label, "primary-pvlan", primaryPvlan, "isolated-pvlan",
                         isolatedPvlan, "dhcp-name", dhcpName, "dhcp-ip", dhcpIp, "dhcp-mac", dhcpMac)).thenReturn("false");
 
-        final Answer answer = wrapper.execute(lanSetup, citrixResourceBase);
+        final Answer answer = wrapper.execute(lanSetup, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -1808,9 +1808,9 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
         try {
-            when(citrixResourceBase.getNativeNetworkForTraffic(conn, TrafficType.Guest, "tag")).thenReturn(network);
+            when(xenServerResourceBase.getNativeNetworkForTraffic(conn, TrafficType.Guest, "tag")).thenReturn(network);
             when(network.getNetwork()).thenReturn(network2);
             when(network2.getNameLabel(conn)).thenReturn(label);
         } catch (final XenAPIException e) {
@@ -1819,12 +1819,12 @@ public class CitrixRequestWrapperTest {
             fail(e.getMessage());
         }
 
-        when(citrixResourceBase.callHostPlugin(conn, "ovs-pvlan", "setup-pvlan-vm", "op", op, "nw-label", label, "primary-pvlan", primaryPvlan, "isolated-pvlan",
+        when(xenServerResourceBase.callHostPlugin(conn, "ovs-pvlan", "setup-pvlan-vm", "op", op, "nw-label", label, "primary-pvlan", primaryPvlan, "isolated-pvlan",
                         isolatedPvlan, "vm-mac", vmMac)).thenReturn("true");
 
-        final Answer answer = wrapper.execute(lanSetup, citrixResourceBase);
+        final Answer answer = wrapper.execute(lanSetup, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertTrue(answer.getResult());
     }
@@ -1847,9 +1847,9 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
         try {
-            when(citrixResourceBase.getNativeNetworkForTraffic(conn, TrafficType.Guest, "tag")).thenReturn(network);
+            when(xenServerResourceBase.getNativeNetworkForTraffic(conn, TrafficType.Guest, "tag")).thenReturn(network);
             when(network.getNetwork()).thenReturn(network2);
             when(network2.getNameLabel(conn)).thenReturn(label);
         } catch (final XenAPIException e) {
@@ -1858,12 +1858,12 @@ public class CitrixRequestWrapperTest {
             fail(e.getMessage());
         }
 
-        when(citrixResourceBase.callHostPlugin(conn, "ovs-pvlan", "setup-pvlan-vm", "op", op, "nw-label", label, "primary-pvlan", primaryPvlan, "isolated-pvlan",
+        when(xenServerResourceBase.callHostPlugin(conn, "ovs-pvlan", "setup-pvlan-vm", "op", op, "nw-label", label, "primary-pvlan", primaryPvlan, "isolated-pvlan",
                         isolatedPvlan, "vm-mac", vmMac)).thenReturn("false");
 
-        final Answer answer = wrapper.execute(lanSetup, citrixResourceBase);
+        final Answer answer = wrapper.execute(lanSetup, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -1877,12 +1877,12 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
-        when(citrixResourceBase.getPerfMon(conn, performanceMonitor.getParams(), performanceMonitor.getWait())).thenReturn("performance");
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getPerfMon(conn, performanceMonitor.getParams(), performanceMonitor.getWait())).thenReturn("performance");
 
-        final Answer answer = wrapper.execute(performanceMonitor, citrixResourceBase);
+        final Answer answer = wrapper.execute(performanceMonitor, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertTrue(answer.getResult());
     }
@@ -1896,12 +1896,12 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
-        when(citrixResourceBase.getPerfMon(conn, performanceMonitor.getParams(), performanceMonitor.getWait())).thenReturn(null);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getPerfMon(conn, performanceMonitor.getParams(), performanceMonitor.getWait())).thenReturn(null);
 
-        final Answer answer = wrapper.execute(performanceMonitor, citrixResourceBase);
+        final Answer answer = wrapper.execute(performanceMonitor, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertFalse(answer.getResult());
     }
@@ -1916,9 +1916,9 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getVirtualRoutingResource()).thenReturn(routingResource);
+        when(xenServerResourceBase.getVirtualRoutingResource()).thenReturn(routingResource);
 
-        final Answer answer = wrapper.execute(ipAssociation, citrixResourceBase);
+        final Answer answer = wrapper.execute(ipAssociation, xenServerResourceBase);
 
         verify(routingResource, times(1)).executeRequest(ipAssociation);
 
@@ -1936,9 +1936,9 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getVirtualRoutingResource()).thenReturn(routingResource);
+        when(xenServerResourceBase.getVirtualRoutingResource()).thenReturn(routingResource);
 
-        final Answer answer = wrapper.execute(ipAssociation, citrixResourceBase);
+        final Answer answer = wrapper.execute(ipAssociation, xenServerResourceBase);
 
         verify(routingResource, times(1)).executeRequest(ipAssociation);
 
@@ -1953,14 +1953,14 @@ public class CitrixRequestWrapperTest {
         final AttachCommand command = new AttachCommand(disk, vmName);
 
         final StorageSubsystemCommandHandler handler = Mockito.mock(StorageSubsystemCommandHandler.class);
-        when(citrixResourceBase.getStorageHandler()).thenReturn(handler);
+        when(xenServerResourceBase.getStorageHandler()).thenReturn(handler);
 
         when(handler.handleStorageCommands(command)).thenReturn(new AttachAnswer(disk));
 
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        final Answer answer = wrapper.execute(command, citrixResourceBase);
+        final Answer answer = wrapper.execute(command, xenServerResourceBase);
         assertTrue(answer.getResult());
     }
 
@@ -1981,14 +1981,14 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(citrixResourceBase.getConnection()).thenReturn(conn);
-        when(citrixResourceBase.getVM(conn, getVmIpAddrCmd.getVmName())).thenReturn(vm);
+        when(xenServerResourceBase.getConnection()).thenReturn(conn);
+        when(xenServerResourceBase.getVM(conn, getVmIpAddrCmd.getVmName())).thenReturn(vm);
         when(vm.getGuestMetrics(conn)).thenReturn(mtr);
         when(mtr.getRecord(conn)).thenReturn(rec);
 
-        final Answer answer = wrapper.execute(getVmIpAddrCmd, citrixResourceBase);
+        final Answer answer = wrapper.execute(getVmIpAddrCmd, xenServerResourceBase);
 
-        verify(citrixResourceBase, times(1)).getConnection();
+        verify(xenServerResourceBase, times(1)).getConnection();
 
         assertTrue(answer.getResult());
     }

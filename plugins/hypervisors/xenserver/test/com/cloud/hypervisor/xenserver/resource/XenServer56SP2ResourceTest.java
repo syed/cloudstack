@@ -26,16 +26,16 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import com.cloud.utils.exception.CloudRuntimeException;
 import com.cloud.utils.script.Script;
 @RunWith(PowerMockRunner.class)
-public class XenServer56SP2ResourceTest extends CitrixResourceBaseTest{
+public class XenServer56SP2ResourceTest extends XenServerResourceBaseTest {
 
     @Before
     public void beforeTest() {
-        super.citrixResourceBase = new XenServer56SP2Resource();
+        super.xenServerResourceBase = new XenServer56SP2Resource();
     }
 
     @Test
     public void testPatchFilePath() {
-        String patchFilePath = citrixResourceBase.getPatchFilePath();
+        String patchFilePath = xenServerResourceBase.getPatchFilePath();
         String patch = "scripts/vm/hypervisor/xenserver/xenserver56fp1/patch";
 
         Assert.assertEquals(patch, patchFilePath);

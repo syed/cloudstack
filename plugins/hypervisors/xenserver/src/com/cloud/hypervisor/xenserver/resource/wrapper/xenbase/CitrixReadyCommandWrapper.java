@@ -21,13 +21,13 @@ package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
 import java.util.Set;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 import org.apache.xmlrpc.XmlRpcException;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.ReadyAnswer;
 import com.cloud.agent.api.ReadyCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
@@ -36,31 +36,31 @@ import com.xensource.xenapi.Types.XenAPIException;
 import com.xensource.xenapi.VM;
 
 @ResourceWrapper(handles =  ReadyCommand.class)
-public final class CitrixReadyCommandWrapper extends CommandWrapper<ReadyCommand, Answer, CitrixResourceBase> {
+public final class CitrixReadyCommandWrapper extends CommandWrapper<ReadyCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixReadyCommandWrapper.class);
 
     @Override
-    public Answer execute(final ReadyCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final ReadyCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         final Long dcId = command.getDataCenterId();
         // Ignore the result of the callHostPlugin. Even if unmounting the
         // snapshots dir fails, let Ready command
         // succeed.
-        citrixResourceBase.umountSnapshotDir(conn, dcId);
+        xenServerResourceBase.umountSnapshotDir(conn, dcId);
 
-        citrixResourceBase.setupLinkLocalNetwork(conn);
+        xenServerResourceBase.setupLinkLocalNetwork(conn);
         // try to destroy CD-ROM device for all system VMs on this host
         try {
-            final Host host = Host.getByUuid(conn, citrixResourceBase.getHost().getUuid());
+            final Host host = Host.getByUuid(conn, xenServerResourceBase.getHost().getUuid());
             final Set<VM> vms = host.getResidentVMs(conn);
             for (final VM vm : vms) {
-                citrixResourceBase.destroyPatchVbd(conn, vm.getNameLabel(conn));
+                xenServerResourceBase.destroyPatchVbd(conn, vm.getNameLabel(conn));
             }
         } catch (final Exception e) {
         }
         try {
-            final boolean result = citrixResourceBase.cleanupHaltedVms(conn);
+            final boolean result = xenServerResourceBase.cleanupHaltedVms(conn);
             if (!result) {
                 return new ReadyAnswer(command, "Unable to cleanup halted vms");
             }
