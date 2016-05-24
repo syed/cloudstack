@@ -24,22 +24,22 @@ import org.apache.log4j.Logger;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.CheckVirtualMachineAnswer;
 import com.cloud.agent.api.CheckVirtualMachineCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.vm.VirtualMachine.PowerState;
 import com.xensource.xenapi.Connection;
 
 @ResourceWrapper(handles =  CheckVirtualMachineCommand.class)
-public final class CitrixCheckVirtualMachineCommandWrapper extends CommandWrapper<CheckVirtualMachineCommand, Answer, CitrixResourceBase> {
+public final class CitrixCheckVirtualMachineCommandWrapper extends CommandWrapper<CheckVirtualMachineCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixCheckVirtualMachineCommandWrapper.class);
 
     @Override
-    public Answer execute(final CheckVirtualMachineCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final CheckVirtualMachineCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         final String vmName = command.getVmName();
-        final PowerState powerState = citrixResourceBase.getVmState(conn, vmName);
+        final PowerState powerState = xenServerResourceBase.getVmState(conn, vmName);
         final Integer vncPort = null;
         if (powerState == PowerState.PowerOn) {
             s_logger.debug("3. The VM " + vmName + " is in Running state");

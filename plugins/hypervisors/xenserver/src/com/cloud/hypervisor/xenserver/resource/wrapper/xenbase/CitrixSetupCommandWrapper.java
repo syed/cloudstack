@@ -22,13 +22,13 @@ package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 import java.util.Map;
 import java.util.Set;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 import org.apache.xmlrpc.XmlRpcException;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.SetupAnswer;
 import com.cloud.agent.api.SetupCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.utils.Pair;
@@ -43,46 +43,46 @@ import com.xensource.xenapi.Types;
 import com.xensource.xenapi.Types.XenAPIException;
 
 @ResourceWrapper(handles =  SetupCommand.class)
-public final class CitrixSetupCommandWrapper extends CommandWrapper<SetupCommand, Answer, CitrixResourceBase> {
+public final class CitrixSetupCommandWrapper extends CommandWrapper<SetupCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixSetupCommandWrapper.class);
 
     @Override
-    public Answer execute(final SetupCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final SetupCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         try {
             final Map<Pool, Pool.Record> poolRecs = Pool.getAllRecords(conn);
             if (poolRecs.size() != 1) {
-                throw new CloudRuntimeException("There are " + poolRecs.size() + " pool for host :" + citrixResourceBase.getHost().getUuid());
+                throw new CloudRuntimeException("There are " + poolRecs.size() + " pool for host :" + xenServerResourceBase.getHost().getUuid());
             }
             final Host master = poolRecs.values().iterator().next().master;
-            citrixResourceBase.setupServer(conn, master);
-            final Host host = Host.getByUuid(conn, citrixResourceBase.getHost().getUuid());
-            citrixResourceBase.setupServer(conn, host);
+            xenServerResourceBase.setupServer(conn, master);
+            final Host host = Host.getByUuid(conn, xenServerResourceBase.getHost().getUuid());
+            xenServerResourceBase.setupServer(conn, host);
 
-            if (!citrixResourceBase.setIptables(conn)) {
+            if (!xenServerResourceBase.setIptables(conn)) {
                 s_logger.warn("set xenserver Iptable failed");
                 return null;
             }
 
-            if (citrixResourceBase.isSecurityGroupEnabled()) {
-                final boolean canBridgeFirewall = citrixResourceBase.canBridgeFirewall(conn);
-                citrixResourceBase.setCanBridgeFirewall(canBridgeFirewall);
+            if (xenServerResourceBase.isSecurityGroupEnabled()) {
+                final boolean canBridgeFirewall = xenServerResourceBase.canBridgeFirewall(conn);
+                xenServerResourceBase.setCanBridgeFirewall(canBridgeFirewall);
                 if (!canBridgeFirewall) {
                     final String msg = "Failed to configure brige firewall";
                     s_logger.warn(msg);
-                    s_logger.warn("Check host " + citrixResourceBase.getHost().getIp() +" for CSP is installed or not and check network mode for bridge");
+                    s_logger.warn("Check host " + xenServerResourceBase.getHost().getIp() +" for CSP is installed or not and check network mode for bridge");
                     return new SetupAnswer(command, msg);
                 }
 
             }
 
 
-            final boolean r = citrixResourceBase.launchHeartBeat(conn);
+            final boolean r = xenServerResourceBase.launchHeartBeat(conn);
             if (!r) {
                 return null;
             }
-            citrixResourceBase.cleanupTemplateSR(conn);
+            xenServerResourceBase.cleanupTemplateSR(conn);
             try {
                 if (command.useMultipath()) {
                     // the config value is set to true
@@ -95,7 +95,7 @@ public final class CitrixSetupCommandWrapper extends CommandWrapper<SetupCommand
             }
 
             if (command.needSetup() ) {
-                final String result = citrixResourceBase.callHostPlugin(conn, "vmops", "setup_iscsi", "uuid", citrixResourceBase.getHost().getUuid());
+                final String result = xenServerResourceBase.callHostPlugin(conn, "vmops", "setup_iscsi", "uuid", xenServerResourceBase.getHost().getUuid());
 
                 if (!result.contains("> DONE <")) {
                     s_logger.warn("Unable to setup iscsi: " + result);
@@ -109,7 +109,7 @@ public final class CitrixSetupCommandWrapper extends CommandWrapper<SetupCommand
                     if (rec.management) {
                         if (rec.VLAN != null && rec.VLAN != -1) {
                             final String msg =
-                                    new StringBuilder("Unsupported configuration.  Management network is on a VLAN.  host=").append(citrixResourceBase.getHost().getUuid())
+                                    new StringBuilder("Unsupported configuration.  Management network is on a VLAN.  host=").append(xenServerResourceBase.getHost().getUuid())
                                     .append("; pif=")
                                     .append(rec.uuid)
                                     .append("; vlan=")
@@ -127,14 +127,14 @@ public final class CitrixSetupCommandWrapper extends CommandWrapper<SetupCommand
                 }
 
                 if (mgmtPif == null) {
-                    final String msg = "Unable to find management network for " + citrixResourceBase.getHost().getUuid();
+                    final String msg = "Unable to find management network for " + xenServerResourceBase.getHost().getUuid();
                     s_logger.warn(msg);
                     return new SetupAnswer(command, msg);
                 }
 
                 final Map<Network, Network.Record> networks = Network.getAllRecords(conn);
                 if(networks == null) {
-                    final String msg = "Unable to setup as there are no networks in the host: " +  citrixResourceBase.getHost().getUuid();
+                    final String msg = "Unable to setup as there are no networks in the host: " +  xenServerResourceBase.getHost().getUuid();
                     s_logger.warn(msg);
                     return new SetupAnswer(command, msg);
                 }
@@ -142,9 +142,9 @@ public final class CitrixSetupCommandWrapper extends CommandWrapper<SetupCommand
                     if (network.nameLabel.equals("cloud-private")) {
                         for (final PIF pif : network.PIFs) {
                             final PIF.Record pr = pif.getRecord(conn);
-                            if (citrixResourceBase.getHost().getUuid().equals(pr.host.getUuid(conn))) {
+                            if (xenServerResourceBase.getHost().getUuid().equals(pr.host.getUuid(conn))) {
                                 if (s_logger.isDebugEnabled()) {
-                                    s_logger.debug("Found a network called cloud-private. host=" + citrixResourceBase.getHost().getUuid() + ";  Network=" + network.uuid + "; pif=" + pr.uuid);
+                                    s_logger.debug("Found a network called cloud-private. host=" + xenServerResourceBase.getHost().getUuid() + ";  Network=" + network.uuid + "; pif=" + pr.uuid);
                                 }
                                 if (pr.VLAN != null && pr.VLAN != -1) {
                                     final String msg =
@@ -170,10 +170,10 @@ public final class CitrixSetupCommandWrapper extends CommandWrapper<SetupCommand
                                     for (final PIF slave : slaves) {
                                         final PIF.Record spr = slave.getRecord(conn);
                                         if (spr.management) {
-                                            if (!citrixResourceBase.transferManagementNetwork(conn, host, slave, spr, pif)) {
+                                            if (!xenServerResourceBase.transferManagementNetwork(conn, host, slave, spr, pif)) {
                                                 final String msg =
                                                         new StringBuilder("Unable to transfer management network.  slave=" + spr.uuid + "; master=" + pr.uuid + "; host=" +
-                                                                citrixResourceBase.getHost().getUuid()).toString();
+                                                                xenServerResourceBase.getHost().getUuid()).toString();
                                                 s_logger.warn(msg);
                                                 return new SetupAnswer(command, msg);
                                             }

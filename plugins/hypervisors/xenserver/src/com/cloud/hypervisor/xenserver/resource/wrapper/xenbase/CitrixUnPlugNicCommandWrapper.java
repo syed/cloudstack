@@ -27,7 +27,7 @@ import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.UnPlugNicAnswer;
 import com.cloud.agent.api.UnPlugNicCommand;
 import com.cloud.agent.api.to.NicTO;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
@@ -36,13 +36,13 @@ import com.xensource.xenapi.VIF;
 import com.xensource.xenapi.VM;
 
 @ResourceWrapper(handles =  UnPlugNicCommand.class)
-public final class CitrixUnPlugNicCommandWrapper extends CommandWrapper<UnPlugNicCommand, Answer, CitrixResourceBase> {
+public final class CitrixUnPlugNicCommandWrapper extends CommandWrapper<UnPlugNicCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixUnPlugNicCommandWrapper.class);
 
     @Override
-    public Answer execute(final UnPlugNicCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final UnPlugNicCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         final String vmName = command.getVmName();
         try {
             final Set<VM> vms = VM.getByNameLabel(conn, vmName);
@@ -52,14 +52,14 @@ public final class CitrixUnPlugNicCommandWrapper extends CommandWrapper<UnPlugNi
             final VM vm = vms.iterator().next();
             final NicTO nic = command.getNic();
             final String mac = nic.getMac();
-            final VIF vif = citrixResourceBase.getVifByMac(conn, vm, mac);
+            final VIF vif = xenServerResourceBase.getVifByMac(conn, vm, mac);
             if (vif != null) {
                 vif.unplug(conn);
                 final Network network = vif.getNetwork(conn);
                 vif.destroy(conn);
                 try {
                     if (network.getNameLabel(conn).startsWith("VLAN")) {
-                        citrixResourceBase.disableVlanNetwork(conn, network);
+                        xenServerResourceBase.disableVlanNetwork(conn, network);
                     }
                 } catch (final Exception e) {
                 }

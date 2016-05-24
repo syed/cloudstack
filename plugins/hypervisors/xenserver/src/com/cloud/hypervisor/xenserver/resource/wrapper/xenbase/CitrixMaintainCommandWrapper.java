@@ -21,13 +21,13 @@ package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
 import java.util.Iterator;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 import org.apache.xmlrpc.XmlRpcException;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.MaintainAnswer;
 import com.cloud.agent.api.MaintainCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.hypervisor.xenserver.resource.XsHost;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
@@ -36,16 +36,16 @@ import com.xensource.xenapi.Host;
 import com.xensource.xenapi.Types.XenAPIException;
 
 @ResourceWrapper(handles =  MaintainCommand.class)
-public final class CitrixMaintainCommandWrapper extends CommandWrapper<MaintainCommand, Answer, CitrixResourceBase> {
+public final class CitrixMaintainCommandWrapper extends CommandWrapper<MaintainCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixMaintainCommandWrapper.class);
 
     @Override
-    public Answer execute(final MaintainCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final MaintainCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         try {
 
-            final XsHost xsHost = citrixResourceBase.getHost();
+            final XsHost xsHost = xenServerResourceBase.getHost();
             final String uuid = xsHost.getUuid();
             final Host host = Host.getByUuid(conn, uuid);
             // remove all tags cloud stack

@@ -26,7 +26,7 @@ import org.apache.log4j.Logger;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.RebootAnswer;
 import com.cloud.agent.api.RebootCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
@@ -34,13 +34,13 @@ import com.xensource.xenapi.Types.XenAPIException;
 import com.xensource.xenapi.VM;
 
 @ResourceWrapper(handles =  RebootCommand.class)
-public final class CitrixRebootCommandWrapper extends CommandWrapper<RebootCommand, Answer, CitrixResourceBase> {
+public final class CitrixRebootCommandWrapper extends CommandWrapper<RebootCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixRebootCommandWrapper.class);
 
     @Override
-    public Answer execute(final RebootCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final RebootCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         s_logger.debug("7. The VM " + command.getVmName() + " is in Starting state");
         try {
             Set<VM> vms = null;
@@ -55,7 +55,7 @@ public final class CitrixRebootCommandWrapper extends CommandWrapper<RebootComma
             }
             for (final VM vm : vms) {
                 try {
-                    citrixResourceBase.rebootVM(conn, vm, vm.getNameLabel(conn));
+                    xenServerResourceBase.rebootVM(conn, vm, vm.getNameLabel(conn));
                 } catch (final Exception e) {
                     final String msg = e.toString();
                     s_logger.warn(msg, e);

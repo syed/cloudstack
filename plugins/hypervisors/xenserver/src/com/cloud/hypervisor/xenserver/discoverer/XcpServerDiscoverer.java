@@ -43,10 +43,10 @@ import com.cloud.host.HostVO;
 import com.cloud.host.Status;
 import com.cloud.hypervisor.Hypervisor;
 import com.cloud.hypervisor.Hypervisor.HypervisorType;
-import com.cloud.hypervisor.xenserver.resource.XenserverHelper;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
-import com.cloud.hypervisor.xenserver.resource.XcpOssResource;
-import com.cloud.hypervisor.xenserver.resource.XcpServerResource;
+import com.cloud.hypervisor.xenserver.resource.XenServerHelper;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.release.XcpOssResource;
+import com.cloud.hypervisor.xenserver.resource.release.XcpServerResource;
 import com.cloud.hypervisor.xenserver.resource.release.XenServer56FP1Resource;
 import com.cloud.hypervisor.xenserver.resource.release.XenServer56Resource;
 import com.cloud.hypervisor.xenserver.resource.release.XenServer56SP2Resource;
@@ -179,7 +179,7 @@ public class XcpServerDiscoverer extends DiscovererBase implements Discoverer, L
     @Override
     public Map<? extends ServerResource, Map<String, String>>
     find(long dcId, Long podId, Long clusterId, URI url, String username, String password, List<String> hostTags) throws DiscoveryException {
-        Map<CitrixResourceBase, Map<String, String>> resources = new HashMap<CitrixResourceBase, Map<String, String>>();
+        Map<XenServerResourceBase, Map<String, String>> resources = new HashMap<XenServerResourceBase, Map<String, String>>();
         Connection conn = null;
         if (!url.getScheme().equals("http")) {
             String msg = "urlString is not http so we're not taking care of the discovery for this: " + url;
@@ -285,7 +285,7 @@ public class XcpServerDiscoverer extends DiscovererBase implements Discoverer, L
                 Host.Record record = entry.getValue();
                 String hostAddr = record.address;
 
-                String prodVersion = XenserverHelper.getProductVersion(record);
+                String prodVersion = XenServerHelper.getProductVersion(record);
                 String xenVersion = record.softwareVersion.get("xen");
                 String hostOS = record.softwareVersion.get("product_brand");
                 if (hostOS == null) {
@@ -300,7 +300,7 @@ public class XcpServerDiscoverer extends DiscovererBase implements Discoverer, L
                     continue;
                 }
 
-                CitrixResourceBase resource = createServerResource(dcId, podId, record, latestHotFix);
+                XenServerResourceBase resource = createServerResource(dcId, podId, record, latestHotFix);
                 s_logger.info("Found host " + record.hostname + " ip=" + record.address + " product version=" + prodVersion);
 
                 Map<String, String> details = new HashMap<String, String>();
@@ -382,7 +382,7 @@ public class XcpServerDiscoverer extends DiscovererBase implements Discoverer, L
         return pools.values().iterator().next().uuid;
     }
 
-    protected void addSamePool(Connection conn, Map<CitrixResourceBase, Map<String, String>> resources) throws XenAPIException, XmlRpcException {
+    protected void addSamePool(Connection conn, Map<XenServerResourceBase, Map<String, String>> resources) throws XenAPIException, XmlRpcException {
         Map<Pool, Pool.Record> hps = Pool.getAllRecords(conn);
         assert (hps.size() == 1) : "How can it be more than one but it's actually " + hps.size();
 
@@ -394,7 +394,7 @@ public class XcpServerDiscoverer extends DiscovererBase implements Discoverer, L
         }
     }
 
-    protected CitrixResourceBase createServerResource(String prodBrand, String prodVersion, String prodVersionTextShort, String hotfix) {
+    protected XenServerResourceBase createServerResource(String prodBrand, String prodVersion, String prodVersionTextShort, String hotfix) {
         // Xen Cloud Platform group of hypervisors
         if (prodBrand.equals("XCP") && (prodVersion.equals("1.0.0") || prodVersion.equals("1.1.0")
               || prodVersion.equals("5.6.100") || prodVersion.startsWith("1.4") || prodVersion.startsWith("1.6"))) {
@@ -436,14 +436,14 @@ public class XcpServerDiscoverer extends DiscovererBase implements Discoverer, L
 
 
 
-    protected CitrixResourceBase createServerResource(long dcId, Long podId, Host.Record record, String hotfix) {
+    protected XenServerResourceBase createServerResource(long dcId, Long podId, Host.Record record, String hotfix) {
         String prodBrand = record.softwareVersion.get("product_brand");
         if (prodBrand == null) {
             prodBrand = record.softwareVersion.get("platform_name").trim();
         } else {
             prodBrand = prodBrand.trim();
         }
-        String prodVersion = XenserverHelper.getProductVersion(record);
+        String prodVersion = XenServerHelper.getProductVersion(record);
 
         String prodVersionTextShort = record.softwareVersion.get("product_version_text_short");
         return createServerResource(prodBrand, prodVersion, prodVersionTextShort, hotfix);

@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 import org.apache.xmlrpc.XmlRpcException;
 
@@ -31,7 +32,6 @@ import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.GetVmStatsAnswer;
 import com.cloud.agent.api.GetVmStatsCommand;
 import com.cloud.agent.api.VmStatsEntry;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
@@ -39,13 +39,13 @@ import com.xensource.xenapi.Types.XenAPIException;
 import com.xensource.xenapi.VM;
 
 @ResourceWrapper(handles =  GetVmStatsCommand.class)
-public final class CitrixGetVmStatsCommandWrapper extends CommandWrapper<GetVmStatsCommand, Answer, CitrixResourceBase> {
+public final class CitrixGetVmStatsCommandWrapper extends CommandWrapper<GetVmStatsCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixGetVmStatsCommandWrapper.class);
 
     @Override
-    public Answer execute(final GetVmStatsCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final GetVmStatsCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         final List<String> vmNames = command.getVmNames();
         final HashMap<String, VmStatsEntry> vmStatsNameMap = new HashMap<String, VmStatsEntry>();
         if (vmNames.size() == 0) {
@@ -57,11 +57,11 @@ public final class CitrixGetVmStatsCommandWrapper extends CommandWrapper<GetVmSt
             final List<String> vmUUIDs = new ArrayList<String>();
 
             for (final String vmName : vmNames) {
-                final VM vm = citrixResourceBase.getVM(conn, vmName);
+                final VM vm = xenServerResourceBase.getVM(conn, vmName);
                 vmUUIDs.add(vm.getUuid(conn));
             }
 
-            final HashMap<String, VmStatsEntry> vmStatsUUIDMap = citrixResourceBase.getVmStats(conn, command, vmUUIDs, command.getHostGuid());
+            final HashMap<String, VmStatsEntry> vmStatsUUIDMap = xenServerResourceBase.getVmStats(conn, command, vmUUIDs, command.getHostGuid());
             if (vmStatsUUIDMap == null) {
                 return new GetVmStatsAnswer(command, vmStatsNameMap);
             }

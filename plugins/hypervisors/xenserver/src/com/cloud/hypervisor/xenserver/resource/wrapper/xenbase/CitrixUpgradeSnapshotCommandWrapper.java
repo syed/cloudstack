@@ -25,18 +25,18 @@ import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.UpgradeSnapshotCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
 
 @ResourceWrapper(handles =  UpgradeSnapshotCommand.class)
-public final class CitrixUpgradeSnapshotCommandWrapper extends CommandWrapper<UpgradeSnapshotCommand, Answer, CitrixResourceBase> {
+public final class CitrixUpgradeSnapshotCommandWrapper extends CommandWrapper<UpgradeSnapshotCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixUpgradeSnapshotCommandWrapper.class);
 
     @Override
-    public Answer execute(final UpgradeSnapshotCommand command, final CitrixResourceBase citrixResourceBase) {
+    public Answer execute(final UpgradeSnapshotCommand command, final XenServerResourceBase xenServerResourceBase) {
         final String secondaryStorageUrl = command.getSecondaryStorageUrl();
         final String backedUpSnapshotUuid = command.getSnapshotUuid();
         final Long volumeId = command.getVolumeId();
@@ -49,12 +49,12 @@ public final class CitrixUpgradeSnapshotCommandWrapper extends CommandWrapper<Up
             return new Answer(command, true, "success");
         }
         try {
-            final Connection conn = citrixResourceBase.getConnection();
+            final Connection conn = xenServerResourceBase.getConnection();
             final URI uri = new URI(secondaryStorageUrl);
             final String secondaryStorageMountPath = uri.getHost() + ":" + uri.getPath();
             final String snapshotPath = secondaryStorageMountPath + "/snapshots/" + accountId + "/" + volumeId + "/" + backedUpSnapshotUuid + ".vhd";
             final String templatePath = secondaryStorageMountPath + "/template/tmpl/" + tmpltAcountId + "/" + templateId;
-            citrixResourceBase.upgradeSnapshot(conn, templatePath, snapshotPath);
+            xenServerResourceBase.upgradeSnapshot(conn, templatePath, snapshotPath);
             return new Answer(command, true, "success");
         } catch (final Exception e) {
             final String details = "upgrading snapshot " + backedUpSnapshotUuid + " failed due to " + e.toString();

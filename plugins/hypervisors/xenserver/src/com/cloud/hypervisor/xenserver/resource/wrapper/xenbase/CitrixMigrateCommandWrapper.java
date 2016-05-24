@@ -21,12 +21,12 @@ package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
 import java.util.Set;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.MigrateAnswer;
 import com.cloud.agent.api.MigrateCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
@@ -36,13 +36,13 @@ import com.xensource.xenapi.VBD;
 import com.xensource.xenapi.VM;
 
 @ResourceWrapper(handles =  MigrateCommand.class)
-public final class CitrixMigrateCommandWrapper extends CommandWrapper<MigrateCommand, Answer, CitrixResourceBase> {
+public final class CitrixMigrateCommandWrapper extends CommandWrapper<MigrateCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixMigrateCommandWrapper.class);
 
     @Override
-    public Answer execute(final MigrateCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final MigrateCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         final String vmName = command.getVmName();
         final String dstHostIpAddr = command.getDestinationIp();
 
@@ -60,7 +60,7 @@ public final class CitrixMigrateCommandWrapper extends CommandWrapper<MigrateCom
                 }
             }
             if (dsthost == null) {
-                final String msg = "Migration failed due to unable to find host " + dstHostIpAddr + " in XenServer pool " + citrixResourceBase.getHost().getPool();
+                final String msg = "Migration failed due to unable to find host " + dstHostIpAddr + " in XenServer pool " + xenServerResourceBase.getHost().getPool();
                 s_logger.warn(msg);
                 return new MigrateAnswer(command, false, msg, null);
             }
@@ -71,7 +71,7 @@ public final class CitrixMigrateCommandWrapper extends CommandWrapper<MigrateCom
                     if (vbdRec.type.equals(Types.VbdType.CD) && !vbdRec.empty) {
                         vbd.eject(conn);
                         // for config drive vbd destroy the vbd.
-                        if (!vbdRec.userdevice.equals(citrixResourceBase._attachIsoDeviceNum)) {
+                        if (!vbdRec.userdevice.equals(xenServerResourceBase._attachIsoDeviceNum)) {
                             if (vbdRec.currentlyAttached) {
                                 vbd.destroy(conn);
                             }
@@ -79,13 +79,13 @@ public final class CitrixMigrateCommandWrapper extends CommandWrapper<MigrateCom
                         continue;
                     }
                 }
-                citrixResourceBase.migrateVM(conn, dsthost, vm, vmName);
+                xenServerResourceBase.migrateVM(conn, dsthost, vm, vmName);
                 vm.setAffinity(conn, dsthost);
             }
 
             // The iso can be attached to vm only once the vm is (present in the host) migrated.
             // Attach the config drive iso device to VM
-            if (!citrixResourceBase.attachConfigDriveToMigratedVm(conn, vmName, dstHostIpAddr)) {
+            if (!xenServerResourceBase.attachConfigDriveToMigratedVm(conn, vmName, dstHostIpAddr)) {
                 s_logger.debug("Config drive ISO attach failed after migration for vm "+vmName);
             }
 

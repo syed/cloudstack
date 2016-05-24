@@ -36,7 +36,7 @@ import com.cloud.agent.api.to.DiskTO;
 import com.cloud.agent.api.to.GPUDeviceTO;
 import com.cloud.agent.api.to.NicTO;
 import com.cloud.agent.api.to.VirtualMachineTO;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.network.Networks;
 import com.cloud.network.Networks.BroadcastDomainType;
 import com.cloud.network.Networks.IsolationType;
@@ -51,13 +51,13 @@ import com.xensource.xenapi.VDI;
 import com.xensource.xenapi.VM;
 
 @ResourceWrapper(handles =  StartCommand.class)
-public final class CitrixStartCommandWrapper extends CommandWrapper<StartCommand, Answer, CitrixResourceBase> {
+public final class CitrixStartCommandWrapper extends CommandWrapper<StartCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixStartCommandWrapper.class);
 
     @Override
-    public Answer execute(final StartCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final StartCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         final VirtualMachineTO vmSpec = command.getVirtualMachine();
         final String vmName = vmSpec.getName();
         VmPowerState state = VmPowerState.HALTED;
@@ -85,17 +85,17 @@ public final class CitrixStartCommandWrapper extends CommandWrapper<StartCommand
             }
             s_logger.debug("1. The VM " + vmName + " is in Starting state.");
 
-            final Host host = Host.getByUuid(conn, citrixResourceBase.getHost().getUuid());
-            vm = citrixResourceBase.createVmFromTemplate(conn, vmSpec, host);
+            final Host host = Host.getByUuid(conn, xenServerResourceBase.getHost().getUuid());
+            vm = xenServerResourceBase.createVmFromTemplate(conn, vmSpec, host);
 
             final GPUDeviceTO gpuDevice = vmSpec.getGpuDevice();
             if (gpuDevice != null) {
                 s_logger.debug("Creating VGPU for of VGPU type: " + gpuDevice.getVgpuType() + " in GPU group " + gpuDevice.getGpuGroup() + " for VM " + vmName);
-                citrixResourceBase.createVGPU(conn, command, vm, gpuDevice);
+                xenServerResourceBase.createVGPU(conn, command, vm, gpuDevice);
             }
 
             if (vmSpec.getType() != VirtualMachine.Type.User) {
-                citrixResourceBase.createPatchVbd(conn, vmName, vm);
+                xenServerResourceBase.createPatchVbd(conn, vmName, vm);
             }
             // put cdrom at the first place in the list
             List<DiskTO> disks = new ArrayList<DiskTO>(vmSpec.getDisks().length);
@@ -110,7 +110,7 @@ public final class CitrixStartCommandWrapper extends CommandWrapper<StartCommand
             }
 
             for (DiskTO disk : disks) {
-                final VDI newVdi = citrixResourceBase.prepareManagedDisk(conn, disk, vmSpec.getId(), vmSpec.getName());
+                final VDI newVdi = xenServerResourceBase.prepareManagedDisk(conn, disk, vmSpec.getId(), vmSpec.getName());
 
                 if (newVdi != null) {
                     final String path = newVdi.getUuid(conn);
@@ -118,26 +118,26 @@ public final class CitrixStartCommandWrapper extends CommandWrapper<StartCommand
                     iqnToPath.put(disk.getDetails().get(DiskTO.IQN), path);
                 }
 
-                citrixResourceBase.createVbd(conn, disk, vmName, vm, vmSpec.getBootloader(), newVdi);
+                xenServerResourceBase.createVbd(conn, disk, vmName, vm, vmSpec.getBootloader(), newVdi);
             }
 
             for (final NicTO nic : vmSpec.getNics()) {
-                citrixResourceBase.createVif(conn, vmName, vm, vmSpec, nic);
+                xenServerResourceBase.createVif(conn, vmName, vm, vmSpec, nic);
             }
 
-            citrixResourceBase.startVM(conn, host, vm, vmName);
+            xenServerResourceBase.startVM(conn, host, vm, vmName);
 
-            if (citrixResourceBase.isOvs()) {
+            if (xenServerResourceBase.isOvs()) {
                 // TODO(Salvatore-orlando): This code should go
                 for (final NicTO nic : vmSpec.getNics()) {
                     if (nic.getBroadcastType() == Networks.BroadcastDomainType.Vswitch) {
-                        final HashMap<String, String> args = citrixResourceBase.parseDefaultOvsRuleComamnd(BroadcastDomainType.getValue(nic.getBroadcastUri()));
+                        final HashMap<String, String> args = xenServerResourceBase.parseDefaultOvsRuleComamnd(BroadcastDomainType.getValue(nic.getBroadcastUri()));
                         final OvsSetTagAndFlowCommand flowCmd = new OvsSetTagAndFlowCommand(args.get("vmName"), args.get("tag"), args.get("vlans"), args.get("seqno"),
                                 Long.parseLong(args.get("vmId")));
 
                         final CitrixRequestWrapper citrixRequestWrapper = CitrixRequestWrapper.getInstance();
 
-                        final OvsSetTagAndFlowAnswer r = (OvsSetTagAndFlowAnswer) citrixRequestWrapper.execute(flowCmd, citrixResourceBase);
+                        final OvsSetTagAndFlowAnswer r = (OvsSetTagAndFlowAnswer) citrixRequestWrapper.execute(flowCmd, xenServerResourceBase);
 
                         if (!r.getResult()) {
                             s_logger.warn("Failed to set flow for VM " + r.getVmId());
@@ -148,7 +148,7 @@ public final class CitrixStartCommandWrapper extends CommandWrapper<StartCommand
                 }
             }
 
-            if (citrixResourceBase.canBridgeFirewall()) {
+            if (xenServerResourceBase.canBridgeFirewall()) {
                 String result = null;
                 if (vmSpec.getType() != VirtualMachine.Type.User) {
                     final NicTO[] nics = vmSpec.getNics();
@@ -160,7 +160,7 @@ public final class CitrixStartCommandWrapper extends CommandWrapper<StartCommand
                         }
                     }
                     if (secGrpEnabled) {
-                        result = citrixResourceBase.callHostPlugin(conn, "vmops", "default_network_rules_systemvm", "vmName", vmName);
+                        result = xenServerResourceBase.callHostPlugin(conn, "vmops", "default_network_rules_systemvm", "vmName", vmName);
                         if (result == null || result.isEmpty() || !Boolean.parseBoolean(result)) {
                             s_logger.warn("Failed to program default network rules for " + vmName);
                         } else {
@@ -185,7 +185,7 @@ public final class CitrixStartCommandWrapper extends CommandWrapper<StartCommand
                             } else {
                                 secIpsStr = "0:";
                             }
-                            result = citrixResourceBase.callHostPlugin(conn, "vmops", "default_network_rules", "vmName", vmName, "vmIP", nic.getIp(), "vmMAC", nic.getMac(),
+                            result = xenServerResourceBase.callHostPlugin(conn, "vmops", "default_network_rules", "vmName", vmName, "vmIP", nic.getIp(), "vmMAC", nic.getMac(),
                                     "vmID", Long.toString(vmSpec.getId()), "secIps", secIpsStr);
 
                             if (result == null || result.isEmpty() || !Boolean.parseBoolean(result)) {
@@ -207,7 +207,7 @@ public final class CitrixStartCommandWrapper extends CommandWrapper<StartCommand
             return startAnswer;
         } catch (final Exception e) {
             s_logger.warn("Catch Exception: " + e.getClass().toString() + " due to " + e.toString(), e);
-            final String msg = citrixResourceBase.handleVmStartFailure(conn, vmName, vm, "", e);
+            final String msg = xenServerResourceBase.handleVmStartFailure(conn, vmName, vm, "", e);
 
             final StartAnswer startAnswer = new StartAnswer(command, msg);
 

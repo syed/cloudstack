@@ -21,11 +21,11 @@ package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
 import java.util.Set;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.AttachIsoCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.utils.exception.CloudRuntimeException;
@@ -38,13 +38,13 @@ import com.xensource.xenapi.VDI;
 import com.xensource.xenapi.VM;
 
 @ResourceWrapper(handles =  AttachIsoCommand.class)
-public final class CitrixAttachIsoCommandWrapper extends CommandWrapper<AttachIsoCommand, Answer, CitrixResourceBase> {
+public final class CitrixAttachIsoCommandWrapper extends CommandWrapper<AttachIsoCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixAttachIsoCommandWrapper.class);
 
     @Override
-    public Answer execute(final AttachIsoCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final AttachIsoCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         final boolean attach = command.isAttach();
         final String vmName = command.getVmName();
         final String isoURL = command.getIsoPath();
@@ -60,10 +60,10 @@ public final class CitrixAttachIsoCommandWrapper extends CommandWrapper<AttachIs
                 VBD isoVBD = null;
 
                 // Find the VM
-                final VM vm = citrixResourceBase.getVM(conn, vmName);
+                final VM vm = xenServerResourceBase.getVM(conn, vmName);
 
                 // Find the ISO VDI
-                final VDI isoVDI = citrixResourceBase.getIsoVDIByURL(conn, vmName, isoURL);
+                final VDI isoVDI = xenServerResourceBase.getIsoVDIByURL(conn, vmName, isoURL);
 
                 // Find the VM's CD-ROM VBD
                 final Set<VBD> vbds = vm.getVBDs(conn);
@@ -92,11 +92,11 @@ public final class CitrixAttachIsoCommandWrapper extends CommandWrapper<AttachIs
                 return new Answer(command);
             } else {
                 // Find the VM
-                final VM vm = citrixResourceBase.getVM(conn, vmName);
+                final VM vm = xenServerResourceBase.getVM(conn, vmName);
                 final String vmUUID = vm.getUuid(conn);
 
                 // Find the ISO VDI
-                final VDI isoVDI = citrixResourceBase.getIsoVDIByURL(conn, vmName, isoURL);
+                final VDI isoVDI = xenServerResourceBase.getIsoVDIByURL(conn, vmName, isoURL);
 
                 final SR sr = isoVDI.getSR(conn);
 
@@ -120,7 +120,7 @@ public final class CitrixAttachIsoCommandWrapper extends CommandWrapper<AttachIs
                 }
 
                 if (!sr.getNameLabel(conn).startsWith("XenServer Tools")) {
-                    citrixResourceBase.removeSR(conn, sr);
+                    xenServerResourceBase.removeSR(conn, sr);
                 }
 
                 return new Answer(command);

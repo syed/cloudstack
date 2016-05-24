@@ -24,13 +24,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.cloudstack.storage.to.VolumeObjectTO;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.RevertToVMSnapshotAnswer;
 import com.cloud.agent.api.RevertToVMSnapshotCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.vm.VirtualMachine.PowerState;
@@ -42,17 +42,17 @@ import com.xensource.xenapi.VDI;
 import com.xensource.xenapi.VM;
 
 @ResourceWrapper(handles =  RevertToVMSnapshotCommand.class)
-public final class CitrixRevertToVMSnapshotCommandWrapper extends CommandWrapper<RevertToVMSnapshotCommand, Answer, CitrixResourceBase> {
+public final class CitrixRevertToVMSnapshotCommandWrapper extends CommandWrapper<RevertToVMSnapshotCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixRevertToVMSnapshotCommandWrapper.class);
 
     @Override
-    public Answer execute(final RevertToVMSnapshotCommand command, final CitrixResourceBase citrixResourceBase) {
+    public Answer execute(final RevertToVMSnapshotCommand command, final XenServerResourceBase xenServerResourceBase) {
         final String vmName = command.getVmName();
         final List<VolumeObjectTO> listVolumeTo = command.getVolumeTOs();
         final VMSnapshot.Type vmSnapshotType = command.getTarget().getType();
         final Boolean snapshotMemory = vmSnapshotType == VMSnapshot.Type.DiskAndMemory;
-        final Connection conn = citrixResourceBase.getConnection();
+        final Connection conn = xenServerResourceBase.getConnection();
         PowerState vmState = null;
         VM vm = null;
         try {
@@ -66,9 +66,9 @@ public final class CitrixRevertToVMSnapshotCommandWrapper extends CommandWrapper
 
             // find target VM or creating a work VM
             try {
-                vm = citrixResourceBase.getVM(conn, vmName);
+                vm = xenServerResourceBase.getVM(conn, vmName);
             } catch (final Exception e) {
-                vm = citrixResourceBase.createWorkingVM(conn, vmName, command.getGuestOSType(), command.getPlatformEmulator(), listVolumeTo);
+                vm = xenServerResourceBase.createWorkingVM(conn, vmName, command.getGuestOSType(), command.getPlatformEmulator(), listVolumeTo);
             }
 
             if (vm == null) {
@@ -76,8 +76,8 @@ public final class CitrixRevertToVMSnapshotCommandWrapper extends CommandWrapper
             }
 
             // call plugin to execute revert
-            citrixResourceBase.revertToSnapshot(conn, vmSnapshot, vmName, vm.getUuid(conn), snapshotMemory, citrixResourceBase.getHost().getUuid());
-            vm = citrixResourceBase.getVM(conn, vmName);
+            xenServerResourceBase.revertToSnapshot(conn, vmSnapshot, vmName, vm.getUuid(conn), snapshotMemory, xenServerResourceBase.getHost().getUuid());
+            vm = xenServerResourceBase.getVM(conn, vmName);
             final Set<VBD> vbds = vm.getVBDs(conn);
             final Map<String, VDI> vdiMap = new HashMap<String, VDI>();
             // get vdi:vbdr to a map

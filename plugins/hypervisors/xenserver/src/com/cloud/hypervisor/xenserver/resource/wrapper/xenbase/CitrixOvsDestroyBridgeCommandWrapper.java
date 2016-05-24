@@ -19,30 +19,30 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.OvsDestroyBridgeCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.Network;
 
 @ResourceWrapper(handles =  OvsDestroyBridgeCommand.class)
-public final class CitrixOvsDestroyBridgeCommandWrapper extends CommandWrapper<OvsDestroyBridgeCommand, Answer, CitrixResourceBase> {
+public final class CitrixOvsDestroyBridgeCommandWrapper extends CommandWrapper<OvsDestroyBridgeCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixOvsDestroyBridgeCommandWrapper.class);
 
     @Override
-    public Answer execute(final OvsDestroyBridgeCommand command, final CitrixResourceBase citrixResourceBase) {
+    public Answer execute(final OvsDestroyBridgeCommand command, final XenServerResourceBase xenServerResourceBase) {
         try {
-            final Connection conn = citrixResourceBase.getConnection();
+            final Connection conn = xenServerResourceBase.getConnection();
 
-            final Network nw = citrixResourceBase.findOrCreateTunnelNetwork(conn, command.getBridgeName());
-            citrixResourceBase.cleanUpTmpDomVif(conn, nw);
+            final Network nw = xenServerResourceBase.findOrCreateTunnelNetwork(conn, command.getBridgeName());
+            xenServerResourceBase.cleanUpTmpDomVif(conn, nw);
 
-            citrixResourceBase.destroyTunnelNetwork(conn, nw, command.getHostId());
+            xenServerResourceBase.destroyTunnelNetwork(conn, nw, command.getHostId());
 
             s_logger.debug("OVS Bridge destroyed");
 

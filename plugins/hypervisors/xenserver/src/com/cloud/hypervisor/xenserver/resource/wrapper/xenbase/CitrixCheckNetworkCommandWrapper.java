@@ -21,24 +21,24 @@ package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
 import java.util.List;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.CheckNetworkAnswer;
 import com.cloud.agent.api.CheckNetworkCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.network.PhysicalNetworkSetupInfo;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Types.XenAPIException;
 
 @ResourceWrapper(handles =  CheckNetworkCommand.class)
-public final class CitrixCheckNetworkCommandWrapper extends CommandWrapper<CheckNetworkCommand, Answer, CitrixResourceBase> {
+public final class CitrixCheckNetworkCommandWrapper extends CommandWrapper<CheckNetworkCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixCheckNetworkCommandWrapper.class);
 
     @Override
-    public Answer execute(final CheckNetworkCommand command, final CitrixResourceBase citrixResourceBase) {
+    public Answer execute(final CheckNetworkCommand command, final XenServerResourceBase xenServerResourceBase) {
         if (s_logger.isDebugEnabled()) {
             s_logger.debug("Checking if network name setup is done on the resource");
         }
@@ -49,21 +49,21 @@ public final class CitrixCheckNetworkCommandWrapper extends CommandWrapper<Check
             boolean errorout = false;
             String msg = "";
             for (final PhysicalNetworkSetupInfo info : infoList) {
-                if (!citrixResourceBase.isNetworkSetupByName(info.getGuestNetworkName())) {
+                if (!xenServerResourceBase.isNetworkSetupByName(info.getGuestNetworkName())) {
                     msg =
                             "For Physical Network id:" + info.getPhysicalNetworkId() + ", Guest Network is not configured on the backend by name " +
                                     info.getGuestNetworkName();
                     errorout = true;
                     break;
                 }
-                if (!citrixResourceBase.isNetworkSetupByName(info.getPrivateNetworkName())) {
+                if (!xenServerResourceBase.isNetworkSetupByName(info.getPrivateNetworkName())) {
                     msg =
                             "For Physical Network id:" + info.getPhysicalNetworkId() + ", Private Network is not configured on the backend by name " +
                                     info.getPrivateNetworkName();
                     errorout = true;
                     break;
                 }
-                if (!citrixResourceBase.isNetworkSetupByName(info.getPublicNetworkName())) {
+                if (!xenServerResourceBase.isNetworkSetupByName(info.getPublicNetworkName())) {
                     msg =
                             "For Physical Network id:" + info.getPhysicalNetworkId() + ", Public Network is not configured on the backend by name " +
                                     info.getPublicNetworkName();
@@ -84,11 +84,11 @@ public final class CitrixCheckNetworkCommandWrapper extends CommandWrapper<Check
             }
 
         } catch (final XenAPIException e) {
-            final String msg = "CheckNetworkCommand failed with XenAPIException:" + e.toString() + " host:" + citrixResourceBase.getHost().getUuid();
+            final String msg = "CheckNetworkCommand failed with XenAPIException:" + e.toString() + " host:" + xenServerResourceBase.getHost().getUuid();
             s_logger.warn(msg, e);
             return new CheckNetworkAnswer(command, false, msg);
         } catch (final Exception e) {
-            final String msg = "CheckNetworkCommand failed with Exception:" + e.getMessage() + " host:" + citrixResourceBase.getHost().getUuid();
+            final String msg = "CheckNetworkCommand failed with Exception:" + e.getMessage() + " host:" + xenServerResourceBase.getHost().getUuid();
             s_logger.warn(msg, e);
             return new CheckNetworkAnswer(command, false, msg);
         }

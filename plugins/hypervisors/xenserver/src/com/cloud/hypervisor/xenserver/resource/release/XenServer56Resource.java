@@ -18,7 +18,7 @@ package com.cloud.hypervisor.xenserver.resource.release;
 
 import javax.ejb.Local;
 
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.StartupCommand;
@@ -33,7 +33,7 @@ import com.xensource.xenapi.Types.XenAPIException;
 import com.xensource.xenapi.VLAN;
 
 @Local(value = ServerResource.class)
-public class XenServer56Resource extends CitrixResourceBase {
+public class XenServer56Resource extends XenServerResourceBase {
     private final static Logger s_logger = Logger.getLogger(XenServer56Resource.class);
 
     @Override

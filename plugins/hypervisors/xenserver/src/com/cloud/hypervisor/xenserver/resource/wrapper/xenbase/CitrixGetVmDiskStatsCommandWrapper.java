@@ -22,15 +22,15 @@ package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.GetVmDiskStatsAnswer;
 import com.cloud.agent.api.GetVmDiskStatsCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 
 @ResourceWrapper(handles =  GetVmDiskStatsCommand.class)
-public final class CitrixGetVmDiskStatsCommandWrapper extends CommandWrapper<GetVmDiskStatsCommand, Answer, CitrixResourceBase> {
+public final class CitrixGetVmDiskStatsCommandWrapper extends CommandWrapper<GetVmDiskStatsCommand, Answer, XenServerResourceBase> {
 
     @Override
-    public Answer execute(final GetVmDiskStatsCommand command, final CitrixResourceBase citrixResourceBase) {
+    public Answer execute(final GetVmDiskStatsCommand command, final XenServerResourceBase xenServerResourceBase) {
         return new GetVmDiskStatsAnswer(command, null, null, null);
     }
 }

@@ -19,13 +19,13 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 import org.apache.xmlrpc.XmlRpcException;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.OvsFetchInterfaceAnswer;
 import com.cloud.agent.api.OvsFetchInterfaceCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.hypervisor.xenserver.resource.XsLocalNetwork;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
@@ -36,23 +36,23 @@ import com.xensource.xenapi.Types.BadServerResponse;
 import com.xensource.xenapi.Types.XenAPIException;
 
 @ResourceWrapper(handles =  OvsFetchInterfaceCommand.class)
-public final class CitrixOvsFetchInterfaceCommandWrapper extends CommandWrapper<OvsFetchInterfaceCommand, Answer, CitrixResourceBase> {
+public final class CitrixOvsFetchInterfaceCommandWrapper extends CommandWrapper<OvsFetchInterfaceCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixOvsFetchInterfaceCommandWrapper.class);
 
     @Override
-    public Answer execute(final OvsFetchInterfaceCommand command, final CitrixResourceBase citrixResourceBase) {
+    public Answer execute(final OvsFetchInterfaceCommand command, final XenServerResourceBase xenServerResourceBase) {
         String label = command.getLabel();
         //FIXME: this is a tricky to pass the network checking in XCP. I temporary get default label from Host.
-        if (citrixResourceBase.isXcp()) {
-            label = citrixResourceBase.getLabel();
+        if (xenServerResourceBase.isXcp()) {
+            label = xenServerResourceBase.getLabel();
         }
-        s_logger.debug("Will look for network with name-label:" + label + " on host " + citrixResourceBase.getHost().getIp());
-        final Connection conn = citrixResourceBase.getConnection();
+        s_logger.debug("Will look for network with name-label:" + label + " on host " + xenServerResourceBase.getHost().getIp());
+        final Connection conn = xenServerResourceBase.getConnection();
         try {
-            final XsLocalNetwork nw = citrixResourceBase.getNetworkByName(conn, label);
+            final XsLocalNetwork nw = xenServerResourceBase.getNetworkByName(conn, label);
             if(nw == null) {
-                throw new CloudRuntimeException("Unable to locate the network with name-label: " + label + " on host: " + citrixResourceBase.getHost().getIp());
+                throw new CloudRuntimeException("Unable to locate the network with name-label: " + label + " on host: " + xenServerResourceBase.getHost().getIp());
             }
             s_logger.debug("Network object:" + nw.getNetwork().getUuid(conn));
             final PIF pif = nw.getPif(conn);
@@ -60,13 +60,13 @@ public final class CitrixOvsFetchInterfaceCommandWrapper extends CommandWrapper<
             s_logger.debug("PIF object:" + pifRec.uuid + "(" + pifRec.device + ")");
             return new OvsFetchInterfaceAnswer(command, true, "Interface " + pifRec.device + " retrieved successfully", pifRec.IP, pifRec.netmask, pifRec.MAC);
         } catch (final BadServerResponse e) {
-            s_logger.error("An error occurred while fetching the interface for " + label + " on host " + citrixResourceBase.getHost().getIp(), e);
+            s_logger.error("An error occurred while fetching the interface for " + label + " on host " + xenServerResourceBase.getHost().getIp(), e);
             return new OvsFetchInterfaceAnswer(command, false, "EXCEPTION:" + e.getMessage());
         } catch (final XenAPIException e) {
-            s_logger.error("An error occurred while fetching the interface for " + label + " on host " + citrixResourceBase.getHost().getIp(), e);
+            s_logger.error("An error occurred while fetching the interface for " + label + " on host " + xenServerResourceBase.getHost().getIp(), e);
             return new OvsFetchInterfaceAnswer(command, false, "EXCEPTION:" + e.getMessage());
         } catch (final XmlRpcException e) {
-            s_logger.error("An error occurred while fetching the interface for " + label + " on host " + citrixResourceBase.getHost().getIp(), e);
+            s_logger.error("An error occurred while fetching the interface for " + label + " on host " + xenServerResourceBase.getHost().getIp(), e);
             return new OvsFetchInterfaceAnswer(command, false, "EXCEPTION:" + e.getMessage());
         }
     }

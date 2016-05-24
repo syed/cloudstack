@@ -19,30 +19,30 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.OvsVpcRoutingPolicyConfigCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.Network;
 
 @ResourceWrapper(handles =  OvsVpcRoutingPolicyConfigCommand.class)
-public final class CitrixOvsVpcRoutingPolicyConfigCommandWrapper extends CommandWrapper<OvsVpcRoutingPolicyConfigCommand, Answer, CitrixResourceBase> {
+public final class CitrixOvsVpcRoutingPolicyConfigCommandWrapper extends CommandWrapper<OvsVpcRoutingPolicyConfigCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixOvsVpcRoutingPolicyConfigCommandWrapper.class);
 
     @Override
-    public Answer execute(final OvsVpcRoutingPolicyConfigCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final OvsVpcRoutingPolicyConfigCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         try {
-            final Network nw = citrixResourceBase.findOrCreateTunnelNetwork(conn, command.getBridgeName());
+            final Network nw = xenServerResourceBase.findOrCreateTunnelNetwork(conn, command.getBridgeName());
             final String bridgeName = nw.getBridge(conn);
             final long sequenceNo = command.getSequenceNumber();
 
-            final String result = citrixResourceBase.callHostPlugin(conn, "ovstunnel", "configure_ovs_bridge_for_routing_policies", "bridge",
+            final String result = xenServerResourceBase.callHostPlugin(conn, "ovstunnel", "configure_ovs_bridge_for_routing_policies", "bridge",
                     bridgeName, "host-id", ((Long)command.getHostId()).toString(), "config",
                     command.getVpcConfigInJson(), "seq-no", Long.toString(sequenceNo));
 

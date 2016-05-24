@@ -29,7 +29,7 @@ import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.ScaleVmAnswer;
 import com.cloud.agent.api.ScaleVmCommand;
 import com.cloud.agent.api.to.VirtualMachineTO;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.utils.exception.CloudRuntimeException;
@@ -40,27 +40,27 @@ import com.xensource.xenapi.Types.XenAPIException;
 import com.xensource.xenapi.VM;
 
 @ResourceWrapper(handles =  ScaleVmCommand.class)
-public final class CitrixScaleVmCommandWrapper extends CommandWrapper<ScaleVmCommand, Answer, CitrixResourceBase> {
+public final class CitrixScaleVmCommandWrapper extends CommandWrapper<ScaleVmCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixScaleVmCommandWrapper.class);
 
     @Override
-    public Answer execute(final ScaleVmCommand command, final CitrixResourceBase citrixResourceBase) {
+    public Answer execute(final ScaleVmCommand command, final XenServerResourceBase xenServerResourceBase) {
         final VirtualMachineTO vmSpec = command.getVirtualMachine();
         final String vmName = vmSpec.getName();
         try {
-            final Connection conn = citrixResourceBase.getConnection();
+            final Connection conn = xenServerResourceBase.getConnection();
             final Set<VM> vms = VM.getByNameLabel(conn, vmName);
-            final Host host = Host.getByUuid(conn, citrixResourceBase.getHost().getUuid());
+            final Host host = Host.getByUuid(conn, xenServerResourceBase.getHost().getUuid());
 
             // If DMC is not enable then don't execute this command.
-            if (!citrixResourceBase.isDmcEnabled(conn, host)) {
+            if (!xenServerResourceBase.isDmcEnabled(conn, host)) {
                 throw new CloudRuntimeException("Unable to scale the vm: " + vmName + " as DMC - Dynamic memory control is not enabled for the XenServer:"
-                        + citrixResourceBase.getHost().getUuid() + " ,check your license and hypervisor version.");
+                        + xenServerResourceBase.getHost().getUuid() + " ,check your license and hypervisor version.");
             }
 
             if (vms == null || vms.size() == 0) {
-                s_logger.info("No running VM " + vmName + " exists on XenServer" + citrixResourceBase.getHost().getUuid());
+                s_logger.info("No running VM " + vmName + " exists on XenServer" + xenServerResourceBase.getHost().getUuid());
                 return new ScaleVmAnswer(command, false, "VM does not exist");
             }
 
@@ -70,8 +70,8 @@ public final class CitrixScaleVmCommandWrapper extends CommandWrapper<ScaleVmCom
                 final VM vm = iter.next();
                 final VM.Record vmr = vm.getRecord(conn);
 
-                if (vmr.powerState == VmPowerState.HALTED || vmr.powerState == VmPowerState.RUNNING && !citrixResourceBase.isRefNull(vmr.residentOn)
-                        && !vmr.residentOn.getUuid(conn).equals(citrixResourceBase.getHost().getUuid())) {
+                if (vmr.powerState == VmPowerState.HALTED || vmr.powerState == VmPowerState.RUNNING && !xenServerResourceBase.isRefNull(vmr.residentOn)
+                        && !vmr.residentOn.getUuid(conn).equals(xenServerResourceBase.getHost().getUuid())) {
                     iter.remove();
                 }
             }
@@ -79,7 +79,7 @@ public final class CitrixScaleVmCommandWrapper extends CommandWrapper<ScaleVmCom
             for (final VM vm : vms) {
                 vm.getRecord(conn);
                 try {
-                    citrixResourceBase.scaleVM(conn, vm, vmSpec, host);
+                    xenServerResourceBase.scaleVM(conn, vm, vmSpec, host);
                 } catch (final Exception e) {
                     final String msg = "Catch exception " + e.getClass().getName() + " when scaling VM:" + vmName + " due to " + e.toString();
                     s_logger.debug(msg);

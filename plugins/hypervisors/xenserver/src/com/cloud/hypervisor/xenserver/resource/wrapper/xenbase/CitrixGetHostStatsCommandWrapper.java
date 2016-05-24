@@ -19,27 +19,27 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.GetHostStatsAnswer;
 import com.cloud.agent.api.GetHostStatsCommand;
 import com.cloud.agent.api.HostStatsEntry;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
 
 @ResourceWrapper(handles =  GetHostStatsCommand.class)
-public final class CitrixGetHostStatsCommandWrapper extends CommandWrapper<GetHostStatsCommand, Answer, CitrixResourceBase> {
+public final class CitrixGetHostStatsCommandWrapper extends CommandWrapper<GetHostStatsCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixGetHostStatsCommandWrapper.class);
 
     @Override
-    public Answer execute(final GetHostStatsCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final GetHostStatsCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         try {
-            final HostStatsEntry hostStats = citrixResourceBase.getHostStats(conn, command, command.getHostGuid(), command.getHostId());
+            final HostStatsEntry hostStats = xenServerResourceBase.getHostStats(conn, command, command.getHostGuid(), command.getHostId());
             return new GetHostStatsAnswer(command, hostStats);
         } catch (final Exception e) {
             final String msg = "Unable to get Host stats" + e.toString();

@@ -21,24 +21,24 @@ package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.PingTestCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
 
 @ResourceWrapper(handles =  PingTestCommand.class)
-public final class CitrixPingTestCommandWrapper extends CommandWrapper<PingTestCommand, Answer, CitrixResourceBase> {
+public final class CitrixPingTestCommandWrapper extends CommandWrapper<PingTestCommand, Answer, XenServerResourceBase> {
 
     @Override
-    public Answer execute(final PingTestCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final PingTestCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         boolean result = false;
         final String computingHostIp = command.getComputingHostIp();
 
         if (computingHostIp != null) {
-            result = citrixResourceBase.doPingTest(conn, computingHostIp);
+            result = xenServerResourceBase.doPingTest(conn, computingHostIp);
         } else {
-            result = citrixResourceBase.doPingTest(conn, command.getRouterIp(), command.getPrivateIp());
+            result = xenServerResourceBase.doPingTest(conn, command.getRouterIp(), command.getPrivateIp());
         }
 
         if (!result) {

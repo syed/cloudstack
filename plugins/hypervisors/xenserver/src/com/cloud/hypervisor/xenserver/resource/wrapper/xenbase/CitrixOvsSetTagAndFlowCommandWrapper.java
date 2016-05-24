@@ -19,13 +19,13 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 import org.apache.xmlrpc.XmlRpcException;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.OvsSetTagAndFlowAnswer;
 import com.cloud.agent.api.OvsSetTagAndFlowCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
@@ -34,17 +34,17 @@ import com.xensource.xenapi.Types.BadServerResponse;
 import com.xensource.xenapi.Types.XenAPIException;
 
 @ResourceWrapper(handles =  OvsSetTagAndFlowCommand.class)
-public final class CitrixOvsSetTagAndFlowCommandWrapper extends CommandWrapper<OvsSetTagAndFlowCommand, Answer, CitrixResourceBase> {
+public final class CitrixOvsSetTagAndFlowCommandWrapper extends CommandWrapper<OvsSetTagAndFlowCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixOvsSetTagAndFlowCommandWrapper.class);
 
     @Override
-    public Answer execute(final OvsSetTagAndFlowCommand command, final CitrixResourceBase citrixResourceBase) {
-        citrixResourceBase.setIsOvs(true);
+    public Answer execute(final OvsSetTagAndFlowCommand command, final XenServerResourceBase xenServerResourceBase) {
+        xenServerResourceBase.setIsOvs(true);
 
-        final Connection conn = citrixResourceBase.getConnection();
+        final Connection conn = xenServerResourceBase.getConnection();
         try {
-            final Network nw = citrixResourceBase.setupvSwitchNetwork(conn);
+            final Network nw = xenServerResourceBase.setupvSwitchNetwork(conn);
             final String bridge = nw.getBridge(conn);
 
             /*
@@ -52,7 +52,7 @@ public final class CitrixOvsSetTagAndFlowCommandWrapper extends CommandWrapper<O
              * none guest network nic. don't worry, it will fail silently at
              * host plugin side
              */
-            final String result = citrixResourceBase.callHostPlugin(conn, "ovsgre", "ovs_set_tag_and_flow", "bridge", bridge, "vmName", command.getVmName(), "tag",
+            final String result = xenServerResourceBase.callHostPlugin(conn, "ovsgre", "ovs_set_tag_and_flow", "bridge", bridge, "vmName", command.getVmName(), "tag",
                     command.getTag(), "vlans", command.getVlans(), "seqno", command.getSeqNo());
             s_logger.debug("set flow for " + command.getVmName() + " " + result);
 

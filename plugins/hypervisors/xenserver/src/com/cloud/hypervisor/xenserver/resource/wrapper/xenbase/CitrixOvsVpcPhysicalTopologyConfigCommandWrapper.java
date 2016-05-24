@@ -19,30 +19,30 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.OvsVpcPhysicalTopologyConfigCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.Network;
 
 @ResourceWrapper(handles =  OvsVpcPhysicalTopologyConfigCommand.class)
-public final class CitrixOvsVpcPhysicalTopologyConfigCommandWrapper extends CommandWrapper<OvsVpcPhysicalTopologyConfigCommand, Answer, CitrixResourceBase> {
+public final class CitrixOvsVpcPhysicalTopologyConfigCommandWrapper extends CommandWrapper<OvsVpcPhysicalTopologyConfigCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixOvsVpcPhysicalTopologyConfigCommandWrapper.class);
 
     @Override
-    public Answer execute(final OvsVpcPhysicalTopologyConfigCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final OvsVpcPhysicalTopologyConfigCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
         try {
-            final Network nw = citrixResourceBase.findOrCreateTunnelNetwork(conn, command.getBridgeName());
+            final Network nw = xenServerResourceBase.findOrCreateTunnelNetwork(conn, command.getBridgeName());
             final String bridgeName = nw.getBridge(conn);
             final long sequenceNo = command.getSequenceNumber();
 
-            final String result = citrixResourceBase.callHostPlugin(conn, "ovstunnel", "configure_ovs_bridge_for_network_topology", "bridge",
+            final String result = xenServerResourceBase.callHostPlugin(conn, "ovstunnel", "configure_ovs_bridge_for_network_topology", "bridge",
                     bridgeName, "config", command.getVpcConfigInJson(), "host-id", ((Long)command.getHostId()).toString(),
                     "seq-no", Long.toString(sequenceNo));
 

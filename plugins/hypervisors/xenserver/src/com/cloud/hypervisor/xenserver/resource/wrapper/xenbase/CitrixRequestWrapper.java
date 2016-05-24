@@ -19,15 +19,10 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
-import java.util.Hashtable;
-import java.util.Set;
-
-import org.reflections.Reflections;
-
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.Command;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
-import com.cloud.hypervisor.xenserver.resource.XcpServerResource;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.release.XcpServerResource;
 import com.cloud.hypervisor.xenserver.resource.release.XenServer56FP1Resource;
 import com.cloud.hypervisor.xenserver.resource.release.XenServer56Resource;
 import com.cloud.hypervisor.xenserver.resource.release.XenServer610Resource;
@@ -35,6 +30,10 @@ import com.cloud.hypervisor.xenserver.resource.release.XenServer620SP1Resource;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.RequestWrapper;
 import com.cloud.resource.ServerResource;
+import org.reflections.Reflections;
+
+import java.util.Hashtable;
+import java.util.Set;
 
 public class CitrixRequestWrapper extends RequestWrapper {
 
@@ -82,8 +81,8 @@ public class CitrixRequestWrapper extends RequestWrapper {
         final Hashtable<Class<? extends Command>, CommandWrapper> xenServer620SP1Commands = processAnnotations(xenServer620SP1Set);
         final Hashtable<Class<? extends Command>, CommandWrapper> xcpServerResourceCommand = processAnnotations(xcpSet);
 
-        // CitrixResourceBase commands
-        resources.put(CitrixResourceBase.class, citrixCommands);
+        // XenServerResourceBase commands
+        resources.put(XenServerResourceBase.class, citrixCommands);
 
         // XenServer56Resource commands
         resources.put(XenServer56Resource.class, xenServer56Commands);

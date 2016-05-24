@@ -22,17 +22,17 @@ package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 import org.apache.cloudstack.storage.command.StorageSubSystemCommand;
 
 import com.cloud.agent.api.Answer;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.storage.resource.StorageSubsystemCommandHandler;
 
 @ResourceWrapper(handles =  StorageSubSystemCommand.class)
-public final class CitrixStorageSubSystemCommandWrapper extends CommandWrapper<StorageSubSystemCommand, Answer, CitrixResourceBase> {
+public final class CitrixStorageSubSystemCommandWrapper extends CommandWrapper<StorageSubSystemCommand, Answer, XenServerResourceBase> {
 
     @Override
-    public Answer execute(final StorageSubSystemCommand command, final CitrixResourceBase citrixResourceBase) {
-        final StorageSubsystemCommandHandler handler = citrixResourceBase.getStorageHandler();
+    public Answer execute(final StorageSubSystemCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final StorageSubsystemCommandHandler handler = xenServerResourceBase.getStorageHandler();
         return handler.handleStorageCommands(command);
     }
 }

@@ -22,15 +22,15 @@ package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.CheckOnHostAnswer;
 import com.cloud.agent.api.CheckOnHostCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 
 @ResourceWrapper(handles =  CheckOnHostCommand.class)
-public final class CitrixCheckOnHostCommandWrapper extends CommandWrapper<CheckOnHostCommand, Answer, CitrixResourceBase> {
+public final class CitrixCheckOnHostCommandWrapper extends CommandWrapper<CheckOnHostCommand, Answer, XenServerResourceBase> {
 
     @Override
-    public Answer execute(final CheckOnHostCommand command, final CitrixResourceBase citrixResourceBase) {
+    public Answer execute(final CheckOnHostCommand command, final XenServerResourceBase xenServerResourceBase) {
         return new CheckOnHostAnswer(command, "Not Implmeneted");
     }
 }

@@ -15,15 +15,16 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package com.cloud.hypervisor.xenserver.resource;
+package com.cloud.hypervisor.xenserver.resource.release;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.xmlrpc.XmlRpcException;
 
 import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.Types.XenAPIException;
 import com.xensource.xenapi.VM;
 
-public class XcpOssResource extends CitrixResourceBase {
+public class XcpOssResource extends XenServerResourceBase {
 
     private static final long mem_32m = 33554432L;
 

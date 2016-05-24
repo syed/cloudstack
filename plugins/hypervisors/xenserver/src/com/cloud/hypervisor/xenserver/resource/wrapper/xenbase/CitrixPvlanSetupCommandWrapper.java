@@ -19,12 +19,12 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import org.apache.log4j.Logger;
 import org.apache.xmlrpc.XmlRpcException;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.PvlanSetupCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.hypervisor.xenserver.resource.XsLocalNetwork;
 import com.cloud.network.Networks.TrafficType;
 import com.cloud.resource.CommandWrapper;
@@ -34,13 +34,13 @@ import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.Types.XenAPIException;
 
 @ResourceWrapper(handles =  PvlanSetupCommand.class)
-public final class CitrixPvlanSetupCommandWrapper extends CommandWrapper<PvlanSetupCommand, Answer, CitrixResourceBase> {
+public final class CitrixPvlanSetupCommandWrapper extends CommandWrapper<PvlanSetupCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixPvlanSetupCommandWrapper.class);
 
     @Override
-    public Answer execute(final PvlanSetupCommand command, final CitrixResourceBase citrixResourceBase) {
-        final Connection conn = citrixResourceBase.getConnection();
+    public Answer execute(final PvlanSetupCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final Connection conn = xenServerResourceBase.getConnection();
 
         final String primaryPvlan = command.getPrimary();
         final String isolatedPvlan = command.getIsolated();
@@ -53,7 +53,7 @@ public final class CitrixPvlanSetupCommandWrapper extends CommandWrapper<PvlanSe
 
         String nwNameLabel = null;
         try {
-            final XsLocalNetwork nw = citrixResourceBase.getNativeNetworkForTraffic(conn, TrafficType.Guest, networkTag);
+            final XsLocalNetwork nw = xenServerResourceBase.getNativeNetworkForTraffic(conn, TrafficType.Guest, networkTag);
             if (nw == null) {
                 s_logger.error("Network is not configured on the backend for pvlan " + primaryPvlan);
                 throw new CloudRuntimeException("Network for the backend is not configured correctly for pvlan primary: " + primaryPvlan);
@@ -69,7 +69,7 @@ public final class CitrixPvlanSetupCommandWrapper extends CommandWrapper<PvlanSe
 
         String result = null;
         if (command.getType() == PvlanSetupCommand.Type.DHCP) {
-            result = citrixResourceBase.callHostPlugin(conn, "ovs-pvlan", "setup-pvlan-dhcp", "op", op, "nw-label", nwNameLabel, "primary-pvlan", primaryPvlan, "isolated-pvlan",
+            result = xenServerResourceBase.callHostPlugin(conn, "ovs-pvlan", "setup-pvlan-dhcp", "op", op, "nw-label", nwNameLabel, "primary-pvlan", primaryPvlan, "isolated-pvlan",
                     isolatedPvlan, "dhcp-name", dhcpName, "dhcp-ip", dhcpIp, "dhcp-mac", dhcpMac);
 
             if (result == null || result.isEmpty() || !Boolean.parseBoolean(result)) {
@@ -79,7 +79,7 @@ public final class CitrixPvlanSetupCommandWrapper extends CommandWrapper<PvlanSe
                 s_logger.info("Programmed pvlan for dhcp server with mac " + dhcpMac);
             }
         } else if (command.getType() == PvlanSetupCommand.Type.VM) {
-            result = citrixResourceBase.callHostPlugin(conn, "ovs-pvlan", "setup-pvlan-vm", "op", op, "nw-label", nwNameLabel, "primary-pvlan", primaryPvlan, "isolated-pvlan",
+            result = xenServerResourceBase.callHostPlugin(conn, "ovs-pvlan", "setup-pvlan-vm", "op", op, "nw-label", nwNameLabel, "primary-pvlan", primaryPvlan, "isolated-pvlan",
                     isolatedPvlan, "vm-mac", vmMac);
 
             if (result == null || result.isEmpty() || !Boolean.parseBoolean(result)) {

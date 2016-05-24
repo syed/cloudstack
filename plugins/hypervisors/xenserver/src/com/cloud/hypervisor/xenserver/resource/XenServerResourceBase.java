@@ -16,50 +16,6 @@
 // under the License.
 package com.cloud.hypervisor.xenserver.resource;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.net.URLConnection;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.Queue;
-import java.util.Random;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.TimeoutException;
-
-import javax.naming.ConfigurationException;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-
-import org.apache.cloudstack.storage.to.TemplateObjectTO;
-import org.apache.cloudstack.storage.to.VolumeObjectTO;
-import org.apache.commons.io.FileUtils;
-import org.apache.log4j.Logger;
-import org.apache.xmlrpc.XmlRpcException;
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
-
 import com.cloud.agent.IAgentControl;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.Command;
@@ -102,6 +58,7 @@ import com.cloud.agent.resource.virtualnetwork.VirtualRoutingResource;
 import com.cloud.exception.InternalErrorException;
 import com.cloud.host.Host.Type;
 import com.cloud.hypervisor.Hypervisor.HypervisorType;
+import com.cloud.hypervisor.xenserver.resource.release.XcpServerResource;
 import com.cloud.hypervisor.xenserver.resource.wrapper.xenbase.CitrixRequestWrapper;
 import com.cloud.hypervisor.xenserver.resource.wrapper.xenbase.XenServerUtilitiesHelper;
 import com.cloud.network.Networks;
@@ -152,9 +109,51 @@ import com.xensource.xenapi.VIF;
 import com.xensource.xenapi.VLAN;
 import com.xensource.xenapi.VM;
 import com.xensource.xenapi.XenAPIObject;
+import org.apache.cloudstack.storage.to.TemplateObjectTO;
+import org.apache.cloudstack.storage.to.VolumeObjectTO;
+import org.apache.commons.io.FileUtils;
+import org.apache.log4j.Logger;
+import org.apache.xmlrpc.XmlRpcException;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+
+import javax.naming.ConfigurationException;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.URLConnection;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
+import java.util.Queue;
+import java.util.Random;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 
 /**
- * CitrixResourceBase encapsulates the calls to the XenServer Xapi process to
+ * XenServerResourceBase encapsulates the calls to the XenServer Xapi process to
  * perform the required functionalities for CloudStack.
  *
  * ==============> READ THIS <============== Because the XenServer objects can
@@ -164,7 +163,7 @@ import com.xensource.xenapi.XenAPIObject;
  * before you do any changes in this code here.
  *
  */
-public abstract class CitrixResourceBase implements ServerResource, HypervisorResource, VirtualRouterDeployer {
+public abstract class XenServerResourceBase implements ServerResource, HypervisorResource, VirtualRouterDeployer {
     /**
      * used to describe what type of resource a storage device is of
      */
@@ -199,7 +198,7 @@ public abstract class CitrixResourceBase implements ServerResource, HypervisorRe
     private static final long mem_128m = 134217728L;
 
     static final Random Rand = new Random(System.currentTimeMillis());
-    private static final Logger s_logger = Logger.getLogger(CitrixResourceBase.class);
+    private static final Logger s_logger = Logger.getLogger(XenServerResourceBase.class);
     protected static final HashMap<VmPowerState, PowerState> s_powerStatesTable;
 
     static {
@@ -280,7 +279,7 @@ public abstract class CitrixResourceBase implements ServerResource, HypervisorRe
 
     protected StorageSubsystemCommandHandler storageHandler;
 
-    public CitrixResourceBase() {
+    public XenServerResourceBase() {
     }
 
     /**
@@ -1360,7 +1359,7 @@ public abstract class CitrixResourceBase implements ServerResource, HypervisorRe
                 }
             } else if (vmSpec.getBootloader() == BootloaderType.PyGrub) {
                 vm.setPVBootloader(conn, "pygrub");
-                vm.setPVBootloaderArgs(conn, XenserverHelper.getPVbootloaderArgs(guestOsTypeName));
+                vm.setPVBootloaderArgs(conn, XenServerHelper.getPVbootloaderArgs(guestOsTypeName));
             } else {
                 vm.destroy(conn);
                 throw new CloudRuntimeException("Unable to handle boot loader type: " + vmSpec.getBootloader());
@@ -1800,7 +1799,7 @@ public abstract class CitrixResourceBase implements ServerResource, HypervisorRe
             cmd.setIqn(configs.get("iscsi_iqn"));
 
             cmd.setPod(_pod);
-            cmd.setVersion(CitrixResourceBase.class.getPackage().getImplementationVersion());
+            cmd.setVersion(XenServerResourceBase.class.getPackage().getImplementationVersion());
 
             try {
                 final String cmdLine = "xe sm-list | grep \"resigning of duplicates\"";
@@ -2091,7 +2090,7 @@ public abstract class CitrixResourceBase implements ServerResource, HypervisorRe
                 break;
             }
             final Host.Record hr = myself.getRecord(conn);
-            _host.setProductVersion(XenserverHelper.getProductVersion(hr));
+            _host.setProductVersion(XenServerHelper.getProductVersion(hr));
 
             final XsLocalNetwork privateNic = getManagementNetwork(conn);
             _privateNetworkName = privateNic.getNetworkRecord(conn).nameLabel;
@@ -2812,7 +2811,7 @@ public abstract class CitrixResourceBase implements ServerResource, HypervisorRe
      * @throws XenAPIException
      * @throws XmlRpcException
      *
-     * @see CitrixResourceBase#enableVlanNetwork
+     * @see XenServerResourceBase#enableVlanNetwork
      */
     public XsLocalNetwork getNetworkByName(final Connection conn, final String name) throws XenAPIException, XmlRpcException {
         final Set<Network> networks = Network.getByNameLabel(conn, name);
@@ -3035,7 +3034,7 @@ public abstract class CitrixResourceBase implements ServerResource, HypervisorRe
     }
 
     private long getStaticMax(final String os, final boolean b, final long dynamicMinRam, final long dynamicMaxRam) {
-        final long recommendedValue = XenserverHelper.getXenServerStaticMax(os, b);
+        final long recommendedValue = XenServerHelper.getXenServerStaticMax(os, b);
         if (recommendedValue == 0) {
             s_logger.warn("No recommended value found for dynamic max, setting static max and dynamic max equal");
             return dynamicMaxRam;
@@ -3054,7 +3053,7 @@ public abstract class CitrixResourceBase implements ServerResource, HypervisorRe
     }
 
     private long getStaticMin(final String os, final boolean b, final long dynamicMinRam, final long dynamicMaxRam) {
-        final long recommendedValue = XenserverHelper.getXenServerStaticMin(os, b);
+        final long recommendedValue = XenServerHelper.getXenServerStaticMin(os, b);
         if (recommendedValue == 0) {
             s_logger.warn("No recommended value found for dynamic min");
             return dynamicMinRam;
@@ -4686,7 +4685,7 @@ public abstract class CitrixResourceBase implements ServerResource, HypervisorRe
 
     /* return : if setup is needed */
     public boolean setupServer(final Connection conn, final Host host) {
-        final String packageVersion = CitrixResourceBase.class.getPackage().getImplementationVersion();
+        final String packageVersion = XenServerResourceBase.class.getPackage().getImplementationVersion();
         final String version = this.getClass().getName() + "-" + (packageVersion == null ? Long.toString(System.currentTimeMillis()) : packageVersion);
 
         try {

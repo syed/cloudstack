@@ -21,10 +21,10 @@ import com.xensource.xenapi.Host;
 import java.util.HashMap;
 
 /**
- * Reduce bloat inside CitrixResourceBase
+ * Reduce bloat inside XenServerResourceBase
  *
  */
-public class XenserverHelper {
+public class XenServerHelper {
     private static final HashMap<String, MemoryValues> XenServerGuestOsMemoryMap = new HashMap<String, MemoryValues>(70);
 
     public static class MemoryValues {

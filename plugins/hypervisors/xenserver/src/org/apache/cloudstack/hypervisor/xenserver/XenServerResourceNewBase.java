@@ -17,14 +17,6 @@
 package org.apache.cloudstack.hypervisor.xenserver;
 
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.TimeoutException;
-
-import org.apache.log4j.Logger;
-import org.apache.xmlrpc.XmlRpcException;
-
 import com.cloud.agent.api.StartupCommand;
 import com.cloud.hypervisor.xenserver.resource.release.XenServer620SP1Resource;
 import com.cloud.utils.Pair;
@@ -39,6 +31,13 @@ import com.xensource.xenapi.Task;
 import com.xensource.xenapi.Types;
 import com.xensource.xenapi.Types.XenAPIException;
 import com.xensource.xenapi.VM;
+import org.apache.log4j.Logger;
+import org.apache.xmlrpc.XmlRpcException;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.TimeoutException;
 
 /**
  *
@@ -49,12 +48,12 @@ import com.xensource.xenapi.VM;
  * the amount of load CloudStack places on Xapi because it doesn't use
  * polling as a means to collect data and figure out task completion.
  *
- * This base class differs from CitrixResourceBase in the following ways:
+ * This base class differs from XenServerResourceBase in the following ways:
  *   - VM states are detected using Event.from instead of polling.  This
  *     increases the number of threads CloudStack uses but the threads
  *     are mostly idle just waiting for events from XenServer.
  *   - stats are collected through the http interface rather than Xapi plugin.
- *     This change may be promoted to CitrixResourceBase as it's also possible
+ *     This change may be promoted to XenServerResourceBase as it's also possible
  *     in previous versions of XenServer.
  *   - Asynchronous task completion is done throught Event.from rather than
  *     polling.

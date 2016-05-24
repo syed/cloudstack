@@ -29,7 +29,7 @@ import org.apache.log4j.Logger;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.DeleteVMSnapshotAnswer;
 import com.cloud.agent.api.DeleteVMSnapshotCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.vm.snapshot.VMSnapshot;
@@ -40,14 +40,14 @@ import com.xensource.xenapi.VDI;
 import com.xensource.xenapi.VM;
 
 @ResourceWrapper(handles =  DeleteVMSnapshotCommand.class)
-public final class CitrixDeleteVMSnapshotCommandWrapper extends CommandWrapper<DeleteVMSnapshotCommand, Answer, CitrixResourceBase> {
+public final class CitrixDeleteVMSnapshotCommandWrapper extends CommandWrapper<DeleteVMSnapshotCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixDeleteVMSnapshotCommandWrapper.class);
 
     @Override
-    public Answer execute(final DeleteVMSnapshotCommand command, final CitrixResourceBase citrixResourceBase) {
+    public Answer execute(final DeleteVMSnapshotCommand command, final XenServerResourceBase xenServerResourceBase) {
         final String snapshotName = command.getTarget().getSnapshotName();
-        final Connection conn = citrixResourceBase.getConnection();
+        final Connection conn = xenServerResourceBase.getConnection();
 
         try {
             final List<VDI> vdiList = new ArrayList<VDI>();
@@ -79,7 +79,7 @@ public final class CitrixDeleteVMSnapshotCommandWrapper extends CommandWrapper<D
             }
             // re-calculate used capacify for this VM snapshot
             for (final VolumeObjectTO volumeTo : command.getVolumeTOs()) {
-                final long size = citrixResourceBase.getVMSnapshotChainSize(conn, volumeTo, command.getVmName());
+                final long size = xenServerResourceBase.getVMSnapshotChainSize(conn, volumeTo, command.getVmName());
                 volumeTo.setSize(size);
             }
 

@@ -29,7 +29,7 @@ import org.apache.log4j.Logger;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.CreateVMSnapshotAnswer;
 import com.cloud.agent.api.CreateVMSnapshotCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.vm.snapshot.VMSnapshot;
@@ -44,12 +44,12 @@ import com.xensource.xenapi.VDI;
 import com.xensource.xenapi.VM;
 
 @ResourceWrapper(handles =  CreateVMSnapshotCommand.class)
-public final class CitrixCreateVMSnapshotCommandWrapper extends CommandWrapper<CreateVMSnapshotCommand, Answer, CitrixResourceBase> {
+public final class CitrixCreateVMSnapshotCommandWrapper extends CommandWrapper<CreateVMSnapshotCommand, Answer, XenServerResourceBase> {
 
     private static final Logger s_logger = Logger.getLogger(CitrixCreateVMSnapshotCommandWrapper.class);
 
     @Override
-    public Answer execute(final CreateVMSnapshotCommand command, final CitrixResourceBase citrixResourceBase) {
+    public Answer execute(final CreateVMSnapshotCommand command, final XenServerResourceBase xenServerResourceBase) {
         final String vmName = command.getVmName();
         final String vmSnapshotName = command.getTarget().getSnapshotName();
         final List<VolumeObjectTO> listVolumeTo = command.getVolumeTOs();
@@ -62,7 +62,7 @@ public final class CitrixCreateVMSnapshotCommandWrapper extends CommandWrapper<C
         final boolean snapshotMemory = command.getTarget().getType() == VMSnapshot.Type.DiskAndMemory;
         final long timeout = command.getWait();
 
-        final Connection conn = citrixResourceBase.getConnection();
+        final Connection conn = xenServerResourceBase.getConnection();
         VM vm = null;
         VM vmSnapshot = null;
         boolean success = false;
@@ -96,11 +96,11 @@ public final class CitrixCreateVMSnapshotCommandWrapper extends CommandWrapper<C
             // create a new task if there is no existing task for this VM snapshot
             if (task == null) {
                 try {
-                    vm = citrixResourceBase.getVM(conn, vmName);
+                    vm = xenServerResourceBase.getVM(conn, vmName);
                     vmState = vm.getPowerState(conn);
                 } catch (final Exception e) {
                     if (!snapshotMemory) {
-                        vm = citrixResourceBase.createWorkingVM(conn, vmName, guestOSType, platformEmulator, listVolumeTo);
+                        vm = xenServerResourceBase.createWorkingVM(conn, vmName, guestOSType, platformEmulator, listVolumeTo);
                     }
                 }
 
@@ -113,7 +113,7 @@ public final class CitrixCreateVMSnapshotCommandWrapper extends CommandWrapper<C
                     task = vm.snapshotAsync(conn, vmSnapshotName);
                 } else {
                     final Set<VBD> vbds = vm.getVBDs(conn);
-                    final Pool pool = Pool.getByUuid(conn, citrixResourceBase.getHost().getPool());
+                    final Pool pool = Pool.getByUuid(conn, xenServerResourceBase.getHost().getPool());
                     for (final VBD vbd : vbds) {
                         final VBD.Record vbdr = vbd.getRecord(conn);
                         if (vbdr.userdevice.equals("0")) {
@@ -128,8 +128,8 @@ public final class CitrixCreateVMSnapshotCommandWrapper extends CommandWrapper<C
                 task.addToOtherConfig(conn, "CS_VM_SNAPSHOT_KEY", vmSnapshotName);
             }
 
-            citrixResourceBase.waitForTask(conn, task, 1000, timeout * 1000);
-            citrixResourceBase.checkForSuccess(conn, task);
+            xenServerResourceBase.waitForTask(conn, task, 1000, timeout * 1000);
+            xenServerResourceBase.checkForSuccess(conn, task);
             final String result = task.getResult(conn);
 
             // extract VM snapshot ref from result
@@ -142,7 +142,7 @@ public final class CitrixCreateVMSnapshotCommandWrapper extends CommandWrapper<C
             }
             // calculate used capacity for this VM snapshot
             for (final VolumeObjectTO volumeTo : command.getVolumeTOs()) {
-                final long size = citrixResourceBase.getVMSnapshotChainSize(conn, volumeTo, command.getVmName());
+                final long size = xenServerResourceBase.getVMSnapshotChainSize(conn, volumeTo, command.getVmName());
                 volumeTo.setSize(size);
             }
 

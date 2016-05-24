@@ -21,15 +21,15 @@ package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.ModifySshKeysCommand;
-import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 
 @ResourceWrapper(handles =  ModifySshKeysCommand.class)
-public final class CitrixModifySshKeysCommandWrapper extends CommandWrapper<ModifySshKeysCommand, Answer, CitrixResourceBase> {
+public final class CitrixModifySshKeysCommandWrapper extends CommandWrapper<ModifySshKeysCommand, Answer, XenServerResourceBase> {
 
     @Override
-    public Answer execute(final ModifySshKeysCommand command, final CitrixResourceBase citrixResourceBase) {
+    public Answer execute(final ModifySshKeysCommand command, final XenServerResourceBase xenServerResourceBase) {
         return new Answer(command);
     }
 }
