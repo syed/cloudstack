@@ -24,7 +24,7 @@ import org.apache.log4j.Logger;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.NetworkUsageAnswer;
 import com.cloud.agent.api.NetworkUsageCommand;
-import com.cloud.hypervisor.xenserver.resource.XenServer56Resource;
+import com.cloud.hypervisor.xenserver.resource.release.XenServer56Resource;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.utils.ExecutionResult;

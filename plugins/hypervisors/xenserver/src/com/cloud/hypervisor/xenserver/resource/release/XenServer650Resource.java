@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.cloud.hypervisor.xenserver.resource;
-
-import javax.ejb.Local;
+package com.cloud.hypervisor.xenserver.resource.release;
 
 import com.cloud.resource.ServerResource;
+
+import javax.ejb.Local;
 
 @Local(value=ServerResource.class)
 public class XenServer650Resource extends Xenserver625Resource {

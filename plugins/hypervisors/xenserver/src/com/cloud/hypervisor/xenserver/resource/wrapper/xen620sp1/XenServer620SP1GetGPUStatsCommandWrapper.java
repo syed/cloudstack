@@ -27,7 +27,7 @@ import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.GetGPUStatsAnswer;
 import com.cloud.agent.api.GetGPUStatsCommand;
 import com.cloud.agent.api.VgpuTypesInfo;
-import com.cloud.hypervisor.xenserver.resource.XenServer620SP1Resource;
+import com.cloud.hypervisor.xenserver.resource.release.XenServer620SP1Resource;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;

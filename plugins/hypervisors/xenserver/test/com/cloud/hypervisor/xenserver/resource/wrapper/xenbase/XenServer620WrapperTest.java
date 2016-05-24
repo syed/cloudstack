@@ -27,7 +27,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.CheckNetworkCommand;
-import com.cloud.hypervisor.xenserver.resource.XenServer620Resource;
+import com.cloud.hypervisor.xenserver.resource.release.XenServer620Resource;
 import com.cloud.network.PhysicalNetworkSetupInfo;
 
 @RunWith(PowerMockRunner.class)

@@ -16,14 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.cloud.hypervisor.xenserver.resource;
+package com.cloud.hypervisor.xenserver.resource.release;
 
-import javax.ejb.Local;
-
-import org.apache.cloudstack.hypervisor.xenserver.XenServerResourceNewBase;
-import org.apache.log4j.Logger;
-import org.apache.xmlrpc.XmlRpcException;
-
+import com.cloud.hypervisor.xenserver.resource.XenServerStorageProcessor;
+import com.cloud.hypervisor.xenserver.resource.Xenserver625StorageProcessor;
 import com.cloud.resource.ServerResource;
 import com.cloud.storage.resource.StorageSubsystemCommandHandler;
 import com.cloud.storage.resource.StorageSubsystemCommandHandlerBase;
@@ -33,6 +29,11 @@ import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.Host;
 import com.xensource.xenapi.Types;
 import com.xensource.xenapi.VM;
+import org.apache.cloudstack.hypervisor.xenserver.XenServerResourceNewBase;
+import org.apache.log4j.Logger;
+import org.apache.xmlrpc.XmlRpcException;
+
+import javax.ejb.Local;
 
 @Local(value=ServerResource.class)
 public class Xenserver625Resource extends XenServerResourceNewBase {

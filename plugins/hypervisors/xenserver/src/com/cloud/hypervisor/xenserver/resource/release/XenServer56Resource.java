@@ -14,10 +14,11 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package com.cloud.hypervisor.xenserver.resource;
+package com.cloud.hypervisor.xenserver.resource.release;
 
 import javax.ejb.Local;
 
+import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.StartupCommand;

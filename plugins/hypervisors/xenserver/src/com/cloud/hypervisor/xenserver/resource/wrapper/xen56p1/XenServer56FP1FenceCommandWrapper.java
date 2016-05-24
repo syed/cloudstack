@@ -29,7 +29,7 @@ import org.apache.xmlrpc.XmlRpcException;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.FenceAnswer;
 import com.cloud.agent.api.FenceCommand;
-import com.cloud.hypervisor.xenserver.resource.XenServer56Resource;
+import com.cloud.hypervisor.xenserver.resource.release.XenServer56Resource;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;

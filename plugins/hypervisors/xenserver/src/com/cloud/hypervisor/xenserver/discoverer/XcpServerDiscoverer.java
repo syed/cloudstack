@@ -43,20 +43,20 @@ import com.cloud.host.HostVO;
 import com.cloud.host.Status;
 import com.cloud.hypervisor.Hypervisor;
 import com.cloud.hypervisor.Hypervisor.HypervisorType;
-import com.cloud.hypervisor.xenserver.resource.CitrixHelper;
+import com.cloud.hypervisor.xenserver.resource.XenserverHelper;
 import com.cloud.hypervisor.xenserver.resource.CitrixResourceBase;
 import com.cloud.hypervisor.xenserver.resource.XcpOssResource;
 import com.cloud.hypervisor.xenserver.resource.XcpServerResource;
-import com.cloud.hypervisor.xenserver.resource.XenServer56FP1Resource;
-import com.cloud.hypervisor.xenserver.resource.XenServer56Resource;
-import com.cloud.hypervisor.xenserver.resource.XenServer56SP2Resource;
-import com.cloud.hypervisor.xenserver.resource.XenServer600Resource;
-import com.cloud.hypervisor.xenserver.resource.XenServer610Resource;
-import com.cloud.hypervisor.xenserver.resource.XenServer620Resource;
-import com.cloud.hypervisor.xenserver.resource.XenServer620SP1Resource;
+import com.cloud.hypervisor.xenserver.resource.release.XenServer56FP1Resource;
+import com.cloud.hypervisor.xenserver.resource.release.XenServer56Resource;
+import com.cloud.hypervisor.xenserver.resource.release.XenServer56SP2Resource;
+import com.cloud.hypervisor.xenserver.resource.release.XenServer600Resource;
+import com.cloud.hypervisor.xenserver.resource.release.XenServer610Resource;
+import com.cloud.hypervisor.xenserver.resource.release.XenServer620Resource;
+import com.cloud.hypervisor.xenserver.resource.release.XenServer620SP1Resource;
 import com.cloud.hypervisor.xenserver.resource.XenServerConnectionPool;
-import com.cloud.hypervisor.xenserver.resource.Xenserver625Resource;
-import com.cloud.hypervisor.xenserver.resource.XenServer650Resource;
+import com.cloud.hypervisor.xenserver.resource.release.Xenserver625Resource;
+import com.cloud.hypervisor.xenserver.resource.release.XenServer650Resource;
 import com.cloud.resource.Discoverer;
 import com.cloud.resource.DiscovererBase;
 import com.cloud.resource.ResourceStateAdapter;
@@ -285,7 +285,7 @@ public class XcpServerDiscoverer extends DiscovererBase implements Discoverer, L
                 Host.Record record = entry.getValue();
                 String hostAddr = record.address;
 
-                String prodVersion = CitrixHelper.getProductVersion(record);
+                String prodVersion = XenserverHelper.getProductVersion(record);
                 String xenVersion = record.softwareVersion.get("xen");
                 String hostOS = record.softwareVersion.get("product_brand");
                 if (hostOS == null) {
@@ -443,7 +443,7 @@ public class XcpServerDiscoverer extends DiscovererBase implements Discoverer, L
         } else {
             prodBrand = prodBrand.trim();
         }
-        String prodVersion = CitrixHelper.getProductVersion(record);
+        String prodVersion = XenserverHelper.getProductVersion(record);
 
         String prodVersionTextShort = record.softwareVersion.get("product_version_text_short");
         return createServerResource(prodBrand, prodVersion, prodVersionTextShort, hotfix);
