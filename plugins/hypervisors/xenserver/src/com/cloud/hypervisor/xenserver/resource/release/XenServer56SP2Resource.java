@@ -14,17 +14,18 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package com.cloud.hypervisor.xenserver.resource;
-
-import javax.ejb.Local;
+package com.cloud.hypervisor.xenserver.resource.release;
 
 import com.cloud.resource.ServerResource;
 
-@Local(value = ServerResource.class)
-public class XenServer600Resource extends XenServer56SP2Resource {
+import javax.ejb.Local;
 
-    @Override
-    protected String getPatchFilePath() {
-        return "scripts/vm/hypervisor/xenserver/xenserver60/patch";
+@Local(value = ServerResource.class)
+public class XenServer56SP2Resource extends XenServer56FP1Resource {
+
+    public XenServer56SP2Resource() {
+        super();
+        _xsMemoryUsed = 128 * 1024 * 1024L;
+        _xsVirtualizationFactor = 62.0 / 64.0;
     }
 }

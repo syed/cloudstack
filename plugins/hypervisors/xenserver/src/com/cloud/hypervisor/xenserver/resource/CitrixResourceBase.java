@@ -274,9 +274,9 @@ public abstract class CitrixResourceBase implements ServerResource, HypervisorRe
     protected int _wait;
     // Hypervisor specific params with generic value, may need to be overridden
     // for specific versions
-    long _xsMemoryUsed = 128 * 1024 * 1024L; // xenserver hypervisor used 128 M
+    protected long _xsMemoryUsed = 128 * 1024 * 1024L; // xenserver hypervisor used 128 M
 
-    double _xsVirtualizationFactor = 63.0 / 64.0; // 1 - virtualization overhead
+    protected double _xsVirtualizationFactor = 63.0 / 64.0; // 1 - virtualization overhead
 
     protected StorageSubsystemCommandHandler storageHandler;
 
@@ -1360,7 +1360,7 @@ public abstract class CitrixResourceBase implements ServerResource, HypervisorRe
                 }
             } else if (vmSpec.getBootloader() == BootloaderType.PyGrub) {
                 vm.setPVBootloader(conn, "pygrub");
-                vm.setPVBootloaderArgs(conn,CitrixHelper.getPVbootloaderArgs(guestOsTypeName));
+                vm.setPVBootloaderArgs(conn, XenserverHelper.getPVbootloaderArgs(guestOsTypeName));
             } else {
                 vm.destroy(conn);
                 throw new CloudRuntimeException("Unable to handle boot loader type: " + vmSpec.getBootloader());
@@ -2091,7 +2091,7 @@ public abstract class CitrixResourceBase implements ServerResource, HypervisorRe
                 break;
             }
             final Host.Record hr = myself.getRecord(conn);
-            _host.setProductVersion(CitrixHelper.getProductVersion(hr));
+            _host.setProductVersion(XenserverHelper.getProductVersion(hr));
 
             final XsLocalNetwork privateNic = getManagementNetwork(conn);
             _privateNetworkName = privateNic.getNetworkRecord(conn).nameLabel;
@@ -3035,7 +3035,7 @@ public abstract class CitrixResourceBase implements ServerResource, HypervisorRe
     }
 
     private long getStaticMax(final String os, final boolean b, final long dynamicMinRam, final long dynamicMaxRam) {
-        final long recommendedValue = CitrixHelper.getXenServerStaticMax(os, b);
+        final long recommendedValue = XenserverHelper.getXenServerStaticMax(os, b);
         if (recommendedValue == 0) {
             s_logger.warn("No recommended value found for dynamic max, setting static max and dynamic max equal");
             return dynamicMaxRam;
@@ -3054,7 +3054,7 @@ public abstract class CitrixResourceBase implements ServerResource, HypervisorRe
     }
 
     private long getStaticMin(final String os, final boolean b, final long dynamicMinRam, final long dynamicMaxRam) {
-        final long recommendedValue = CitrixHelper.getXenServerStaticMin(os, b);
+        final long recommendedValue = XenserverHelper.getXenServerStaticMin(os, b);
         if (recommendedValue == 0) {
             s_logger.warn("No recommended value found for dynamic min");
             return dynamicMinRam;

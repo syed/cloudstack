@@ -16,17 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.cloud.hypervisor.xenserver.resource;
-
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-
-import javax.ejb.Local;
-
-import org.apache.log4j.Logger;
-import org.apache.xmlrpc.XmlRpcException;
+package com.cloud.hypervisor.xenserver.resource.release;
 
 import com.cloud.agent.api.StartCommand;
 import com.cloud.agent.api.StartupRoutingCommand;
@@ -42,6 +32,14 @@ import com.xensource.xenapi.VGPU;
 import com.xensource.xenapi.VGPUType;
 import com.xensource.xenapi.VGPUType.Record;
 import com.xensource.xenapi.VM;
+import org.apache.log4j.Logger;
+import org.apache.xmlrpc.XmlRpcException;
+
+import javax.ejb.Local;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 
 @Local(value=ServerResource.class)
 public class XenServer620SP1Resource extends XenServer620Resource {

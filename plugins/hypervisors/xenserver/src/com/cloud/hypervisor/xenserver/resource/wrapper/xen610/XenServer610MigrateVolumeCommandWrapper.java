@@ -28,7 +28,7 @@ import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.storage.MigrateVolumeAnswer;
 import com.cloud.agent.api.storage.MigrateVolumeCommand;
 import com.cloud.agent.api.to.StorageFilerTO;
-import com.cloud.hypervisor.xenserver.resource.XenServer610Resource;
+import com.cloud.hypervisor.xenserver.resource.release.XenServer610Resource;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;

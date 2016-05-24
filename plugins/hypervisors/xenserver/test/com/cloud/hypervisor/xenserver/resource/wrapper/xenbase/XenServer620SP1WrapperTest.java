@@ -36,7 +36,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.GetGPUStatsCommand;
 import com.cloud.agent.api.VgpuTypesInfo;
-import com.cloud.hypervisor.xenserver.resource.XenServer620SP1Resource;
+import com.cloud.hypervisor.xenserver.resource.release.XenServer620SP1Resource;
 import com.cloud.utils.exception.CloudRuntimeException;
 import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.Types.XenAPIException;

@@ -16,15 +16,15 @@
 // under the License.
 package com.cloud.hypervisor.xenserver.resource;
 
-import java.util.HashMap;
-
 import com.xensource.xenapi.Host;
+
+import java.util.HashMap;
 
 /**
  * Reduce bloat inside CitrixResourceBase
  *
  */
-public class CitrixHelper {
+public class XenserverHelper {
     private static final HashMap<String, MemoryValues> XenServerGuestOsMemoryMap = new HashMap<String, MemoryValues>(70);
 
     public static class MemoryValues {

@@ -15,6 +15,7 @@
  */
 package com.cloud.hypervisor.xenserver.resource;
 
+import com.cloud.hypervisor.xenserver.resource.release.XenServer56FP1Resource;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

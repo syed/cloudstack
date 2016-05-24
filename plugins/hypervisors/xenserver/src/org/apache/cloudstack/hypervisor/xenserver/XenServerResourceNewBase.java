@@ -26,7 +26,7 @@ import org.apache.log4j.Logger;
 import org.apache.xmlrpc.XmlRpcException;
 
 import com.cloud.agent.api.StartupCommand;
-import com.cloud.hypervisor.xenserver.resource.XenServer620SP1Resource;
+import com.cloud.hypervisor.xenserver.resource.release.XenServer620SP1Resource;
 import com.cloud.utils.Pair;
 import com.cloud.utils.exception.CloudRuntimeException;
 import com.cloud.vm.VirtualMachine;

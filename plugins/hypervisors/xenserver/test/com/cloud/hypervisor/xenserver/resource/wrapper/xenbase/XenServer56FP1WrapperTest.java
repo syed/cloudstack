@@ -31,7 +31,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.FenceCommand;
 import com.cloud.host.Host;
-import com.cloud.hypervisor.xenserver.resource.XenServer56FP1Resource;
+import com.cloud.hypervisor.xenserver.resource.release.XenServer56FP1Resource;
 import com.cloud.vm.VMInstanceVO;
 import com.xensource.xenapi.Connection;
 
