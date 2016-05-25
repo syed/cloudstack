@@ -37,7 +37,7 @@ import com.cloud.agent.api.SetupCommand;
 import com.cloud.host.Host;
 import com.cloud.host.HostEnvironment;
 import com.cloud.hypervisor.xenserver.resource.release.XenServer56Resource;
-import com.cloud.hypervisor.xenserver.resource.XsHost;
+import com.cloud.hypervisor.xenserver.resource.common.XsHost;
 import com.cloud.utils.ExecutionResult;
 import com.cloud.vm.VMInstanceVO;
 import com.xensource.xenapi.Connection;

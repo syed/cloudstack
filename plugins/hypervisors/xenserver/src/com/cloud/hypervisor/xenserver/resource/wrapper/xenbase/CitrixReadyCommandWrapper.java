@@ -19,21 +19,21 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
-import java.util.Set;
-
-import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
-import org.apache.log4j.Logger;
-import org.apache.xmlrpc.XmlRpcException;
-
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.ReadyAnswer;
 import com.cloud.agent.api.ReadyCommand;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.Host;
 import com.xensource.xenapi.Types.XenAPIException;
 import com.xensource.xenapi.VM;
+import org.apache.log4j.Logger;
+import org.apache.xmlrpc.XmlRpcException;
+
+import java.util.Set;
 
 @ResourceWrapper(handles =  ReadyCommand.class)
 public final class CitrixReadyCommandWrapper extends CommandWrapper<ReadyCommand, Answer, XenServerResourceBase> {
@@ -42,6 +42,7 @@ public final class CitrixReadyCommandWrapper extends CommandWrapper<ReadyCommand
 
     @Override
     public Answer execute(final ReadyCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final XenServerStorageResource storageResource = xenServerResourceBase.getStorageResource();
         final Connection conn = xenServerResourceBase.getConnection();
         final Long dcId = command.getDataCenterId();
         // Ignore the result of the callHostPlugin. Even if unmounting the
@@ -55,7 +56,7 @@ public final class CitrixReadyCommandWrapper extends CommandWrapper<ReadyCommand
             final Host host = Host.getByUuid(conn, xenServerResourceBase.getHost().getUuid());
             final Set<VM> vms = host.getResidentVMs(conn);
             for (final VM vm : vms) {
-                xenServerResourceBase.destroyPatchVbd(conn, vm.getNameLabel(conn));
+                storageResource.destroyPatchVbd(conn, vm.getNameLabel(conn));
             }
         } catch (final Exception e) {
         }

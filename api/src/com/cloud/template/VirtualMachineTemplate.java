@@ -64,7 +64,7 @@ public interface VirtualMachineTemplate extends ControlledEntity, Identity, Inte
     }
 
     public static enum BootloaderType {
-        PyGrub, HVM, External, CD
+        PyGrub, HVM, External, BootloaderType, CD
     };
 
     public enum TemplateFilter {

@@ -19,20 +19,13 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-
-import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
-import org.apache.log4j.Logger;
-
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.StopAnswer;
 import com.cloud.agent.api.StopCommand;
 import com.cloud.agent.api.VgpuTypesInfo;
 import com.cloud.agent.api.to.GPUDeviceTO;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.utils.StringUtils;
@@ -44,6 +37,13 @@ import com.xensource.xenapi.Types.XenAPIException;
 import com.xensource.xenapi.VGPU;
 import com.xensource.xenapi.VIF;
 import com.xensource.xenapi.VM;
+import org.apache.log4j.Logger;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
 @ResourceWrapper(handles =  StopCommand.class)
 public final class CitrixStopCommandWrapper extends CommandWrapper<StopCommand, Answer, XenServerResourceBase> {
@@ -53,6 +53,7 @@ public final class CitrixStopCommandWrapper extends CommandWrapper<StopCommand, 
     @Override
     public Answer execute(final StopCommand command, final XenServerResourceBase xenServerResourceBase) {
         final String vmName = command.getVmName();
+        final XenServerStorageResource storageResource = xenServerResourceBase.getStorageResource();
         String platformstring = null;
         try {
             final Connection conn = xenServerResourceBase.getConnection();
@@ -141,7 +142,7 @@ public final class CitrixStopCommandWrapper extends CommandWrapper<StopCommand, 
                                 networks.add(vif.getNetwork(conn));
                             }
                             vm.destroy(conn);
-                            final SR sr = xenServerResourceBase.getISOSRbyVmName(conn, command.getVmName());
+                            final SR sr = storageResource.getISOSRbyVmName(conn, command.getVmName());
                             xenServerResourceBase.removeSR(conn, sr);
                             // Disable any VLAN networks that aren't used
                             // anymore

@@ -18,8 +18,8 @@
  */
 package com.cloud.hypervisor.xenserver.resource.release;
 
-import com.cloud.hypervisor.xenserver.resource.XenServerStorageProcessor;
-import com.cloud.hypervisor.xenserver.resource.Xenserver625StorageProcessor;
+import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageProcessor;
+import com.cloud.hypervisor.xenserver.resource.storage.Xenserver625StorageProcessor;
 import com.cloud.resource.ServerResource;
 import com.cloud.storage.resource.StorageSubsystemCommandHandler;
 import com.cloud.storage.resource.StorageSubsystemCommandHandlerBase;

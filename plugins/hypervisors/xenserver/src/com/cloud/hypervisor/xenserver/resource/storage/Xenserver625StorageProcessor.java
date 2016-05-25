@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.cloud.hypervisor.xenserver.resource;
+package com.cloud.hypervisor.xenserver.resource.storage;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.to.DataObjectType;
@@ -28,6 +28,8 @@ import com.cloud.agent.api.to.S3TO;
 import com.cloud.agent.api.to.SwiftTO;
 import com.cloud.exception.InternalErrorException;
 import com.cloud.hypervisor.Hypervisor.HypervisorType;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHelper;
 import com.cloud.storage.Storage;
 import com.cloud.utils.exception.CloudRuntimeException;
 import com.xensource.xenapi.Connection;
@@ -70,7 +72,7 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
             localDir = "/var/cloud_mount/" + UUID.nameUUIDFromBytes(remoteDir.getBytes());
         }
 
-        final String results = hypervisorResource.callHostPluginAsync(conn, "cloud-plugin-storage", "mountNfsSecondaryStorage", 100 * 1000, "localDir", localDir, "remoteDir",
+        final String results = XenServerHelper.callHostPluginAsync(conn, "cloud-plugin-storage", "mountNfsSecondaryStorage", 100 * 1000, hypervisorResource.getHost(), "localDir", localDir, "remoteDir",
                 remoteDir);
 
         if (results == null || results.isEmpty()) {
@@ -240,7 +242,7 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
                     details.put(DiskTO.CHAP_INITIATOR_USERNAME, chapInitiatorUsername);
                     details.put(DiskTO.CHAP_INITIATOR_SECRET, chapInitiatorSecret);
 
-                    destSr = hypervisorResource.prepareManagedSr(conn, details);
+                    destSr = storageResource.prepareManagedSr(conn, details);
                 } else {
                     final String srName = destStore.getUuid();
                     final Set<SR> srs = SR.getByNameLabel(conn, srName);
@@ -434,7 +436,7 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
         final boolean fullbackup = Boolean.parseBoolean(options.get("fullSnapshot"));
         Long physicalSize = null;
         try {
-            final SR primaryStorageSR = hypervisorResource.getSRByNameLabelandHost(conn, primaryStorageNameLabel);
+            final SR primaryStorageSR = storageResource.getSRByNameLabelandHost(conn, primaryStorageNameLabel);
             if (primaryStorageSR == null) {
                 throw new InternalErrorException("Could not backup snapshot because the primary Storage SR could not be created from the name label: " + primaryStorageNameLabel);
             }
@@ -586,7 +588,7 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
             final URI uri = new URI(secondaryStoragePoolURL);
             secondaryStorageMountPath = uri.getHost() + ":" + uri.getPath();
             installPath = template.getPath();
-            if (!hypervisorResource.createSecondaryStorageFolder(conn, secondaryStorageMountPath, installPath)) {
+            if (!storageResource.createSecondaryStorageFolder(conn, secondaryStorageMountPath, installPath)) {
                 details = " Filed to create folder " + installPath + " in secondary storage";
                 s_logger.warn(details);
                 return new CopyCmdAnswer(details);
@@ -635,7 +637,7 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
                 hypervisorResource.removeSR(conn, tmpltSR);
             }
             if (secondaryStorageMountPath != null) {
-                hypervisorResource.deleteSecondaryStorageFolder(conn, secondaryStorageMountPath, installPath);
+                storageResource.deleteSecondaryStorageFolder(conn, secondaryStorageMountPath, installPath);
             }
             details = "Creating template from volume " + volumeUUID + " failed due to " + e.toString();
             s_logger.error(details, e);
@@ -695,7 +697,7 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
         SR srcSr = null;
         VDI destVdi = null;
         try {
-            final SR primaryStorageSR = hypervisorResource.getSRByNameLabelandHost(conn, primaryStorageNameLabel);
+            final SR primaryStorageSR = storageResource.getSRByNameLabelandHost(conn, primaryStorageNameLabel);
             if (primaryStorageSR == null) {
                 throw new InternalErrorException("Could not create volume from snapshot because the primary Storage SR could not be created from the name label: "
                         + primaryStorageNameLabel);
@@ -782,7 +784,7 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
                 final NfsTO nfsStore = (NfsTO) destStore;
                 final URI uri = new URI(nfsStore.getUrl());
                 // Create the volume folder
-                if (!hypervisorResource.createSecondaryStorageFolder(conn, uri.getHost() + ":" + uri.getPath(), destVolume.getPath())) {
+                if (!storageResource.createSecondaryStorageFolder(conn, uri.getHost() + ":" + uri.getPath(), destVolume.getPath())) {
                     throw new InternalErrorException("Failed to create the volume folder.");
                 }
 

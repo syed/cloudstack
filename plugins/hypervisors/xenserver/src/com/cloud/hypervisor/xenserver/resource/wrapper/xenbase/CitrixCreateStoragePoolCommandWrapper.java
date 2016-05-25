@@ -19,16 +19,16 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
-import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
-import org.apache.log4j.Logger;
-
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.CreateStoragePoolCommand;
 import com.cloud.agent.api.to.StorageFilerTO;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.storage.Storage.StoragePoolType;
 import com.xensource.xenapi.Connection;
+import org.apache.log4j.Logger;
 
 @ResourceWrapper(handles =  CreateStoragePoolCommand.class)
 public final class CitrixCreateStoragePoolCommandWrapper extends CommandWrapper<CreateStoragePoolCommand, Answer, XenServerResourceBase> {
@@ -37,13 +37,14 @@ public final class CitrixCreateStoragePoolCommandWrapper extends CommandWrapper<
 
     @Override
     public Answer execute(final CreateStoragePoolCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final XenServerStorageResource storageResource = xenServerResourceBase.getStorageResource();
         final Connection conn = xenServerResourceBase.getConnection();
         final StorageFilerTO pool = command.getPool();
         try {
             if (pool.getType() == StoragePoolType.NetworkFilesystem) {
-                xenServerResourceBase.getNfsSR(conn, Long.toString(pool.getId()), pool.getUuid(), pool.getHost(), pool.getPath(), pool.toString());
+                storageResource.getNfsSR(conn, Long.toString(pool.getId()), pool.getUuid(), pool.getHost(), pool.getPath(), pool.toString());
             } else if (pool.getType() == StoragePoolType.IscsiLUN) {
-                xenServerResourceBase.getIscsiSR(conn, pool.getUuid(), pool.getHost(), pool.getPath(), null, null, false);
+                storageResource.getIscsiSR(conn, pool.getUuid(), pool.getHost(), pool.getPath(), null, null, false);
             } else if (pool.getType() == StoragePoolType.PreSetup) {
             } else {
                 return new Answer(command, false, "The pool type: " + pool.getType().name() + " is not supported.");
