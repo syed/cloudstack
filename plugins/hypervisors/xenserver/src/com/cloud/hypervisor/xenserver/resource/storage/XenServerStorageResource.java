@@ -29,6 +29,8 @@ import com.cloud.storage.Storage;
 import com.cloud.storage.Volume;
 import com.cloud.template.VirtualMachineTemplate;
 import com.cloud.utils.exception.CloudRuntimeException;
+import com.cloud.utils.ssh.SSHCmdHelper;
+import com.trilead.ssh2.SCPClient;
 import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.Host;
 import com.xensource.xenapi.PBD;
@@ -48,25 +50,36 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.apache.xmlrpc.XmlRpcException;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
 
 import static com.cloud.hypervisor.xenserver.resource.common.XenServerHelper.isRefNull;
+import static java.nio.charset.Charset.defaultCharset;
 
 public class XenServerStorageResource {
 
     private static final Logger s_logger = Logger.getLogger(XenServerStorageResource.class);
 
-    protected  String _configDriveSRName = "ConfigDriveISOs";
-    public String _attachIsoDeviceNum = "3";
+    protected String _configDriveSRName = "ConfigDriveISOs";
+    protected String _configDriveIsopath = "/opt/xensource/packages/configdrive_iso/";
+    protected String _attachIsoDeviceNum = "3";
+    protected String _username;
+    protected Queue<String> _password = new LinkedList<String>();
     protected XsHost host;
     private long dcId;
 
@@ -1565,18 +1578,18 @@ public class XenServerStorageResource {
                 throw new CloudRuntimeException("Unable to authenticate");
             }
 
-            s_logger.debug("scp config drive iso file "+vmIso +" to host " + _host.getIp() +" path "+_configDriveIsopath);
+            s_logger.debug("scp config drive iso file "+vmIso +" to host " + host.getIp() +" path "+_configDriveIsopath);
             final SCPClient scp = new SCPClient(sshConnection);
             final String p = "0755";
 
             scp.put(vmIso, _configDriveIsopath, p);
             sr.scan(conn);
-            s_logger.debug("copied config drive iso to host " + _host);
+            s_logger.debug("copied config drive iso to host " + host);
         } catch (final IOException e) {
-            s_logger.debug("failed to copy configdrive iso " + vmIso + " to host " + _host, e);
+            s_logger.debug("failed to copy configdrive iso " + vmIso + " to host " + host, e);
             return false;
         } catch (final XmlRpcException e) {
-            s_logger.debug("Failed to scan config drive iso SR "+ _configDriveSRName+_host.getIp() + " in host "+ _host, e);
+            s_logger.debug("Failed to scan config drive iso SR "+ _configDriveSRName+host.getIp() + " in host "+ this.host, e);
             return false;
         } finally {
             sshConnection.close();
@@ -1704,7 +1717,7 @@ public class XenServerStorageResource {
 
             deviceConfig.put("location",  _configDriveIsopath);
             deviceConfig.put("legacy_mode", "true");
-            final Host host = Host.getByUuid(conn, _host.getUuid());
+            final Host host = Host.getByUuid(conn, this.host.getUuid());
             final String type = SRType.ISO.toString();
             sr = SR.create(conn, host, deviceConfig, new Long(0),  _configDriveIsopath, "iso", type, "iso", false, new HashMap<String, String>());
 
@@ -1712,7 +1725,7 @@ public class XenServerStorageResource {
             sr.setNameDescription(conn, deviceConfig.get("location"));
 
             sr.scan(conn);
-            s_logger.debug("Config drive ISO SR at the path " + _configDriveIsopath  +" got created in host " + _host);
+            s_logger.debug("Config drive ISO SR at the path " + _configDriveIsopath  +" got created in host " + this.host);
             return sr;
         } catch (final XenAPIException e) {
             final String msg = "createLocalIsoSR failed! mountpoint " + e.toString();
@@ -1840,6 +1853,96 @@ public class XenServerStorageResource {
         } else {
             return true;
         }
+    }
+
+    public boolean createVmdataFiles(final String vmName, final List<String[]> vmDataList, final String configDriveLabel) {
+
+        // add vm iso to the isolibrary
+        final String isoPath = "/tmp/"+vmName+"/configDrive/";
+        final String configDriveName = "cloudstack/";
+
+        //create folder for the VM
+        //Remove the folder before creating it.
+
+        try {
+            deleteLocalFolder("/tmp/"+isoPath);
+        } catch (final IOException e) {
+            s_logger.debug("Failed to delete the exiting config drive for vm "+vmName+ " "+ e.getMessage());
+        } catch (final Exception e) {
+            s_logger.debug("Failed to delete the exiting config drive for vm "+vmName+ " "+ e.getMessage());
+        }
+
+
+        if (vmDataList != null) {
+            for (final String[] item : vmDataList) {
+                final String dataType = item[0];
+                final String fileName = item[1];
+                final String content = item[2];
+
+                // create file with content in folder
+
+                if (dataType != null && !dataType.isEmpty()) {
+                    //create folder
+                    final String  folder = isoPath+configDriveName+dataType;
+                    if (folder != null && !folder.isEmpty()) {
+                        final File dir = new File(folder);
+                        final boolean result = true;
+
+                        try {
+                            if (!dir.exists()) {
+                                dir.mkdirs();
+                            }
+                        }catch (final SecurityException ex) {
+                            s_logger.debug("Failed to create dir "+ ex.getMessage());
+                            return false;
+                        }
+
+                        if (result && content != null && !content.isEmpty()) {
+                            File file = new File(folder+"/"+fileName+".txt");
+                            try (OutputStreamWriter fw = new OutputStreamWriter(new FileOutputStream(file.getAbsoluteFile()),"UTF-8");
+                                 BufferedWriter bw = new BufferedWriter(fw);
+                                ) {
+                                bw.write(content);
+                                s_logger.debug("created file: "+ file + " in folder:"+folder);
+                            } catch (final IOException ex) {
+                                s_logger.debug("Failed to create file "+ ex.getMessage());
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+            s_logger.debug("Created the vm data in "+ isoPath);
+        }
+
+        String s = null;
+        try {
+
+            final String cmd =  "mkisofs -iso-level 3 -V "+ configDriveLabel +" -o "+ isoPath+vmName +".iso " + isoPath;
+            final Process p = Runtime.getRuntime().exec(cmd);
+
+            final BufferedReader stdInput = new BufferedReader(new
+                    InputStreamReader(p.getInputStream(), defaultCharset()));
+
+            final BufferedReader stdError = new BufferedReader(new
+                    InputStreamReader(p.getErrorStream(), defaultCharset()));
+
+            // read the output from the command
+            while ((s = stdInput.readLine()) != null) {
+                s_logger.debug(s);
+            }
+
+            // read any errors from the attempted command
+            while ((s = stdError.readLine()) != null) {
+                s_logger.debug(s);
+            }
+            s_logger.debug(" Created config drive ISO using the command " + cmd +" in the host "+ this.host.getIp());
+        } catch (final IOException e) {
+            s_logger.debug(e.getMessage());
+            return false;
+        }
+
+        return true;
     }
 
     protected String logX(final XenAPIObject obj, final String msg) {
