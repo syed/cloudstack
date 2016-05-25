@@ -19,14 +19,6 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.apache.log4j.Logger;
-
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.OvsSetTagAndFlowAnswer;
 import com.cloud.agent.api.OvsSetTagAndFlowCommand;
@@ -37,6 +29,7 @@ import com.cloud.agent.api.to.GPUDeviceTO;
 import com.cloud.agent.api.to.NicTO;
 import com.cloud.agent.api.to.VirtualMachineTO;
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.network.Networks;
 import com.cloud.network.Networks.BroadcastDomainType;
 import com.cloud.network.Networks.IsolationType;
@@ -49,6 +42,13 @@ import com.xensource.xenapi.Host;
 import com.xensource.xenapi.Types.VmPowerState;
 import com.xensource.xenapi.VDI;
 import com.xensource.xenapi.VM;
+import org.apache.log4j.Logger;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @ResourceWrapper(handles =  StartCommand.class)
 public final class CitrixStartCommandWrapper extends CommandWrapper<StartCommand, Answer, XenServerResourceBase> {
@@ -58,6 +58,7 @@ public final class CitrixStartCommandWrapper extends CommandWrapper<StartCommand
     @Override
     public Answer execute(final StartCommand command, final XenServerResourceBase xenServerResourceBase) {
         final Connection conn = xenServerResourceBase.getConnection();
+        final XenServerStorageResource storageResource = xenServerResourceBase.getStorageResource();
         final VirtualMachineTO vmSpec = command.getVirtualMachine();
         final String vmName = vmSpec.getName();
         VmPowerState state = VmPowerState.HALTED;
@@ -95,7 +96,7 @@ public final class CitrixStartCommandWrapper extends CommandWrapper<StartCommand
             }
 
             if (vmSpec.getType() != VirtualMachine.Type.User) {
-                xenServerResourceBase.createPatchVbd(conn, vmName, vm);
+                storageResource.createPatchVbd(conn, vmName, vm);
             }
             // put cdrom at the first place in the list
             List<DiskTO> disks = new ArrayList<DiskTO>(vmSpec.getDisks().length);
@@ -110,7 +111,7 @@ public final class CitrixStartCommandWrapper extends CommandWrapper<StartCommand
             }
 
             for (DiskTO disk : disks) {
-                final VDI newVdi = xenServerResourceBase.prepareManagedDisk(conn, disk, vmSpec.getId(), vmSpec.getName());
+                final VDI newVdi = storageResource.prepareManagedDisk(conn, disk, vmSpec.getId(), vmSpec.getName());
 
                 if (newVdi != null) {
                     final String path = newVdi.getUuid(conn);
@@ -118,7 +119,7 @@ public final class CitrixStartCommandWrapper extends CommandWrapper<StartCommand
                     iqnToPath.put(disk.getDetails().get(DiskTO.IQN), path);
                 }
 
-                xenServerResourceBase.createVbd(conn, disk, vmName, vm, vmSpec.getBootloader(), newVdi);
+                storageResource.createVbd(conn, disk, vmName, vm, vmSpec.getBootloader(), newVdi);
             }
 
             for (final NicTO nic : vmSpec.getNics()) {

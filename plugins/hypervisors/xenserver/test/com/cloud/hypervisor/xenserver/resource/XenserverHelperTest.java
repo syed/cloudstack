@@ -15,6 +15,7 @@
  */
 package com.cloud.hypervisor.xenserver.resource;
 
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHelper;
 import junit.framework.Assert;
 import org.junit.Test;
 

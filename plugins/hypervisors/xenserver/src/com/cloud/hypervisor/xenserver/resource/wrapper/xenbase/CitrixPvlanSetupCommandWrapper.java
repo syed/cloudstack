@@ -25,7 +25,7 @@ import org.apache.xmlrpc.XmlRpcException;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.PvlanSetupCommand;
-import com.cloud.hypervisor.xenserver.resource.XsLocalNetwork;
+import com.cloud.hypervisor.xenserver.resource.network.XsLocalNetwork;
 import com.cloud.network.Networks.TrafficType;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.cloud.hypervisor.xenserver.resource;
+package com.cloud.hypervisor.xenserver.resource.storage;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.to.DataObjectType;
@@ -29,6 +29,7 @@ import com.cloud.agent.api.to.StorageFilerTO;
 import com.cloud.agent.api.to.SwiftTO;
 import com.cloud.exception.InternalErrorException;
 import com.cloud.hypervisor.Hypervisor.HypervisorType;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase.SRType;
 import com.cloud.storage.DataStoreRole;
 import com.cloud.storage.Storage;
@@ -76,6 +77,7 @@ import org.apache.cloudstack.storage.to.VolumeObjectTO;
 import org.apache.log4j.Logger;
 import org.apache.xmlrpc.XmlRpcException;
 
+import javax.inject.Inject;
 import java.io.File;
 import java.net.URI;
 import java.util.Arrays;
@@ -92,9 +94,11 @@ public class XenServerStorageProcessor implements StorageProcessor {
     private static final Logger s_logger = Logger.getLogger(XenServerStorageProcessor.class);
     protected XenServerResourceBase hypervisorResource;
     protected String BaseMountPointOnHost = "/var/run/cloud_mount";
+    protected XenServerStorageResource storageResource;
 
     public XenServerStorageProcessor(final XenServerResourceBase resource) {
         hypervisorResource = resource;
+        storageResource = resource.getStorageResource();
     }
 
     // if the source SR needs to be attached to, do so
@@ -232,7 +236,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
             // Find the VM
             final VM vm = hypervisorResource.getVM(conn, vmName);
             // Find the ISO VDI
-            final VDI isoVDI = hypervisorResource.getIsoVDIByURL(conn, vmName, isoURL);
+            final VDI isoVDI = storageResource.getIsoVDIByURL(conn, vmName, isoURL);
 
             // Find the VM's CD-ROM VBD
             final Set<VBD> vbds = vm.getVBDs(conn);
@@ -378,7 +382,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
             final String vmUUID = vm.getUuid(conn);
 
             // Find the ISO VDI
-            final VDI isoVDI = hypervisorResource.getIsoVDIByURL(conn, cmd.getVmName(), isoURL);
+            final VDI isoVDI = storageResource.getIsoVDIByURL(conn, cmd.getVmName(), isoURL);
 
             final SR sr = isoVDI.getSR(conn);
 
@@ -1027,7 +1031,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
 
     @Override
     public Answer copyVolumeFromPrimaryToSecondary(final CopyCommand cmd) {
-        final Connection conn = hypervisorResource.getConnection();
+        final Connection conn = storageResource.getConnection();
         final VolumeObjectTO srcVolume = (VolumeObjectTO) cmd.getSrcTO();
         final VolumeObjectTO destVolume = (VolumeObjectTO) cmd.getDestTO();
         final int wait = cmd.getWait();
@@ -1039,16 +1043,16 @@ public class XenServerStorageProcessor implements StorageProcessor {
                 final NfsTO nfsStore = (NfsTO) destStore;
                 final URI uri = new URI(nfsStore.getUrl());
                 // Create the volume folder
-                if (!hypervisorResource.createSecondaryStorageFolder(conn, uri.getHost() + ":" + uri.getPath(), destVolume.getPath())) {
+                if (!storageResource.createSecondaryStorageFolder(conn, uri.getHost() + ":" + uri.getPath(), destVolume.getPath())) {
                     throw new InternalErrorException("Failed to create the volume folder.");
                 }
 
                 // Create a SR for the volume UUID folder
-                secondaryStorage = hypervisorResource.createNfsSRbyURI(conn, new URI(nfsStore.getUrl() + nfsStore.getPathSeparator() + destVolume.getPath()), false);
+                secondaryStorage = storageResource.createNfsSRbyURI(conn, new URI(nfsStore.getUrl() + nfsStore.getPathSeparator() + destVolume.getPath()), false);
                 // Look up the volume on the source primary storage pool
                 final VDI srcVdi = getVDIbyUuid(conn, srcVolume.getPath());
                 // Copy the volume to secondary storage
-                final VDI destVdi = hypervisorResource.cloudVDIcopy(conn, srcVdi, secondaryStorage, wait);
+                final VDI destVdi = storageResource.cloudVDIcopy(conn, srcVdi, secondaryStorage, wait);
                 final String destVolumeUUID = destVdi.getUuid(conn);
 
                 final VolumeObjectTO newVol = new VolumeObjectTO();
@@ -1059,7 +1063,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
                 s_logger.debug("Failed to copy volume to secondary: " + e.toString());
                 return new CopyCmdAnswer("Failed to copy volume to secondary: " + e.toString());
             } finally {
-                hypervisorResource.removeSR(conn, secondaryStorage);
+                storageResource.removeSR(conn, secondaryStorage);
             }
         }
         return new CopyCmdAnswer("unsupported protocol");
@@ -1279,7 +1283,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
         boolean fullbackup = Boolean.parseBoolean(options.get("fullSnapshot"));
         boolean result = false;
         try {
-            final SR primaryStorageSR = hypervisorResource.getSRByNameLabelandHost(conn, primaryStorageNameLabel);
+            final SR primaryStorageSR = storageResource.getSRByNameLabelandHost(conn, primaryStorageNameLabel);
             if (primaryStorageSR == null) {
                 throw new InternalErrorException("Could not backup snapshot because the primary Storage SR could not be created from the name label: " +
                         primaryStorageNameLabel);
@@ -1318,7 +1322,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
             if (fullbackup) {
                 // the first snapshot is always a full snapshot
 
-                if (!hypervisorResource.createSecondaryStorageFolder(conn, secondaryStorageMountPath, folder)) {
+                if (!storageResource.createSecondaryStorageFolder(conn, secondaryStorageMountPath, folder)) {
                     details = " Filed to create folder " + folder + " in secondary storage";
                     s_logger.warn(details);
                     return new CopyCmdAnswer(details);
@@ -1326,8 +1330,8 @@ public class XenServerStorageProcessor implements StorageProcessor {
                 final String snapshotMountpoint = secondaryStorageUrl + "/" + folder;
                 SR snapshotSr = null;
                 try {
-                    snapshotSr = hypervisorResource.createNfsSRbyURI(conn, new URI(snapshotMountpoint), false);
-                    final VDI backedVdi = hypervisorResource.cloudVDIcopy(conn, snapshotVdi, snapshotSr, wait);
+                    snapshotSr = storageResource.createNfsSRbyURI(conn, new URI(snapshotMountpoint), false);
+                    final VDI backedVdi = storageResource.cloudVDIcopy(conn, snapshotVdi, snapshotSr, wait);
                     snapshotBackupUuid = backedVdi.getUuid(conn);
                     final String primarySRuuid = snapshotSr.getUuid(conn);
                     physicalSize = getSnapshotSize(conn, primarySRuuid, snapshotBackupUuid, isISCSI, wait);
@@ -1447,7 +1451,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
             final URI uri = new URI(secondaryStoragePoolURL);
             secondaryStorageMountPath = uri.getHost() + ":" + uri.getPath();
             installPath = template.getPath();
-            if (!hypervisorResource.createSecondaryStorageFolder(conn, secondaryStorageMountPath, installPath)) {
+            if (!storageResource.createSecondaryStorageFolder(conn, secondaryStorageMountPath, installPath)) {
                 details = " Filed to create folder " + installPath + " in secondary storage";
                 s_logger.warn(details);
                 return new CopyCmdAnswer(details);
@@ -1456,10 +1460,10 @@ public class XenServerStorageProcessor implements StorageProcessor {
             final VDI vol = getVDIbyUuid(conn, volumeUUID);
             // create template SR
             final URI tmpltURI = new URI(secondaryStoragePoolURL + "/" + installPath);
-            tmpltSR = hypervisorResource.createNfsSRbyURI(conn, tmpltURI, false);
+            tmpltSR = storageResource.createNfsSRbyURI(conn, tmpltURI, false);
 
             // copy volume to template SR
-            final VDI tmpltVDI = hypervisorResource.cloudVDIcopy(conn, vol, tmpltSR, wait);
+            final VDI tmpltVDI = storageResource.cloudVDIcopy(conn, vol, tmpltSR, wait);
             // scan makes XenServer pick up VDI physicalSize
             tmpltSR.scan(conn);
             if (userSpecifiedName != null) {
@@ -1494,7 +1498,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
                 hypervisorResource.removeSR(conn, tmpltSR);
             }
             if (secondaryStorageMountPath != null) {
-                hypervisorResource.deleteSecondaryStorageFolder(conn, secondaryStorageMountPath, installPath);
+                storageResource.deleteSecondaryStorageFolder(conn, secondaryStorageMountPath, installPath);
             }
             details = "Creating template from volume " + volumeUUID + " failed due to " + e.toString();
             s_logger.error(details, e);
@@ -1548,7 +1552,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
 
             final String destNfsPath = destUri.getHost() + ":" + destUri.getPath();
 
-            if (!hypervisorResource.createSecondaryStorageFolder(conn, destNfsPath, destDir)) {
+            if (!storageResource.createSecondaryStorageFolder(conn, destNfsPath, destDir)) {
                 final String details = " Failed to create folder " + destDir + " in secondary storage";
 
                 s_logger.warn(details);
@@ -1558,7 +1562,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
 
             final URI templateUri = new URI(destStore.getUrl() + "/" + destDir);
 
-            destSr = hypervisorResource.createNfsSRbyURI(conn, templateUri, false);
+            destSr = storageResource.createNfsSRbyURI(conn, templateUri, false);
 
             // there should only be one VDI in this SR
             final VDI srcVdi = srcSr.getVDIs(conn).iterator().next();
@@ -1656,7 +1660,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
             return new CopyCmdAnswer(details);
         }
         try {
-            final SR primaryStorageSR = hypervisorResource.getSRByNameLabelandHost(conn, primaryStorageNameLabel);
+            final SR primaryStorageSR = storageResource.getSRByNameLabelandHost(conn, primaryStorageNameLabel);
             if (primaryStorageSR == null) {
                 throw new InternalErrorException("Could not create volume from snapshot because the primary Storage SR could not be created from the name label: " +
                         primaryStorageNameLabel);

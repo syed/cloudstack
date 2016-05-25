@@ -28,7 +28,7 @@ import org.apache.xmlrpc.XmlRpcException;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.MaintainAnswer;
 import com.cloud.agent.api.MaintainCommand;
-import com.cloud.hypervisor.xenserver.resource.XsHost;
+import com.cloud.hypervisor.xenserver.resource.common.XsHost;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;

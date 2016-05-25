@@ -14,7 +14,7 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package com.cloud.hypervisor.xenserver.resource;
+package com.cloud.hypervisor.xenserver.resource.common;
 
 import com.cloud.utils.NumbersUtil;
 import com.cloud.utils.PropertiesUtil;
