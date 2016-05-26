@@ -19,16 +19,16 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
-import java.net.URI;
-
-import org.apache.log4j.Logger;
-
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.UpgradeSnapshotCommand;
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
+import org.apache.log4j.Logger;
+
+import java.net.URI;
 
 @ResourceWrapper(handles =  UpgradeSnapshotCommand.class)
 public final class CitrixUpgradeSnapshotCommandWrapper extends CommandWrapper<UpgradeSnapshotCommand, Answer, XenServerResourceBase> {
@@ -50,11 +50,12 @@ public final class CitrixUpgradeSnapshotCommandWrapper extends CommandWrapper<Up
         }
         try {
             final Connection conn = xenServerResourceBase.getConnection();
+            final XenServerStorageResource storageResource = xenServerResourceBase.getStorageResource();
             final URI uri = new URI(secondaryStorageUrl);
             final String secondaryStorageMountPath = uri.getHost() + ":" + uri.getPath();
             final String snapshotPath = secondaryStorageMountPath + "/snapshots/" + accountId + "/" + volumeId + "/" + backedUpSnapshotUuid + ".vhd";
             final String templatePath = secondaryStorageMountPath + "/template/tmpl/" + tmpltAcountId + "/" + templateId;
-            xenServerResourceBase.upgradeSnapshot(conn, templatePath, snapshotPath);
+            storageResource.upgradeSnapshot(conn, templatePath, snapshotPath);
             return new Answer(command, true, "success");
         } catch (final Exception e) {
             final String details = "upgrading snapshot " + backedUpSnapshotUuid + " failed due to " + e.toString();

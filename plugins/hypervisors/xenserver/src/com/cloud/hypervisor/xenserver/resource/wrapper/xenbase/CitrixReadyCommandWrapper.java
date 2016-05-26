@@ -48,7 +48,7 @@ public final class CitrixReadyCommandWrapper extends CommandWrapper<ReadyCommand
         // Ignore the result of the callHostPlugin. Even if unmounting the
         // snapshots dir fails, let Ready command
         // succeed.
-        xenServerResourceBase.umountSnapshotDir(conn, dcId);
+        storageResource.umountSnapshotDir(conn, dcId);
 
         xenServerResourceBase.setupLinkLocalNetwork(conn);
         // try to destroy CD-ROM device for all system VMs on this host

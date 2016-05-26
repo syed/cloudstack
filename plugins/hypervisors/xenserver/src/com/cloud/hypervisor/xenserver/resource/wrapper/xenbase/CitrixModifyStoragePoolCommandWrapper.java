@@ -19,16 +19,12 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
-import org.apache.log4j.Logger;
-
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.ModifyStoragePoolAnswer;
 import com.cloud.agent.api.ModifyStoragePoolCommand;
 import com.cloud.agent.api.to.StorageFilerTO;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.storage.template.TemplateProp;
@@ -36,6 +32,10 @@ import com.cloud.utils.exception.CloudRuntimeException;
 import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.SR;
 import com.xensource.xenapi.Types.XenAPIException;
+import org.apache.log4j.Logger;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @ResourceWrapper(handles =  ModifyStoragePoolCommand.class)
 public final class CitrixModifyStoragePoolCommandWrapper extends CommandWrapper<ModifyStoragePoolCommand, Answer, XenServerResourceBase> {
@@ -45,13 +45,14 @@ public final class CitrixModifyStoragePoolCommandWrapper extends CommandWrapper<
     @Override
     public Answer execute(final ModifyStoragePoolCommand command, final XenServerResourceBase xenServerResourceBase) {
         final Connection conn = xenServerResourceBase.getConnection();
+        final XenServerStorageResource storageResource = xenServerResourceBase.getStorageResource();
         final StorageFilerTO pool = command.getPool();
         final boolean add = command.getAdd();
         if (add) {
             try {
                 final String srName = command.getStoragePath() != null ? command.getStoragePath() : pool.getUuid();
-                final SR sr = xenServerResourceBase.getStorageRepository(conn, srName);
-                xenServerResourceBase.setupHeartbeatSr(conn, sr, false);
+                final SR sr = storageResource.getStorageRepository(conn, srName);
+                storageResource.setupHeartbeatSr(conn, sr, false);
                 final long capacity = sr.getPhysicalSize(conn);
                 final long available = capacity - sr.getPhysicalUtilisation(conn);
                 if (capacity == -1) {

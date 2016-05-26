@@ -19,18 +19,11 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
-import org.apache.cloudstack.storage.to.VolumeObjectTO;
-import org.apache.log4j.Logger;
-
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.RevertToVMSnapshotAnswer;
 import com.cloud.agent.api.RevertToVMSnapshotCommand;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.vm.VirtualMachine.PowerState;
@@ -40,6 +33,13 @@ import com.xensource.xenapi.Types;
 import com.xensource.xenapi.VBD;
 import com.xensource.xenapi.VDI;
 import com.xensource.xenapi.VM;
+import org.apache.cloudstack.storage.to.VolumeObjectTO;
+import org.apache.log4j.Logger;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @ResourceWrapper(handles =  RevertToVMSnapshotCommand.class)
 public final class CitrixRevertToVMSnapshotCommandWrapper extends CommandWrapper<RevertToVMSnapshotCommand, Answer, XenServerResourceBase> {
@@ -53,6 +53,7 @@ public final class CitrixRevertToVMSnapshotCommandWrapper extends CommandWrapper
         final VMSnapshot.Type vmSnapshotType = command.getTarget().getType();
         final Boolean snapshotMemory = vmSnapshotType == VMSnapshot.Type.DiskAndMemory;
         final Connection conn = xenServerResourceBase.getConnection();
+        final XenServerStorageResource storageResource = xenServerResourceBase.getStorageResource();
         PowerState vmState = null;
         VM vm = null;
         try {
@@ -76,7 +77,7 @@ public final class CitrixRevertToVMSnapshotCommandWrapper extends CommandWrapper
             }
 
             // call plugin to execute revert
-            xenServerResourceBase.revertToSnapshot(conn, vmSnapshot, vmName, vm.getUuid(conn), snapshotMemory, xenServerResourceBase.getHost().getUuid());
+            storageResource.revertToSnapshot(conn, vmSnapshot, vmName, vm.getUuid(conn), snapshotMemory, xenServerResourceBase.getHost().getUuid());
             vm = xenServerResourceBase.getVM(conn, vmName);
             final Set<VBD> vbds = vm.getVBDs(conn);
             final Map<String, VDI> vdiMap = new HashMap<String, VDI>();

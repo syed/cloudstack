@@ -19,14 +19,11 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
-import java.util.Set;
-
-import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
-import org.apache.log4j.Logger;
-
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.MigrateAnswer;
 import com.cloud.agent.api.MigrateCommand;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
@@ -34,6 +31,9 @@ import com.xensource.xenapi.Host;
 import com.xensource.xenapi.Types;
 import com.xensource.xenapi.VBD;
 import com.xensource.xenapi.VM;
+import org.apache.log4j.Logger;
+
+import java.util.Set;
 
 @ResourceWrapper(handles =  MigrateCommand.class)
 public final class CitrixMigrateCommandWrapper extends CommandWrapper<MigrateCommand, Answer, XenServerResourceBase> {
@@ -43,6 +43,7 @@ public final class CitrixMigrateCommandWrapper extends CommandWrapper<MigrateCom
     @Override
     public Answer execute(final MigrateCommand command, final XenServerResourceBase xenServerResourceBase) {
         final Connection conn = xenServerResourceBase.getConnection();
+        final XenServerStorageResource storageResource = xenServerResourceBase.getStorageResource();
         final String vmName = command.getVmName();
         final String dstHostIpAddr = command.getDestinationIp();
 
@@ -85,7 +86,7 @@ public final class CitrixMigrateCommandWrapper extends CommandWrapper<MigrateCom
 
             // The iso can be attached to vm only once the vm is (present in the host) migrated.
             // Attach the config drive iso device to VM
-            if (!xenServerResourceBase.attachConfigDriveToMigratedVm(conn, vmName, dstHostIpAddr)) {
+            if (!storageResource.attachConfigDriveToMigratedVm(conn, vmName, dstHostIpAddr)) {
                 s_logger.debug("Config drive ISO attach failed after migration for vm "+vmName);
             }
 

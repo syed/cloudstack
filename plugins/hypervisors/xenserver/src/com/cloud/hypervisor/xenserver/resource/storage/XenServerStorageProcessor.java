@@ -31,6 +31,8 @@ import com.cloud.exception.InternalErrorException;
 import com.cloud.hypervisor.Hypervisor.HypervisorType;
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase.SRType;
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHelper;
+import com.cloud.hypervisor.xenserver.resource.common.XsHost;
 import com.cloud.storage.DataStoreRole;
 import com.cloud.storage.Storage;
 import com.cloud.storage.Storage.ImageFormat;
@@ -77,7 +79,6 @@ import org.apache.cloudstack.storage.to.VolumeObjectTO;
 import org.apache.log4j.Logger;
 import org.apache.xmlrpc.XmlRpcException;
 
-import javax.inject.Inject;
 import java.io.File;
 import java.net.URI;
 import java.util.Arrays;
@@ -123,7 +124,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
                 final String chapInitiatorUsername = sourceDetails.get(DiskTO.CHAP_INITIATOR_USERNAME);
                 final String chapInitiatorSecret = sourceDetails.get(DiskTO.CHAP_INITIATOR_SECRET);
 
-                sourceSr = hypervisorResource.getIscsiSR(conn, iScsiName, storageHost, iScsiName, chapInitiatorUsername, chapInitiatorSecret, false);
+                sourceSr = storageResource.getIscsiSR(conn, iScsiName, storageHost, iScsiName, chapInitiatorUsername, chapInitiatorSecret, false);
             }
 
             final VDI vdiToSnapshot = VDI.getByUuid(conn, cmd.getUuidOfSourceVdi());
@@ -137,7 +138,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
             final String chapInitiatorUsername = destDetails.get(DiskTO.CHAP_INITIATOR_USERNAME);
             final String chapInitiatorSecret = destDetails.get(DiskTO.CHAP_INITIATOR_SECRET);
 
-            final SR newSr = hypervisorResource.getIscsiSR(conn, iScsiName, storageHost, iScsiName, chapInitiatorUsername, chapInitiatorSecret, false);
+            final SR newSr = storageResource.getIscsiSR(conn, iScsiName, storageHost, iScsiName, chapInitiatorUsername, chapInitiatorSecret, false);
 
             final VDI vdiCopy = vdiSnapshot.copy(conn, newSr);
 
@@ -146,10 +147,10 @@ public class XenServerStorageProcessor implements StorageProcessor {
             vdiSnapshot.destroy(conn);
 
             if (sourceSr != null) {
-                hypervisorResource.removeSR(conn, sourceSr);
+                storageResource.removeSR(conn, sourceSr);
             }
 
-            hypervisorResource.removeSR(conn, newSr);
+            storageResource.removeSR(conn, newSr);
 
             final SnapshotAndCopyAnswer snapshotAndCopyAnswer = new SnapshotAndCopyAnswer();
 
@@ -178,7 +179,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
             final String chapInitiatorUsername = details.get(DiskTO.CHAP_INITIATOR_USERNAME);
             final String chapInitiatorSecret = details.get(DiskTO.CHAP_INITIATOR_SECRET);
 
-            newSr = hypervisorResource.getIscsiSR(conn, iScsiName, storageHost, iScsiName, chapInitiatorUsername, chapInitiatorSecret, true, false);
+            newSr = storageResource.getIscsiSR(conn, iScsiName, storageHost, iScsiName, chapInitiatorUsername, chapInitiatorSecret, true, false);
 
             Set<VDI> vdis = newSr.getVDIs(conn);
 
@@ -203,7 +204,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
         }
         finally {
             if (newSr != null) {
-                hypervisorResource.removeSR(conn, newSr);
+                storageResource.removeSR(conn, newSr);
             }
         }
     }
@@ -307,7 +308,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
             VDI vdi = null;
 
             if (isManaged) {
-                vdi = hypervisorResource.prepareManagedStorage(conn, details, data.getPath(), vdiNameLabel);
+                vdi = storageResource.prepareManagedStorage(conn, details, data.getPath(), vdiNameLabel);
 
                 if (vmNotRunning) {
                     final DiskTO newDisk = new DiskTO(disk.getData(), disk.getDiskSeq(), vdi.getUuid(conn), disk.getType());
@@ -315,10 +316,10 @@ public class XenServerStorageProcessor implements StorageProcessor {
                     return new AttachAnswer(newDisk);
                 }
             } else {
-                vdi = hypervisorResource.mount(conn, null, null, data.getPath());
+                vdi = storageResource.mount(conn, null, null, data.getPath());
             }
 
-            hypervisorResource.destroyUnattachedVBD(conn, vm);
+            storageResource.destroyUnattachedVBD(conn, vm);
 
             final VBD.Record vbdr = new VBD.Record();
 
@@ -327,7 +328,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
             vbdr.bootable = false;
             vbdr.userdevice = "autodetect";
             final Long deviceId = disk.getDiskSeq();
-            if (deviceId != null && !hypervisorResource.isDeviceUsed(conn, vm, deviceId)) {
+            if (deviceId != null && !storageResource.isDeviceUsed(conn, vm, deviceId)) {
                 vbdr.userdevice = deviceId.toString();
             }
             vbdr.mode = Types.VbdMode.RW;
@@ -405,7 +406,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
             }
 
             if (!sr.getNameLabel(conn).startsWith("XenServer Tools")) {
-                hypervisorResource.removeSR(conn, sr);
+                storageResource.removeSR(conn, sr);
             }
 
             return new DettachAnswer(disk);
@@ -449,7 +450,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
             }
 
             if (!vmNotRunning) {
-                final VDI vdi = hypervisorResource.mount(conn, null, null, data.getPath());
+                final VDI vdi = storageResource.mount(conn, null, null, data.getPath());
 
                 // Look up all VBDs for this VDI
                 final Set<VBD> vbds = vdi.getVBDs(conn);
@@ -468,11 +469,11 @@ public class XenServerStorageProcessor implements StorageProcessor {
                 // Update the VDI's label to be "detached"
                 vdi.setNameLabel(conn, "detached");
 
-                hypervisorResource.umount(conn, vdi);
+                storageResource.umount(conn, vdi);
             }
 
             if (cmd.isManaged()) {
-                hypervisorResource.handleSrAndVdiDetach(cmd.get_iScsiName(), conn);
+                storageResource.handleSrAndVdiDetach(cmd.get_iScsiName(), conn);
             }
 
             return new DettachAnswer(disk);
@@ -677,7 +678,8 @@ public class XenServerStorageProcessor implements StorageProcessor {
             final String vdiPath = pbdLocation + "/" + vdiLocation + ".vhd";
             //download a url into vdipath
             //downloadHttpToLocalFile(vdiPath, template.getPath());
-            hypervisorResource.callHostPlugin(conn, "storagePlugin", "downloadTemplateFromUrl", "destPath", vdiPath, "srcUrl", srcObj.getPath());
+            XsHost host = hypervisorResource.getHost();
+            XenServerHelper.callHostPlugin(conn, "storagePlugin", "downloadTemplateFromUrl", host, "destPath", vdiPath, "srcUrl", srcObj.getPath());
             result = true;
             //return new CopyCmdAnswer(cmd, vdi.getUuid(conn));
         } catch (final BadServerResponse e) {
@@ -712,8 +714,8 @@ public class XenServerStorageProcessor implements StorageProcessor {
 
             final DecodedDataStore store = obj.getStore();
 
-            final SR sr = hypervisorResource.getStorageRepository(conn, store.getUuid());
-            hypervisorResource.setupHeartbeatSr(conn, sr, false);
+            final SR sr = storageResource.getStorageRepository(conn, store.getUuid());
+            storageResource.setupHeartbeatSr(conn, sr, false);
             final long capacity = sr.getPhysicalSize(conn);
             final long available = capacity - sr.getPhysicalUtilisation(conn);
             if (capacity == -1) {
@@ -743,8 +745,9 @@ public class XenServerStorageProcessor implements StorageProcessor {
 
     private String copy_vhd_from_secondarystorage(final Connection conn, final String mountpoint, final String sruuid, final int wait) {
         final String nameLabel = "cloud-" + UUID.randomUUID().toString();
+        final XsHost host = hypervisorResource.getHost();
         final String results =
-                hypervisorResource.callHostPluginAsync(conn, "vmopspremium", "copy_vhd_from_secondarystorage", wait, "mountpoint", mountpoint, "sruuid", sruuid, "namelabel",
+                XenServerHelper.callHostPluginAsync(conn, "vmopspremium", "copy_vhd_from_secondarystorage", wait, host, "mountpoint", mountpoint, "sruuid", sruuid, "namelabel",
                         nameLabel);
         String errMsg = null;
         if (results == null || results.isEmpty()) {
@@ -759,7 +762,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
             }
         }
         final String source = mountpoint.substring(mountpoint.lastIndexOf('/') + 1);
-        if (hypervisorResource.killCopyProcess(conn, source)) {
+        if (storageResource.killCopyProcess(conn, source)) {
             destroyVDIbyNameLabel(conn, nameLabel);
         }
         s_logger.warn(errMsg);
@@ -794,8 +797,9 @@ public class XenServerStorageProcessor implements StorageProcessor {
     }
 
     protected String getVhdParent(final Connection conn, final String primaryStorageSRUuid, final String snapshotUuid, final Boolean isISCSI) {
+        XsHost host = hypervisorResource.getHost();
         final String parentUuid =
-                hypervisorResource.callHostPlugin(conn, "vmopsSnapshot", "getVhdParent", "primaryStorageSRUuid", primaryStorageSRUuid, "snapshotUuid", snapshotUuid,
+                XenServerHelper.callHostPlugin(conn, "vmopsSnapshot", "getVhdParent", host, "primaryStorageSRUuid", primaryStorageSRUuid, "snapshotUuid", snapshotUuid,
                         "isISCSI", isISCSI.toString());
 
         if (parentUuid == null || parentUuid.isEmpty() || parentUuid.equalsIgnoreCase("None")) {
@@ -862,7 +866,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
                     details.put(DiskTO.CHAP_INITIATOR_USERNAME, chapInitiatorUsername);
                     details.put(DiskTO.CHAP_INITIATOR_SECRET, chapInitiatorSecret);
 
-                    sr = hypervisorResource.prepareManagedSr(conn, details);
+                    sr = storageResource.prepareManagedSr(conn, details);
                 } else {
                     final String srName = destDataStoreTo.getUuid();
                     final Set<SR> srs = SR.getByNameLabel(conn, srName);
@@ -928,7 +932,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
         }
         finally {
             if (removeSrAfterCopy && sr != null) {
-                hypervisorResource.removeSR(conn, sr);
+                storageResource.removeSR(conn, sr);
             }
         }
 
@@ -942,7 +946,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
 
         try {
             final Connection conn = hypervisorResource.getConnection();
-            final SR poolSr = hypervisorResource.getStorageRepository(conn, data.getDataStore().getUuid());
+            final SR poolSr = storageResource.getStorageRepository(conn, data.getDataStore().getUuid());
             VDI.Record vdir = new VDI.Record();
             vdir.nameLabel = volume.getName();
             vdir.SR = poolSr;
@@ -1008,7 +1012,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
         if (srcStore instanceof NfsTO) {
             final NfsTO nfsStore = (NfsTO) srcStore;
             try {
-                final SR primaryStoragePool = hypervisorResource.getStorageRepository(conn, destVolume.getDataStore().getUuid());
+                final SR primaryStoragePool = storageResource.getStorageRepository(conn, destVolume.getDataStore().getUuid());
                 final String srUuid = primaryStoragePool.getUuid(conn);
                 final URI uri = new URI(nfsStore.getUrl());
                 final String volumePath = uri.getHost() + ":" + uri.getPath() + nfsStore.getPathSeparator() + srcVolume.getPath();
@@ -1031,7 +1035,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
 
     @Override
     public Answer copyVolumeFromPrimaryToSecondary(final CopyCommand cmd) {
-        final Connection conn = storageResource.getConnection();
+        final Connection conn = hypervisorResource.getConnection();
         final VolumeObjectTO srcVolume = (VolumeObjectTO) cmd.getSrcTO();
         final VolumeObjectTO destVolume = (VolumeObjectTO) cmd.getDestTO();
         final int wait = cmd.getWait();
@@ -1072,9 +1076,13 @@ public class XenServerStorageProcessor implements StorageProcessor {
     boolean swiftUpload(final Connection conn, final SwiftTO swift, final String container, final String ldir, final String lfilename, final Boolean isISCSI, final int wait) {
         String result = null;
         try {
-            result =
-                    hypervisorResource.callHostPluginAsync(conn, "swiftxenserver", "swift", wait, "op", "upload", "url", swift.getUrl(), "account", swift.getAccount(), "username",
-                            swift.getUserName(), "key", swift.getKey(), "container", container, "ldir", ldir, "lfilename", lfilename, "isISCSI", isISCSI.toString());
+            XsHost host = hypervisorResource.getHost();
+
+            result = XenServerHelper.callHostPluginAsync(conn, "swiftxenserver", "swift", wait, host,
+                    "op", "upload", "url", swift.getUrl(), "account", swift.getAccount(), "username",
+                    swift.getUserName(), "key", swift.getKey(), "container", container, "ldir", ldir,
+                    "lfilename", lfilename, "isISCSI", isISCSI.toString());
+
             if (result != null && result.equals("true")) {
                 return true;
             }
@@ -1087,8 +1095,9 @@ public class XenServerStorageProcessor implements StorageProcessor {
     protected String deleteSnapshotBackup(final Connection conn, final String localMountPoint, final String path, final String secondaryStorageMountPath, final String backupUUID) {
 
         // If anybody modifies the formatting below again, I'll skin them
+        final XsHost host = hypervisorResource.getHost();
         final String result =
-                hypervisorResource.callHostPlugin(conn, "vmopsSnapshot", "deleteSnapshotBackup", "backupUUID", backupUUID, "path", path, "secondaryStorageMountPath",
+                XenServerHelper.callHostPlugin(conn, "vmopsSnapshot", "deleteSnapshotBackup", host, "backupUUID", backupUUID, "path", path, "secondaryStorageMountPath",
                         secondaryStorageMountPath, "localMountPoint", localMountPoint);
 
         return result;
@@ -1121,9 +1130,10 @@ public class XenServerStorageProcessor implements StorageProcessor {
             // https workaround for Introspector bug that does not
             // recognize Boolean accessor methods ...
 
+            final XsHost host = hypervisorResource.getHost();
             parameters.addAll(Arrays.asList("operation", "put", "filename", dir + "/" + filename, "iSCSIFlag", iSCSIFlag.toString(), "bucket", s3.getBucketName(), "key",
                     key, "https", s3.isHttps() != null ? s3.isHttps().toString() : "null", "maxSingleUploadSizeInBytes", String.valueOf(s3.getMaxSingleUploadSizeInBytes())));
-            final String result = hypervisorResource.callHostPluginAsync(connection, "s3xenserver", "s3", wait, parameters.toArray(new String[parameters.size()]));
+            final String result = XenServerHelper.callHostPluginAsync(connection, "s3xenserver", "s3", wait, host, parameters.toArray(new String[parameters.size()]));
 
             if (result != null && result.equals("true")) {
                 return key;
@@ -1139,8 +1149,10 @@ public class XenServerStorageProcessor implements StorageProcessor {
     }
 
     protected Long getSnapshotSize(final Connection conn, final String primaryStorageSRUuid, final String snapshotUuid, final Boolean isISCSI, final int wait) {
-        final String physicalSize = hypervisorResource.callHostPluginAsync(conn, "vmopsSnapshot", "getSnapshotSize", wait,
-                "primaryStorageSRUuid", primaryStorageSRUuid, "snapshotUuid", snapshotUuid, "isISCSI", isISCSI.toString());
+        final XsHost host = hypervisorResource.getHost();
+        final String physicalSize = XenServerHelper.callHostPluginAsync(conn, "vmopsSnapshot", "getSnapshotSize", wait,
+                host, "primaryStorageSRUuid", primaryStorageSRUuid, "snapshotUuid", snapshotUuid,
+                "isISCSI", isISCSI.toString());
         if (physicalSize == null || physicalSize.isEmpty()) {
             return (long) 0;
         } else {
@@ -1159,8 +1171,9 @@ public class XenServerStorageProcessor implements StorageProcessor {
         // Each argument is put in a separate line for readability.
         // Using more lines does not harm the environment.
         final String backupUuid = UUID.randomUUID().toString();
+        final XsHost host = hypervisorResource.getHost();
         final String results =
-                hypervisorResource.callHostPluginAsync(conn, "vmopsSnapshot", "backupSnapshot", wait, "primaryStorageSRUuid", primaryStorageSRUuid, "path", path,
+                XenServerHelper.callHostPluginAsync(conn, "vmopsSnapshot", "backupSnapshot", wait, host, "primaryStorageSRUuid", primaryStorageSRUuid, "path", path,
                         "secondaryStorageMountPath", secondaryStorageMountPath, "snapshotUuid", snapshotUuid, "prevBackupUuid", prevBackupUuid, "backupUuid", backupUuid,
                         "isISCSI", isISCSI.toString(), "localMountPoint", localMountPoint);
         String errMsg = null;
@@ -1186,7 +1199,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
             }
         }
         final String source = backupUuid + ".vhd";
-        hypervisorResource.killCopyProcess(conn, source);
+        storageResource.killCopyProcess(conn, source);
         s_logger.warn(errMsg);
         throw new CloudRuntimeException(errMsg);
     }
@@ -1370,7 +1383,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
 
                 } finally {
                     if (snapshotSr != null) {
-                        hypervisorResource.removeSR(conn, snapshotSr);
+                        storageResource.removeSR(conn, snapshotSr);
                     }
                 }
             } else {
@@ -1477,13 +1490,13 @@ public class XenServerStorageProcessor implements StorageProcessor {
             // create the template.properties file
             final String templatePath = secondaryStorageMountPath + "/" + installPath;
             result =
-                    hypervisorResource.postCreatePrivateTemplate(conn, templatePath, tmpltFilename, tmpltUUID, userSpecifiedName, null, physicalSize, virtualSize,
+                    storageResource.postCreatePrivateTemplate(conn, templatePath, tmpltFilename, tmpltUUID, userSpecifiedName, null, physicalSize, virtualSize,
                             template.getId());
             if (!result) {
                 throw new CloudRuntimeException("Could not create the template.properties file on secondary storage dir: " + tmpltURI);
             }
             installPath = installPath + "/" + tmpltFilename;
-            hypervisorResource.removeSR(conn, tmpltSR);
+            storageResource.removeSR(conn, tmpltSR);
             tmpltSR = null;
             final TemplateObjectTO newTemplate = new TemplateObjectTO();
             newTemplate.setPath(installPath);
@@ -1495,7 +1508,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
             return answer;
         } catch (final Exception e) {
             if (tmpltSR != null) {
-                hypervisorResource.removeSR(conn, tmpltSR);
+                storageResource.removeSR(conn, tmpltSR);
             }
             if (secondaryStorageMountPath != null) {
                 storageResource.deleteSecondaryStorageFolder(conn, secondaryStorageMountPath, installPath);
@@ -1548,7 +1561,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
             final String chapInitiatorUsername = srcDetails.get(DiskTO.CHAP_INITIATOR_USERNAME);
             final String chapInitiatorSecret = srcDetails.get(DiskTO.CHAP_INITIATOR_SECRET);
 
-            srcSr = hypervisorResource.getIscsiSR(conn, iScsiName, storageHost, iScsiName, chapInitiatorUsername, chapInitiatorSecret, true);
+            srcSr = storageResource.getIscsiSR(conn, iScsiName, storageHost, iScsiName, chapInitiatorUsername, chapInitiatorSecret, true);
 
             final String destNfsPath = destUri.getHost() + ":" + destUri.getPath();
 
@@ -1586,7 +1599,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
 
             templatePath = templatePath.replaceAll("//", "/");
 
-            result = hypervisorResource.postCreatePrivateTemplate(conn, templatePath, templateFilename, templateUuid, userSpecifiedTemplateName, null,
+            result = storageResource.postCreatePrivateTemplate(conn, templatePath, templateFilename, templateUuid, userSpecifiedTemplateName, null,
                     physicalSize, virtualSize, templateObjTO.getId());
 
             if (!result) {
@@ -1621,11 +1634,11 @@ public class XenServerStorageProcessor implements StorageProcessor {
             }
 
             if (srcSr != null) {
-                hypervisorResource.removeSR(conn, srcSr);
+                storageResource.removeSR(conn, srcSr);
             }
 
             if (destSr != null) {
-                hypervisorResource.removeSR(conn, destSr);
+                storageResource.removeSR(conn, destSr);
             }
         }
     }
@@ -1711,7 +1724,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
             final String srcChapInitiatorUsername = srcOptions.get(DiskTO.CHAP_INITIATOR_USERNAME);
             final String srcChapInitiatorSecret = srcOptions.get(DiskTO.CHAP_INITIATOR_SECRET);
 
-            final SR srcSr = hypervisorResource.getIscsiSR(conn, src_iScsiName, srcStorageHost, src_iScsiName, srcChapInitiatorUsername, srcChapInitiatorSecret, false);
+            final SR srcSr = storageResource.getIscsiSR(conn, src_iScsiName, srcStorageHost, src_iScsiName, srcChapInitiatorUsername, srcChapInitiatorSecret, false);
 
             final Map<String, String> destOptions = cmd.getOptions2();
 
@@ -1720,7 +1733,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
             final String destChapInitiatorUsername = destOptions.get(DiskTO.CHAP_INITIATOR_USERNAME);
             final String destChapInitiatorSecret = destOptions.get(DiskTO.CHAP_INITIATOR_SECRET);
 
-            final SR destSr = hypervisorResource.getIscsiSR(conn, dest_iScsiName, destStorageHost, dest_iScsiName, destChapInitiatorUsername, destChapInitiatorSecret, false);
+            final SR destSr = storageResource.getIscsiSR(conn, dest_iScsiName, destStorageHost, dest_iScsiName, destChapInitiatorUsername, destChapInitiatorSecret, false);
 
             // there should only be one VDI in this SR
             final VDI srcVdi = srcSr.getVDIs(conn).iterator().next();
@@ -1733,8 +1746,8 @@ public class XenServerStorageProcessor implements StorageProcessor {
             newVol.setPath(vdiCopy.getUuid(conn));
             newVol.setFormat(ImageFormat.VHD);
 
-            hypervisorResource.removeSR(conn, srcSr);
-            hypervisorResource.removeSR(conn, destSr);
+            storageResource.removeSR(conn, srcSr);
+            storageResource.removeSR(conn, destSr);
 
             return new CopyCmdAnswer(newVol);
         }
@@ -1778,7 +1791,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
         try {
             final Connection conn = hypervisorResource.getConnection();
             final DataStoreTO store = cmd.getDataTO().getDataStore();
-            final SR poolSr = hypervisorResource.getStorageRepository(conn, store.getUuid());
+            final SR poolSr = storageResource.getStorageRepository(conn, store.getUuid());
             poolSr.scan(conn);
             return new IntroduceObjectAnswer(cmd.getDataTO());
         } catch (final Exception e) {

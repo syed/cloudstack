@@ -19,6 +19,7 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
+import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
@@ -37,11 +38,12 @@ public final class CitrixDeleteStoragePoolCommandWrapper extends CommandWrapper<
 
     @Override
     public Answer execute(final DeleteStoragePoolCommand command, final XenServerResourceBase xenServerResourceBase) {
+        final XenServerStorageResource storageResource = xenServerResourceBase.getStorageResource();
         final Connection conn = xenServerResourceBase.getConnection();
         final StorageFilerTO poolTO = command.getPool();
         try {
             final SR sr = xenServerResourceBase.getStorageRepository(conn, poolTO.getUuid());
-            xenServerResourceBase.removeSR(conn, sr);
+            storageResource.removeSR(conn, sr);
             final Answer answer = new Answer(command, true, "success");
             return answer;
         } catch (final Exception e) {

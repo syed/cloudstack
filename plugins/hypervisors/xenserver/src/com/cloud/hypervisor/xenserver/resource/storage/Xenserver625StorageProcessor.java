@@ -30,6 +30,7 @@ import com.cloud.exception.InternalErrorException;
 import com.cloud.hypervisor.Hypervisor.HypervisorType;
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.hypervisor.xenserver.resource.common.XenServerHelper;
+import com.cloud.hypervisor.xenserver.resource.common.XsHost;
 import com.cloud.storage.Storage;
 import com.cloud.utils.exception.CloudRuntimeException;
 import com.xensource.xenapi.Connection;
@@ -87,7 +88,8 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
     }
 
     protected boolean makeDirectory(final Connection conn, final String path) {
-        final String result = hypervisorResource.callHostPlugin(conn, "cloud-plugin-storage", "makeDirectory", "path", path);
+        XsHost host = hypervisorResource.getHost();
+        final String result = XenServerHelper.callHostPlugin(conn, "cloud-plugin-storage", "makeDirectory", host, "path", path);
 
         if (result == null || result.isEmpty()) {
             return false;
@@ -261,8 +263,8 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
                 task = srcVdi.copyAsync(conn, destSr, null, null);
 
                 // poll every 1 seconds ,
-                hypervisorResource.waitForTask(conn, task, 1000, wait * 1000);
-                hypervisorResource.checkForSuccess(conn, task);
+                XenServerHelper.waitForTask(conn, task, 1000, wait * 1000);
+                XenServerHelper.checkForSuccess(conn, task);
 
                 final VDI tmplVdi = Types.toVDI(task, conn);
 
@@ -319,11 +321,11 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
             }
 
             if (srcSr != null) {
-                hypervisorResource.removeSR(conn, srcSr);
+                storageResource.removeSR(conn, srcSr);
             }
 
             if (removeSrAfterCopy && destSr != null) {
-                hypervisorResource.removeSR(conn, destSr);
+                storageResource.removeSR(conn, destSr);
             }
         }
 
@@ -358,8 +360,8 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
                 }
                 task = snapshotvdi.copyAsync(conn, ssSR, previousSnapshotVdi, null);
                 // poll every 1 seconds ,
-                hypervisorResource.waitForTask(conn, task, 1000, wait * 1000);
-                hypervisorResource.checkForSuccess(conn, task);
+                XenServerHelper.waitForTask(conn, task, 1000, wait * 1000);
+                XenServerHelper.checkForSuccess(conn, task);
                 dvdi = Types.toVDI(task, conn);
                 // copied = true;
             } finally {
@@ -380,7 +382,7 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
         } finally {
             try {
                 if (filesrcreated && ssSR != null) {
-                    hypervisorResource.removeSR(conn, ssSR);
+                    storageResource.removeSR(conn, ssSR);
                 }
             } catch (final Exception e) {
                 s_logger.debug("Exception in backupsnapshot cleanup stage due to " + e.toString());
@@ -390,7 +392,8 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
 
     @Override
     protected String getVhdParent(final Connection conn, final String primaryStorageSRUuid, final String snapshotUuid, final Boolean isISCSI) {
-        final String parentUuid = hypervisorResource.callHostPlugin(conn, "cloud-plugin-storage", "getVhdParent", "primaryStorageSRUuid", primaryStorageSRUuid, "snapshotUuid",
+        XsHost host = hypervisorResource.getHost();
+        final String parentUuid = XenServerHelper.callHostPlugin(conn, "cloud-plugin-storage", "getVhdParent", host, "primaryStorageSRUuid", primaryStorageSRUuid, "snapshotUuid",
                 snapshotUuid, "isISCSI", isISCSI.toString());
 
         if (parentUuid == null || parentUuid.isEmpty() || parentUuid.equalsIgnoreCase("None")) {
@@ -470,8 +473,8 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
 
                     task = snapshotVdi.copyAsync(conn, snapshotSr, null, null);
                     // poll every 1 seconds ,
-                    hypervisorResource.waitForTask(conn, task, 1000, wait * 1000);
-                    hypervisorResource.checkForSuccess(conn, task);
+                    XenServerHelper.waitForTask(conn, task, 1000, wait * 1000);
+                    XenServerHelper.checkForSuccess(conn, task);
                     final VDI backedVdi = Types.toVDI(task, conn);
                     snapshotBackupUuid = backedVdi.getUuid(conn);
                     physicalSize = backedVdi.getPhysicalUtilisation(conn);
@@ -518,7 +521,7 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
                         }
                     }
                     if (snapshotSr != null) {
-                        hypervisorResource.removeSR(conn, snapshotSr);
+                        storageResource.removeSR(conn, snapshotSr);
                     }
                 }
             } else {
@@ -601,8 +604,8 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
             // copy volume to template SR
             task = vol.copyAsync(conn, tmpltSR, null, null);
             // poll every 1 seconds ,
-            hypervisorResource.waitForTask(conn, task, 1000, wait * 1000);
-            hypervisorResource.checkForSuccess(conn, task);
+            XenServerHelper.waitForTask(conn, task, 1000, wait * 1000);
+            XenServerHelper.checkForSuccess(conn, task);
             final VDI tmpltVDI = Types.toVDI(task, conn);
             // scan makes XenServer pick up VDI physicalSize
             tmpltSR.scan(conn);
@@ -616,13 +619,13 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
             final long physicalSize = tmpltVDI.getPhysicalUtilisation(conn);
             // create the template.properties file
             final String templatePath = secondaryStorageMountPath + "/" + installPath;
-            result = hypervisorResource.postCreatePrivateTemplate(conn, templatePath, tmpltFilename, tmpltUUID, userSpecifiedName, null, physicalSize, virtualSize,
+            result = storageResource.postCreatePrivateTemplate(conn, templatePath, tmpltFilename, tmpltUUID, userSpecifiedName, null, physicalSize, virtualSize,
                     template.getId());
             if (!result) {
                 throw new CloudRuntimeException("Could not create the template.properties file on secondary storage dir");
             }
             installPath = installPath + "/" + tmpltFilename;
-            hypervisorResource.removeSR(conn, tmpltSR);
+            storageResource.removeSR(conn, tmpltSR);
             tmpltSR = null;
             final TemplateObjectTO newTemplate = new TemplateObjectTO();
             newTemplate.setPath(installPath);
@@ -634,7 +637,7 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
             return answer;
         } catch (final Exception e) {
             if (tmpltSR != null) {
-                hypervisorResource.removeSR(conn, tmpltSR);
+                storageResource.removeSR(conn, tmpltSR);
             }
             if (secondaryStorageMountPath != null) {
                 storageResource.deleteSecondaryStorageFolder(conn, secondaryStorageMountPath, installPath);
@@ -730,8 +733,8 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
             for (final VDI snapChain : snapshotChains) {
                 final Task task = snapChain.copyAsync(conn, null, null, destVdi);
                 // poll every 1 seconds ,
-                hypervisorResource.waitForTask(conn, task, 1000, wait * 1000);
-                hypervisorResource.checkForSuccess(conn, task);
+                XenServerHelper.waitForTask(conn, task, 1000, wait * 1000);
+                XenServerHelper.checkForSuccess(conn, task);
                 task.destroy(conn);
             }
 
@@ -750,7 +753,7 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
             s_logger.warn(details, e);
         } finally {
             if (srcSr != null) {
-                hypervisorResource.removeSR(conn, srcSr);
+                storageResource.removeSR(conn, srcSr);
             }
             if (!result && destVdi != null) {
                 try {
@@ -795,8 +798,8 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
                 // Copy the volume to secondary storage
                 task = srcVdi.copyAsync(conn, secondaryStorage, null, null);
                 // poll every 1 seconds ,
-                hypervisorResource.waitForTask(conn, task, 1000, wait * 1000);
-                hypervisorResource.checkForSuccess(conn, task);
+                XenServerHelper.waitForTask(conn, task, 1000, wait * 1000);
+                XenServerHelper.checkForSuccess(conn, task);
                 final VDI destVdi = Types.toVDI(task, conn);
                 final String destVolumeUUID = destVdi.getUuid(conn);
 
@@ -815,7 +818,7 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
                         s_logger.warn("unable to destroy task(" + task.toWireString() + ") due to " + e.toString());
                     }
                 }
-                hypervisorResource.removeSR(conn, secondaryStorage);
+                storageResource.removeSR(conn, secondaryStorage);
             }
         }
         return new CopyCmdAnswer("unsupported protocol");
@@ -851,12 +854,12 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
             final SR srcSr = createFileSr(conn, uri.getHost() + ":" + uri.getPath(), volumeDirectory);
             Task task = null;
             try {
-                final SR primaryStoragePool = hypervisorResource.getStorageRepository(conn, primaryStore.getUuid());
+                final SR primaryStoragePool = storageResource.getStorageRepository(conn, primaryStore.getUuid());
                 final VDI srcVdi = VDI.getByUuid(conn, volumeUuid);
                 task = srcVdi.copyAsync(conn, primaryStoragePool, null, null);
                 // poll every 1 seconds ,
-                hypervisorResource.waitForTask(conn, task, 1000, wait * 1000);
-                hypervisorResource.checkForSuccess(conn, task);
+                XenServerHelper.waitForTask(conn, task, 1000, wait * 1000);
+                XenServerHelper.checkForSuccess(conn, task);
                 final VDI destVdi = Types.toVDI(task, conn);
                 final VolumeObjectTO newVol = new VolumeObjectTO();
                 destVdi.setNameLabel(conn, srcVolume.getName());
@@ -877,7 +880,7 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
                     }
                 }
                 if (srcSr != null) {
-                    hypervisorResource.removeSR(conn, srcSr);
+                    storageResource.removeSR(conn, srcSr);
                 }
             }
         }
@@ -969,8 +972,8 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
             for (final VDI snapChain : snapshotChains) {
                 final Task task = snapChain.copyAsync(conn, null, null, destVdi);
                 // poll every 1 seconds ,
-                hypervisorResource.waitForTask(conn, task, 1000, wait * 1000);
-                hypervisorResource.checkForSuccess(conn, task);
+                XenServerHelper.waitForTask(conn, task, 1000, wait * 1000);
+                XenServerHelper.checkForSuccess(conn, task);
 
                 task.destroy(conn);
             }
@@ -989,7 +992,7 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
 
             templatePath = templatePath.replaceAll("//", "/");
 
-            result = hypervisorResource.postCreatePrivateTemplate(conn, templatePath, templateFilename, templateUuid, nameLabel, null, physicalSize, virtualSize, destObj.getId());
+            result = storageResource.postCreatePrivateTemplate(conn, templatePath, templateFilename, templateUuid, nameLabel, null, physicalSize, virtualSize, destObj.getId());
 
             if (!result) {
                 throw new CloudRuntimeException("Could not create the template.properties file on secondary storage dir");
@@ -1022,11 +1025,11 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
             }
 
             if (srcSr != null) {
-                hypervisorResource.removeSR(conn, srcSr);
+                storageResource.removeSR(conn, srcSr);
             }
 
             if (destSr != null) {
-                hypervisorResource.removeSR(conn, destSr);
+                storageResource.removeSR(conn, destSr);
             }
         }
     }
@@ -1070,7 +1073,7 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
             final String chapInitiatorUsername = srcDetails.get(DiskTO.CHAP_INITIATOR_USERNAME);
             final String chapInitiatorSecret = srcDetails.get(DiskTO.CHAP_INITIATOR_SECRET);
 
-            srcSr = hypervisorResource.getIscsiSR(conn, iScsiName, storageHost, iScsiName, chapInitiatorUsername, chapInitiatorSecret, true);
+            srcSr = storageResource.getIscsiSR(conn, iScsiName, storageHost, iScsiName, chapInitiatorUsername, chapInitiatorSecret, true);
 
             final String destNfsPath = destUri.getHost() + ":" + destUri.getPath();
             final String localDir = "/var/cloud_mount/" + UUID.nameUUIDFromBytes(destNfsPath.getBytes());
@@ -1102,7 +1105,7 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
 
             templatePath = templatePath.replaceAll("//", "/");
 
-            result = hypervisorResource.postCreatePrivateTemplate(conn, templatePath, templateFilename, templateUuid, nameLabel, null, physicalSize, virtualSize,
+            result = storageResource.postCreatePrivateTemplate(conn, templatePath, templateFilename, templateUuid, nameLabel, null, physicalSize, virtualSize,
                     templateObjTO.getId());
 
             if (!result) {
@@ -1152,11 +1155,11 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
             }
 
             if (srcSr != null) {
-                hypervisorResource.removeSR(conn, srcSr);
+                storageResource.removeSR(conn, srcSr);
             }
 
             if (destSr != null) {
-                hypervisorResource.removeSR(conn, destSr);
+                storageResource.removeSR(conn, destSr);
             }
         }
     }
