@@ -19,14 +19,6 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xen610;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.apache.cloudstack.storage.to.VolumeObjectTO;
-import org.apache.log4j.Logger;
-
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.MigrateWithStorageAnswer;
 import com.cloud.agent.api.MigrateWithStorageCommand;
@@ -34,9 +26,10 @@ import com.cloud.agent.api.to.NicTO;
 import com.cloud.agent.api.to.StorageFilerTO;
 import com.cloud.agent.api.to.VirtualMachineTO;
 import com.cloud.agent.api.to.VolumeTO;
-import com.cloud.hypervisor.xenserver.resource.release.XenServer610Resource;
 import com.cloud.hypervisor.xenserver.resource.common.XsHost;
 import com.cloud.hypervisor.xenserver.resource.network.XsLocalNetwork;
+import com.cloud.hypervisor.xenserver.resource.release.XenServer610Resource;
+import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.network.Networks.TrafficType;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
@@ -50,6 +43,13 @@ import com.xensource.xenapi.Types;
 import com.xensource.xenapi.VDI;
 import com.xensource.xenapi.VIF;
 import com.xensource.xenapi.VM;
+import org.apache.cloudstack.storage.to.VolumeObjectTO;
+import org.apache.log4j.Logger;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @ResourceWrapper(handles =  MigrateWithStorageCommand.class)
 public final class XenServer610MigrateWithStorageCommandWrapper extends CommandWrapper<MigrateWithStorageCommand, Answer, XenServer610Resource> {
@@ -60,6 +60,7 @@ public final class XenServer610MigrateWithStorageCommandWrapper extends CommandW
     public Answer execute(final MigrateWithStorageCommand command, final XenServer610Resource xenServer610Resource) {
         final Connection connection = xenServer610Resource.getConnection();
         final VirtualMachineTO vmSpec = command.getVirtualMachine();
+        final XenServerStorageResource storageResource = xenServer610Resource.getStorageResource();
         final Map<VolumeTO, StorageFilerTO> volumeToFiler = command.getVolumeToFiler();
         final String vmName = vmSpec.getName();
         Task task = null;
@@ -67,7 +68,7 @@ public final class XenServer610MigrateWithStorageCommandWrapper extends CommandW
         final XsHost xsHost = xenServer610Resource.getHost();
         final String uuid = xsHost.getUuid();
         try {
-            xenServer610Resource.prepareISO(connection, vmName, null, null);
+            storageResource.prepareISO(connection, vmName, null, null);
 
             // Get the list of networks and recreate VLAN, if required.
             for (final NicTO nicTo : vmSpec.getNics()) {

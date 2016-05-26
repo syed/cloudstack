@@ -83,9 +83,11 @@ public class XenServerStorageResource {
     protected XsHost host;
     private long dcId;
 
-    public XenServerStorageResource(XsHost host, long dcId) {
+    public XenServerStorageResource(XsHost host, long dcId, String username, Queue<String> password) {
         this.host = host;
         this.dcId = dcId;
+        this._username = username;
+        this._password = password;
     }
 
 
@@ -1504,7 +1506,7 @@ public class XenServerStorageResource {
         throw new CloudRuntimeException(errMsg);
     }
 
-        protected void umount(final Connection conn, final VDI vdi) {
+    protected void umount(final Connection conn, final VDI vdi) {
 
     }
 
@@ -1514,6 +1516,44 @@ public class XenServerStorageResource {
         } catch (final Exception e) {
             s_logger.debug("Failed to umount snapshot dir", e);
         }
+    }
+
+    public String setupHeartbeatSr(final Connection conn, final SR sr, final boolean force) throws XenAPIException, XmlRpcException {
+        final SR.Record srRec = sr.getRecord(conn);
+        final String srUuid = srRec.uuid;
+        if (!srRec.shared || !SRType.LVMOHBA.equals(srRec.type) && !SRType.LVMOISCSI.equals(srRec.type) && !SRType.NFS.equals(srRec.type)) {
+            return srUuid;
+        }
+        String result = null;
+        final Host host = Host.getByUuid(conn, this.host.getUuid());
+        final Set<String> tags = host.getTags(conn);
+        if (force || !tags.contains("cloud-heartbeat-" + srUuid)) {
+            if (s_logger.isDebugEnabled()) {
+                s_logger.debug("Setting up the heartbeat sr for host " + this.host.getIp() + " and sr " + srUuid);
+            }
+            final Set<PBD> pbds = sr.getPBDs(conn);
+            for (final PBD pbd : pbds) {
+                final PBD.Record pbdr = pbd.getRecord(conn);
+                if (!pbdr.currentlyAttached && pbdr.host.getUuid(conn).equals(this.host.getUuid())) {
+                    pbd.plug(conn);
+                    break;
+                }
+            }
+            result = XenServerHelper.callHostPluginThroughMaster(conn, "vmopspremium", "setup_heartbeat_sr", this.host, "host", this.host.getUuid(), "sr", srUuid);
+            if (result == null || !result.split("#")[1].equals("0")) {
+                throw new CloudRuntimeException("Unable to setup heartbeat sr on SR " + srUuid + " due to " + result);
+            }
+
+            if (!tags.contains("cloud-heartbeat-" + srUuid)) {
+                tags.add("cloud-heartbeat-" + srUuid);
+                host.setTags(conn, tags);
+            }
+        }
+        result = XenServerHelper.callHostPluginPremium(conn, "setup_heartbeat_file", this.host, "host", this.host.getUuid(), "sr", srUuid, "add", "true");
+        if (result == null || !result.split("#")[1].equals("0")) {
+            throw new CloudRuntimeException("Unable to setup heartbeat file entry on SR " + srUuid + " due to " + result);
+        }
+        return srUuid;
     }
 
     public String upgradeSnapshot(final Connection conn, final String templatePath, final String snapshotPath) {
@@ -1855,6 +1895,36 @@ public class XenServerStorageResource {
         }
     }
 
+        public boolean postCreatePrivateTemplate(final Connection conn, final String templatePath, final String tmpltFilename, final String templateName,
+                                             String templateDescription, String checksum, final long size, final long virtualSize, final long templateId) {
+
+        if (templateDescription == null) {
+            templateDescription = "";
+        }
+
+        if (checksum == null) {
+            checksum = "";
+        }
+
+        final String result = XenServerHelper.callHostPlugin(conn, "vmopsSnapshot", "post_create_private_template", host, "templatePath", templatePath, "templateFilename", tmpltFilename,
+                "templateName", templateName, "templateDescription", templateDescription, "checksum", checksum, "size", String.valueOf(size), "virtualSize",
+                String.valueOf(virtualSize), "templateId", String.valueOf(templateId));
+
+        boolean success = false;
+        if (result != null && !result.isEmpty()) {
+            // Else, command threw an exception which has already been logged.
+
+            if (result.equalsIgnoreCase("1")) {
+                s_logger.debug("Successfully created template.properties file on secondary storage for " + tmpltFilename);
+                success = true;
+            } else {
+                s_logger.warn("Could not create template.properties file on secondary storage for " + tmpltFilename + " for templateId: " + templateId);
+            }
+        }
+
+        return success;
+    }
+
     public boolean createVmdataFiles(final String vmName, final List<String[]> vmDataList, final String configDriveLabel) {
 
         // add vm iso to the isolibrary
@@ -1945,7 +2015,7 @@ public class XenServerStorageResource {
         return true;
     }
 
-    protected String logX(final XenAPIObject obj, final String msg) {
+    public String logX(final XenAPIObject obj, final String msg) {
         return new StringBuilder("Host ").append(this.host.getIp()).append(" ").append(obj.toWireString()).append(": ").append(msg).toString();
     }
 }

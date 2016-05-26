@@ -19,22 +19,22 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
-import java.util.List;
-import java.util.Set;
-
+import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.AttachOrDettachConfigDriveCommand;
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
+import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
+import com.xensource.xenapi.Types;
 import com.xensource.xenapi.VBD;
 import com.xensource.xenapi.VDI;
 import com.xensource.xenapi.VM;
-import com.xensource.xenapi.Types;
 import org.apache.log4j.Logger;
-
-import com.cloud.agent.api.Answer;
-import com.cloud.resource.CommandWrapper;
 import org.apache.xmlrpc.XmlRpcException;
+
+import java.util.List;
+import java.util.Set;
 
 @ResourceWrapper(handles =  AttachOrDettachConfigDriveCommand.class)
 public final class CitrixAttachOrDettachConfigDriveCommandWrapper extends CommandWrapper<AttachOrDettachConfigDriveCommand, Answer, XenServerResourceBase> {
@@ -44,7 +44,7 @@ public final class CitrixAttachOrDettachConfigDriveCommandWrapper extends Comman
     @Override
     public Answer execute(final AttachOrDettachConfigDriveCommand command, final XenServerResourceBase xenServerResourceBase) {
         final Connection conn = xenServerResourceBase.getConnection();
-
+        final XenServerStorageResource storageResource = xenServerResourceBase.getStorageResource();
         String vmName = command.getVmName();
         List<String[]> vmData = command.getVmData();
         String label = command.getConfigDriveLabel();
@@ -54,7 +54,7 @@ public final class CitrixAttachOrDettachConfigDriveCommandWrapper extends Comman
             Set<VM> vms = VM.getByNameLabel(conn, vmName);
             for (VM vm : vms) {
                 if (isAttach) {
-                    if (!xenServerResourceBase.createAndAttachConfigDriveIsoForVM(conn, vm, vmData, label)) {
+                    if (!storageResource.createAndAttachConfigDriveIsoForVM(conn, vm, vmData, label)) {
                         s_logger.debug("Failed to attach config drive iso to VM " + vmName);
                     }
                 } else {

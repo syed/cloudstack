@@ -20,6 +20,7 @@
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
@@ -41,6 +42,7 @@ public final class CitrixPrepareForMigrationCommandWrapper extends CommandWrappe
     @Override
     public Answer execute(final PrepareForMigrationCommand command, final XenServerResourceBase xenServerResourceBase) {
         final Connection conn = xenServerResourceBase.getConnection();
+        XenServerStorageResource storageResource = xenServerResourceBase.getStorageResource();
 
         final VirtualMachineTO vm = command.getVirtualMachine();
         List<String[]> vmDataList = vm.getVmData();
@@ -56,7 +58,7 @@ public final class CitrixPrepareForMigrationCommandWrapper extends CommandWrappe
 
         final NicTO[] nics = vm.getNics();
         try {
-            xenServerResourceBase.prepareISO(conn, vm.getName(), vmDataList, configDriveLabel);
+            storageResource.prepareISO(conn, vm.getName(), vmDataList, configDriveLabel);
 
             for (final NicTO nic : nics) {
                 xenServerResourceBase.getNetwork(conn, nic);

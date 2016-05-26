@@ -121,7 +121,7 @@ public final class CitrixAttachIsoCommandWrapper extends CommandWrapper<AttachIs
                 }
 
                 if (!sr.getNameLabel(conn).startsWith("XenServer Tools")) {
-                    xenServerResourceBase.removeSR(conn, sr);
+                    storageResource.removeSR(conn, sr);
                 }
 
                 return new Answer(command);
