@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHost;
 import com.google.gson.Gson;
 import org.apache.log4j.Logger;
 
@@ -35,7 +36,6 @@ import com.cloud.agent.api.to.StorageFilerTO;
 import com.cloud.agent.api.to.VirtualMachineTO;
 import com.cloud.agent.api.to.VolumeTO;
 import com.cloud.hypervisor.xenserver.resource.release.XenServer610Resource;
-import com.cloud.hypervisor.xenserver.resource.common.XsHost;
 import com.cloud.hypervisor.xenserver.resource.network.XsLocalNetwork;
 import com.cloud.network.Networks.TrafficType;
 import com.cloud.resource.CommandWrapper;
@@ -85,8 +85,8 @@ public final class XenServer610MigrateWithStorageReceiveCommandWrapper extends C
 
             final XsLocalNetwork nativeNetworkForTraffic = xenServer610Resource.getNativeNetworkForTraffic(connection, TrafficType.Storage, null);
             final Network network = nativeNetworkForTraffic.getNetwork();
-            final XsHost xsHost = xenServer610Resource.getHost();
-            final String uuid = xsHost.getUuid();
+            final XenServerHost xenServerHost = xenServer610Resource.getHost();
+            final String uuid = xenServerHost.getUuid();
 
             final Map<String, String> other = new HashMap<String, String>();
             other.put("live", "true");

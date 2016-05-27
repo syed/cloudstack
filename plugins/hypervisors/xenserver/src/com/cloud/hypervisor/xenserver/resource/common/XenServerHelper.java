@@ -317,7 +317,7 @@ public class XenServerHelper {
     }
 
 
-    public static String callHostPlugin(final Connection conn, final String plugin, final String cmd, XsHost xsHost, final String... params) {
+    public static String callHostPlugin(final Connection conn, final String plugin, final String cmd, XenServerHost xenServerHost, final String... params) {
         final Map<String, String> args = new HashMap<String, String>();
         String msg;
         try {
@@ -328,7 +328,7 @@ public class XenServerHelper {
             if (s_logger.isTraceEnabled()) {
                 s_logger.trace("callHostPlugin executing for command " + cmd + " with " + getArgsString(args));
             }
-            final Host host = Host.getByUuid(conn, xsHost.getUuid());
+            final Host host = Host.getByUuid(conn, xenServerHost.getUuid());
             final String result = host.callPlugin(conn, plugin, cmd, args);
             if (s_logger.isTraceEnabled()) {
                 s_logger.trace("callHostPlugin Result: " + result);
@@ -344,7 +344,7 @@ public class XenServerHelper {
         throw new CloudRuntimeException(msg);
     }
 
-    public static String callHostPluginAsync(final Connection conn, final String plugin, final String cmd, final int wait,XsHost xsHost, final Map<String, String> params) {
+    public static String callHostPluginAsync(final Connection conn, final String plugin, final String cmd, final int wait, XenServerHost xenServerHost, final Map<String, String> params) {
         final int timeout = wait * 1000;
         final Map<String, String> args = new HashMap<String, String>();
         Task task = null;
@@ -355,7 +355,7 @@ public class XenServerHelper {
             if (s_logger.isTraceEnabled()) {
                 s_logger.trace("callHostPlugin executing for command " + cmd + " with " + getArgsString(args));
             }
-            final Host host = Host.getByUuid(conn, xsHost.getUuid());
+            final Host host = Host.getByUuid(conn, xenServerHost.getUuid());
             task = host.callPluginAsync(conn, plugin, cmd, args);
             // poll every 1 seconds
             waitForTask(conn, task, 1000, timeout);
@@ -374,14 +374,14 @@ public class XenServerHelper {
                 try {
                     task.destroy(conn);
                 } catch (final Exception e1) {
-                    s_logger.debug("unable to destroy task(" + task.toString() + ") on host(" + xsHost.getUuid() + ") due to " + e1.toString());
+                    s_logger.debug("unable to destroy task(" + task.toString() + ") on host(" + xenServerHost.getUuid() + ") due to " + e1.toString());
                 }
             }
         }
         return null;
     }
 
-    public static String callHostPluginAsync(final Connection conn, final String plugin, final String cmd, final int wait, XsHost xsHost, final String... params) {
+    public static String callHostPluginAsync(final Connection conn, final String plugin, final String cmd, final int wait, XenServerHost xenServerHost, final String... params) {
         final int timeout = wait * 1000;
         final Map<String, String> args = new HashMap<String, String>();
         Task task = null;
@@ -392,7 +392,7 @@ public class XenServerHelper {
             if (s_logger.isTraceEnabled()) {
                 s_logger.trace("callHostPlugin executing for command " + cmd + " with " + getArgsString(args));
             }
-            final Host host = Host.getByUuid(conn, xsHost.getUuid());
+            final Host host = Host.getByUuid(conn, xenServerHost.getUuid());
             task = host.callPluginAsync(conn, plugin, cmd, args);
             // poll every 1 seconds
             waitForTask(conn, task, 1000, timeout);
@@ -413,24 +413,24 @@ public class XenServerHelper {
                 try {
                     task.destroy(conn);
                 } catch (final Exception e1) {
-                    s_logger.debug("unable to destroy task(" + task.toString() + ") on host(" + xsHost.getUuid() + ") due to " + e1.toString());
+                    s_logger.debug("unable to destroy task(" + task.toString() + ") on host(" + xenServerHost.getUuid() + ") due to " + e1.toString());
                 }
             }
         }
         return null;
     }
 
-    public static String callHostPluginPremium(final Connection conn, final String cmd, XsHost xsHost, final String... params) {
-        return callHostPlugin(conn, "vmopspremium", cmd, xsHost, params);
+    public static String callHostPluginPremium(final Connection conn, final String cmd, XenServerHost xenServerHost, final String... params) {
+        return callHostPlugin(conn, "vmopspremium", cmd, xenServerHost, params);
     }
 
-    public static String callHostPluginThroughMaster(final Connection conn, final String plugin, final String cmd, XsHost xsHost, final String... params) {
+    public static String callHostPluginThroughMaster(final Connection conn, final String plugin, final String cmd, XenServerHost xenServerHost, final String... params) {
         final Map<String, String> args = new HashMap<String, String>();
 
         try {
             final Map<Pool, Pool.Record> poolRecs = Pool.getAllRecords(conn);
             if (poolRecs.size() != 1) {
-                throw new CloudRuntimeException("There are " + poolRecs.size() + " pool for host :" + xsHost.getUuid());
+                throw new CloudRuntimeException("There are " + poolRecs.size() + " pool for host :" + xenServerHost.getUuid());
             }
             final Host master = poolRecs.values().iterator().next().master;
             for (int i = 0; i < params.length; i += 2) {

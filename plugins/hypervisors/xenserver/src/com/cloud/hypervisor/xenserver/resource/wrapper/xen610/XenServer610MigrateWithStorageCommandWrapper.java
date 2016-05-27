@@ -26,7 +26,7 @@ import com.cloud.agent.api.to.NicTO;
 import com.cloud.agent.api.to.StorageFilerTO;
 import com.cloud.agent.api.to.VirtualMachineTO;
 import com.cloud.agent.api.to.VolumeTO;
-import com.cloud.hypervisor.xenserver.resource.common.XsHost;
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHost;
 import com.cloud.hypervisor.xenserver.resource.network.XsLocalNetwork;
 import com.cloud.hypervisor.xenserver.resource.release.XenServer610Resource;
 import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
@@ -65,8 +65,8 @@ public final class XenServer610MigrateWithStorageCommandWrapper extends CommandW
         final String vmName = vmSpec.getName();
         Task task = null;
 
-        final XsHost xsHost = xenServer610Resource.getHost();
-        final String uuid = xsHost.getUuid();
+        final XenServerHost xenServerHost = xenServer610Resource.getHost();
+        final String uuid = xenServerHost.getUuid();
         try {
             storageResource.prepareISO(connection, vmName, null, null);
 

@@ -22,13 +22,13 @@ package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 import java.util.Iterator;
 
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHost;
 import org.apache.log4j.Logger;
 import org.apache.xmlrpc.XmlRpcException;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.MaintainAnswer;
 import com.cloud.agent.api.MaintainCommand;
-import com.cloud.hypervisor.xenserver.resource.common.XsHost;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
@@ -45,8 +45,8 @@ public final class CitrixMaintainCommandWrapper extends CommandWrapper<MaintainC
         final Connection conn = xenServerResourceBase.getConnection();
         try {
 
-            final XsHost xsHost = xenServerResourceBase.getHost();
-            final String uuid = xsHost.getUuid();
+            final XenServerHost xenServerHost = xenServerResourceBase.getHost();
+            final String uuid = xenServerHost.getUuid();
             final Host host = Host.getByUuid(conn, uuid);
             // remove all tags cloud stack
             final Host.Record hr = host.getRecord(conn);

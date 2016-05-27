@@ -59,7 +59,7 @@ import com.cloud.host.Host.Type;
 import com.cloud.hypervisor.Hypervisor.HypervisorType;
 import com.cloud.hypervisor.xenserver.resource.common.XenServerConnectionPool;
 import com.cloud.hypervisor.xenserver.resource.common.XenServerHelper;
-import com.cloud.hypervisor.xenserver.resource.common.XsHost;
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHost;
 import com.cloud.hypervisor.xenserver.resource.network.XsLocalNetwork;
 import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageProcessor;
 import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
@@ -232,7 +232,7 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
     protected String _guestNetworkName;
     protected int _heartbeatInterval = 60;
     protected int _heartbeatTimeout = 120;
-    protected final XsHost _host = new XsHost();
+    protected final XenServerHost _host = new XenServerHost();
     protected String _instance; // instance name (default is usually "VM")
     protected boolean _isOvs = false;
     protected String _linkLocalPrivateNetworkName;
@@ -1732,7 +1732,7 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
         return platformEmulator;
     }
 
-    public XsHost getHost() {
+    public XenServerHost getHost() {
         return _host;
     }
 

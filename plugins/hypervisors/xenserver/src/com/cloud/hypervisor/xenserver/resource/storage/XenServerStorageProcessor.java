@@ -32,7 +32,7 @@ import com.cloud.hypervisor.Hypervisor.HypervisorType;
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase.SRType;
 import com.cloud.hypervisor.xenserver.resource.common.XenServerHelper;
-import com.cloud.hypervisor.xenserver.resource.common.XsHost;
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHost;
 import com.cloud.storage.DataStoreRole;
 import com.cloud.storage.Storage;
 import com.cloud.storage.Storage.ImageFormat;
@@ -678,7 +678,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
             final String vdiPath = pbdLocation + "/" + vdiLocation + ".vhd";
             //download a url into vdipath
             //downloadHttpToLocalFile(vdiPath, template.getPath());
-            XsHost host = hypervisorResource.getHost();
+            XenServerHost host = hypervisorResource.getHost();
             XenServerHelper.callHostPlugin(conn, "storagePlugin", "downloadTemplateFromUrl", host, "destPath", vdiPath, "srcUrl", srcObj.getPath());
             result = true;
             //return new CopyCmdAnswer(cmd, vdi.getUuid(conn));
@@ -745,7 +745,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
 
     private String copy_vhd_from_secondarystorage(final Connection conn, final String mountpoint, final String sruuid, final int wait) {
         final String nameLabel = "cloud-" + UUID.randomUUID().toString();
-        final XsHost host = hypervisorResource.getHost();
+        final XenServerHost host = hypervisorResource.getHost();
         final String results =
                 XenServerHelper.callHostPluginAsync(conn, "vmopspremium", "copy_vhd_from_secondarystorage", wait, host, "mountpoint", mountpoint, "sruuid", sruuid, "namelabel",
                         nameLabel);
@@ -797,7 +797,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
     }
 
     protected String getVhdParent(final Connection conn, final String primaryStorageSRUuid, final String snapshotUuid, final Boolean isISCSI) {
-        XsHost host = hypervisorResource.getHost();
+        XenServerHost host = hypervisorResource.getHost();
         final String parentUuid =
                 XenServerHelper.callHostPlugin(conn, "vmopsSnapshot", "getVhdParent", host, "primaryStorageSRUuid", primaryStorageSRUuid, "snapshotUuid", snapshotUuid,
                         "isISCSI", isISCSI.toString());
@@ -1076,7 +1076,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
     boolean swiftUpload(final Connection conn, final SwiftTO swift, final String container, final String ldir, final String lfilename, final Boolean isISCSI, final int wait) {
         String result = null;
         try {
-            XsHost host = hypervisorResource.getHost();
+            XenServerHost host = hypervisorResource.getHost();
 
             result = XenServerHelper.callHostPluginAsync(conn, "swiftxenserver", "swift", wait, host,
                     "op", "upload", "url", swift.getUrl(), "account", swift.getAccount(), "username",
@@ -1095,7 +1095,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
     protected String deleteSnapshotBackup(final Connection conn, final String localMountPoint, final String path, final String secondaryStorageMountPath, final String backupUUID) {
 
         // If anybody modifies the formatting below again, I'll skin them
-        final XsHost host = hypervisorResource.getHost();
+        final XenServerHost host = hypervisorResource.getHost();
         final String result =
                 XenServerHelper.callHostPlugin(conn, "vmopsSnapshot", "deleteSnapshotBackup", host, "backupUUID", backupUUID, "path", path, "secondaryStorageMountPath",
                         secondaryStorageMountPath, "localMountPoint", localMountPoint);
@@ -1130,7 +1130,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
             // https workaround for Introspector bug that does not
             // recognize Boolean accessor methods ...
 
-            final XsHost host = hypervisorResource.getHost();
+            final XenServerHost host = hypervisorResource.getHost();
             parameters.addAll(Arrays.asList("operation", "put", "filename", dir + "/" + filename, "iSCSIFlag", iSCSIFlag.toString(), "bucket", s3.getBucketName(), "key",
                     key, "https", s3.isHttps() != null ? s3.isHttps().toString() : "null", "maxSingleUploadSizeInBytes", String.valueOf(s3.getMaxSingleUploadSizeInBytes())));
             final String result = XenServerHelper.callHostPluginAsync(connection, "s3xenserver", "s3", wait, host, parameters.toArray(new String[parameters.size()]));
@@ -1149,7 +1149,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
     }
 
     protected Long getSnapshotSize(final Connection conn, final String primaryStorageSRUuid, final String snapshotUuid, final Boolean isISCSI, final int wait) {
-        final XsHost host = hypervisorResource.getHost();
+        final XenServerHost host = hypervisorResource.getHost();
         final String physicalSize = XenServerHelper.callHostPluginAsync(conn, "vmopsSnapshot", "getSnapshotSize", wait,
                 host, "primaryStorageSRUuid", primaryStorageSRUuid, "snapshotUuid", snapshotUuid,
                 "isISCSI", isISCSI.toString());
@@ -1171,7 +1171,7 @@ public class XenServerStorageProcessor implements StorageProcessor {
         // Each argument is put in a separate line for readability.
         // Using more lines does not harm the environment.
         final String backupUuid = UUID.randomUUID().toString();
-        final XsHost host = hypervisorResource.getHost();
+        final XenServerHost host = hypervisorResource.getHost();
         final String results =
                 XenServerHelper.callHostPluginAsync(conn, "vmopsSnapshot", "backupSnapshot", wait, host, "primaryStorageSRUuid", primaryStorageSRUuid, "path", path,
                         "secondaryStorageMountPath", secondaryStorageMountPath, "snapshotUuid", snapshotUuid, "prevBackupUuid", prevBackupUuid, "backupUuid", backupUuid,
