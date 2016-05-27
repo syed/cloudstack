@@ -19,9 +19,10 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
-import static com.cloud.hypervisor.xenserver.resource.wrapper.xenbase.XenServerUtilitiesHelper.SCRIPT_CMD_PATH;
+import static com.cloud.hypervisor.xenserver.resource.common.XenServerHelper.SCRIPT_CMD_PATH;
 
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHelper;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
@@ -42,14 +43,13 @@ public final class CitrixUpdateHostPasswordCommandWrapper extends CommandWrapper
         final String username = command.getUsername();
         final String newPassword = command.getNewPassword();
 
-        final XenServerUtilitiesHelper xenServerUtilitiesHelper = xenServerResourceBase.getXenServerUtilitiesHelper();
-        final String cmdLine = xenServerUtilitiesHelper.buildCommandLine(SCRIPT_CMD_PATH, VRScripts.UPDATE_HOST_PASSWD, username, newPassword);
+        final String cmdLine = XenServerHelper.buildCommandLine(SCRIPT_CMD_PATH, VRScripts.UPDATE_HOST_PASSWD, username, newPassword);
 
         Pair<Boolean, String> result;
         try {
             s_logger.debug("Executing command in Host: " + cmdLine);
             final String hostPassword = xenServerResourceBase.getPwdFromQueue();
-            result = xenServerUtilitiesHelper.executeSshWrapper(hostIp, 22, username, null, hostPassword, cmdLine.toString());
+            result = XenServerHelper.executeSshWrapper(hostIp, 22, username, null, hostPassword, cmdLine.toString());
         } catch (final Exception e) {
             return new Answer(command, false, e.getMessage());
         }

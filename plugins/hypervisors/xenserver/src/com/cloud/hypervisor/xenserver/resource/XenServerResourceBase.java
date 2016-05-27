@@ -64,7 +64,6 @@ import com.cloud.hypervisor.xenserver.resource.network.XsLocalNetwork;
 import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageProcessor;
 import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.hypervisor.xenserver.resource.wrapper.xenbase.CitrixRequestWrapper;
-import com.cloud.hypervisor.xenserver.resource.wrapper.xenbase.XenServerUtilitiesHelper;
 import com.cloud.network.Networks;
 import com.cloud.network.Networks.BroadcastDomainType;
 import com.cloud.network.Networks.TrafficType;
@@ -115,7 +114,6 @@ import com.xensource.xenapi.VM;
 import com.xensource.xenapi.XenAPIObject;
 import org.apache.cloudstack.storage.to.TemplateObjectTO;
 import org.apache.cloudstack.storage.to.VolumeObjectTO;
-import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 import org.apache.xmlrpc.XmlRpcException;
 import org.w3c.dom.Document;
@@ -128,12 +126,9 @@ import javax.naming.ConfigurationException;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -148,7 +143,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.Random;
@@ -271,9 +265,6 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
     protected  String _configDriveSRName = "ConfigDriveISOs";
     public String _attachIsoDeviceNum = "3";
 
-    protected XenServerUtilitiesHelper xenServerUtilitiesHelper = new XenServerUtilitiesHelper();
-
-
     protected XenServerStorageResource xenServerStorageResource;
 
     protected int _wait;
@@ -303,10 +294,6 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
 
     public String getPwdFromQueue() {
         return _password.peek();
-    }
-
-    public XenServerUtilitiesHelper getXenServerUtilitiesHelper() {
-        return xenServerUtilitiesHelper;
     }
 
     public XenServerStorageResource getStorageResource() {
@@ -1500,9 +1487,8 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
             try {
                 final String cmdLine = "xe sm-list | grep \"resigning of duplicates\"";
 
-                final XenServerUtilitiesHelper xenServerUtilitiesHelper = getXenServerUtilitiesHelper();
 
-                Pair<Boolean, String> result = xenServerUtilitiesHelper.executeSshWrapper(_host.getIp(), 22, _username, null, getPwdFromQueue(), cmdLine);
+                Pair<Boolean, String> result = XenServerHelper.executeSshWrapper(_host.getIp(), 22, _username, null, getPwdFromQueue(), cmdLine);
 
                 boolean supportsClonedVolumes = result != null && result.first() != null && result.first() &&
                         result.second() != null && result.second().length() > 0;
