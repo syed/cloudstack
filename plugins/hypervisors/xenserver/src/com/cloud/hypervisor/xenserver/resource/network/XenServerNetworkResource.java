@@ -82,8 +82,8 @@ public class XenServerNetworkResource {
         return Boolean.valueOf(XenServerHelper.callHostPlugin(conn, "vmops", "can_bridge_firewall", _host, "host_uuid", _host.getUuid(), "instance", _instance));
     }
 
-    protected ExecutionResult cleanupNetworkElementCommand(final IpAssocCommand cmd) {
-        final Connection conn = getConnection();
+    public ExecutionResult cleanupNetworkElementCommand(Connection conn, final IpAssocCommand cmd) {
+
         final String routerName = cmd.getAccessDetail(NetworkElementCommand.ROUTER_NAME);
         final String routerIp = cmd.getAccessDetail(NetworkElementCommand.ROUTER_IP);
         try {

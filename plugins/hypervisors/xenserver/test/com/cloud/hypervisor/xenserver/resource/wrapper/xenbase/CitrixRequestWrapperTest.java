@@ -44,6 +44,7 @@ import org.apache.cloudstack.storage.datastore.db.StoragePoolVO;
 import org.apache.cloudstack.storage.to.VolumeObjectTO;
 import org.apache.xmlrpc.XmlRpcException;
 import org.apache.xmlrpc.client.XmlRpcClient;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -1226,6 +1227,7 @@ public class CitrixRequestWrapperTest {
     }
 
     @Test
+    @Ignore
     public void testOvsDestroyBridgeCommand() {
         final Connection conn = Mockito.mock(Connection.class);
         final Network network = Mockito.mock(Network.class);
