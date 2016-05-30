@@ -28,9 +28,9 @@ import com.xensource.xenapi.Types.XenAPIException;
 /**
  * XsNic represents a network and the host's specific PIF.
  */
-public class XsLocalNetwork {
+public class XenServerLocalNetwork {
 
-    private static final Logger s_logger = Logger.getLogger(XsLocalNetwork.class);
+    private static final Logger s_logger = Logger.getLogger(XenServerLocalNetwork.class);
 
     private final XenServerResourceBase _xenServerResourceBase;
     private final Network _n;
@@ -38,11 +38,11 @@ public class XsLocalNetwork {
     private PIF _p;
     private PIF.Record _pr;
 
-    public XsLocalNetwork(final XenServerResourceBase xenServerResourceBase, final Network n) {
+    public XenServerLocalNetwork(final XenServerResourceBase xenServerResourceBase, final Network n) {
         this(xenServerResourceBase, n, null, null, null);
     }
 
-    public XsLocalNetwork(final XenServerResourceBase xenServerResourceBase, final Network n, final Network.Record nr, final PIF p, final PIF.Record pr) {
+    public XenServerLocalNetwork(final XenServerResourceBase xenServerResourceBase, final Network n, final Network.Record nr, final PIF p, final PIF.Record pr) {
         _xenServerResourceBase = xenServerResourceBase;
         _n = n;
         _nr = nr;

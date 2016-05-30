@@ -23,6 +23,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHost;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -37,7 +38,6 @@ import com.cloud.agent.api.SetupCommand;
 import com.cloud.host.Host;
 import com.cloud.host.HostEnvironment;
 import com.cloud.hypervisor.xenserver.resource.release.XenServer56Resource;
-import com.cloud.hypervisor.xenserver.resource.common.XsHost;
 import com.cloud.utils.ExecutionResult;
 import com.cloud.vm.VMInstanceVO;
 import com.xensource.xenapi.Connection;
@@ -159,7 +159,7 @@ public class XenServer56WrapperTest {
 
     @Test
     public void testSetupCommand() {
-        final XsHost xsHost = Mockito.mock(XsHost.class);
+        final XenServerHost xenServerHost = Mockito.mock(XenServerHost.class);
         final HostEnvironment env = Mockito.mock(HostEnvironment.class);
 
         final SetupCommand setupCommand = new SetupCommand(env);
@@ -167,7 +167,7 @@ public class XenServer56WrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(xenServer56Resource.getHost()).thenReturn(xsHost);
+        when(xenServer56Resource.getHost()).thenReturn(xenServerHost);
 
         final Answer answer = wrapper.execute(setupCommand, xenServer56Resource);
         verify(xenServer56Resource, times(1)).getConnection();

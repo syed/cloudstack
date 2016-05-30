@@ -19,14 +19,6 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xen610;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.List;
-
-import com.google.gson.Gson;
-import org.apache.log4j.Logger;
-
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.MigrateWithStorageReceiveAnswer;
 import com.cloud.agent.api.MigrateWithStorageReceiveCommand;
@@ -34,18 +26,26 @@ import com.cloud.agent.api.to.NicTO;
 import com.cloud.agent.api.to.StorageFilerTO;
 import com.cloud.agent.api.to.VirtualMachineTO;
 import com.cloud.agent.api.to.VolumeTO;
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHost;
+import com.cloud.hypervisor.xenserver.resource.network.XenServerLocalNetwork;
 import com.cloud.hypervisor.xenserver.resource.release.XenServer610Resource;
-import com.cloud.hypervisor.xenserver.resource.common.XsHost;
-import com.cloud.hypervisor.xenserver.resource.network.XsLocalNetwork;
+import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.network.Networks.TrafficType;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
-import com.cloud.utils.exception.CloudRuntimeException;
 import com.cloud.utils.Pair;
+import com.cloud.utils.exception.CloudRuntimeException;
+import com.google.gson.Gson;
 import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.Host;
 import com.xensource.xenapi.Network;
 import com.xensource.xenapi.SR;
+import org.apache.log4j.Logger;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @ResourceWrapper(handles =  MigrateWithStorageReceiveCommand.class)
 public final class XenServer610MigrateWithStorageReceiveCommandWrapper extends CommandWrapper<MigrateWithStorageReceiveCommand, Answer, XenServer610Resource> {
@@ -55,6 +55,7 @@ public final class XenServer610MigrateWithStorageReceiveCommandWrapper extends C
     @Override
     public Answer execute(final MigrateWithStorageReceiveCommand command, final XenServer610Resource xenServer610Resource) {
         final Connection connection = xenServer610Resource.getConnection();
+        final XenServerStorageResource storageResource = xenServer610Resource.getStorageResource();
         final VirtualMachineTO vmSpec = command.getVirtualMachine();
         final List<Pair<VolumeTO, StorageFilerTO>> volumeToFiler = command.getVolumeToFiler();
 
@@ -72,7 +73,7 @@ public final class XenServer610MigrateWithStorageReceiveCommandWrapper extends C
             final List<Pair<VolumeTO, Object>> volumeToSr = new ArrayList<Pair<VolumeTO, Object>>();
             for (final Pair<VolumeTO, StorageFilerTO> entry : volumeToFiler) {
                 final StorageFilerTO storageFiler = entry.second();
-                final SR sr = xenServer610Resource.getStorageRepository(connection, storageFiler.getUuid());
+                final SR sr = storageResource.getStorageRepository(connection, storageFiler.getUuid());
                 volumeToSr.add(new Pair<VolumeTO, Object>(entry.first(), sr));
             }
 
@@ -83,10 +84,10 @@ public final class XenServer610MigrateWithStorageReceiveCommandWrapper extends C
                 nicToNetwork.add(new Pair<NicTO, Object>(nicTo, network));
             }
 
-            final XsLocalNetwork nativeNetworkForTraffic = xenServer610Resource.getNativeNetworkForTraffic(connection, TrafficType.Storage, null);
+            final XenServerLocalNetwork nativeNetworkForTraffic = xenServer610Resource.getNativeNetworkForTraffic(connection, TrafficType.Storage, null);
             final Network network = nativeNetworkForTraffic.getNetwork();
-            final XsHost xsHost = xenServer610Resource.getHost();
-            final String uuid = xsHost.getUuid();
+            final XenServerHost xenServerHost = xenServer610Resource.getHost();
+            final String uuid = xenServerHost.getUuid();
 
             final Map<String, String> other = new HashMap<String, String>();
             other.put("live", "true");

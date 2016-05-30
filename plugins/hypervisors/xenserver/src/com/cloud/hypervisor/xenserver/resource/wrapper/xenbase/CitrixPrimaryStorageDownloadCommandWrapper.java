@@ -23,6 +23,7 @@ import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.storage.PrimaryStorageDownloadAnswer;
 import com.cloud.agent.api.storage.PrimaryStorageDownloadCommand;
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHelper;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
@@ -58,7 +59,7 @@ public final class CitrixPrimaryStorageDownloadCommandWrapper extends CommandWra
                 poolsr = srs.iterator().next();
             }
             final String pUuid = poolsr.getUuid(conn);
-            final boolean isISCSI = xenServerResourceBase.IsISCSI(poolsr.getType(conn));
+            final boolean isISCSI = XenServerHelper.IsISCSI(poolsr.getType(conn));
             final String uuid = xenServerResourceBase.getStorageResource().copyVhdFromSecondaryStorage(conn, tmplpath, pUuid, wait);
             final VDI tmpl = xenServerResourceBase.getVDIbyUuid(conn, uuid);
             final VDI snapshotvdi = tmpl.snapshot(conn, new HashMap<String, String>());

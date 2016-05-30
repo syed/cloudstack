@@ -30,7 +30,7 @@ import com.cloud.exception.InternalErrorException;
 import com.cloud.hypervisor.Hypervisor.HypervisorType;
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
 import com.cloud.hypervisor.xenserver.resource.common.XenServerHelper;
-import com.cloud.hypervisor.xenserver.resource.common.XsHost;
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHost;
 import com.cloud.storage.Storage;
 import com.cloud.utils.exception.CloudRuntimeException;
 import com.xensource.xenapi.Connection;
@@ -88,7 +88,7 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
     }
 
     protected boolean makeDirectory(final Connection conn, final String path) {
-        XsHost host = hypervisorResource.getHost();
+        XenServerHost host = hypervisorResource.getHost();
         final String result = XenServerHelper.callHostPlugin(conn, "cloud-plugin-storage", "makeDirectory", host, "path", path);
 
         if (result == null || result.isEmpty()) {
@@ -392,7 +392,7 @@ public class Xenserver625StorageProcessor extends XenServerStorageProcessor {
 
     @Override
     protected String getVhdParent(final Connection conn, final String primaryStorageSRUuid, final String snapshotUuid, final Boolean isISCSI) {
-        XsHost host = hypervisorResource.getHost();
+        XenServerHost host = hypervisorResource.getHost();
         final String parentUuid = XenServerHelper.callHostPlugin(conn, "cloud-plugin-storage", "getVhdParent", host, "primaryStorageSRUuid", primaryStorageSRUuid, "snapshotUuid",
                 snapshotUuid, "isISCSI", isISCSI.toString());
 

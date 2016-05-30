@@ -25,7 +25,7 @@ import org.apache.xmlrpc.XmlRpcException;
 
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.PvlanSetupCommand;
-import com.cloud.hypervisor.xenserver.resource.network.XsLocalNetwork;
+import com.cloud.hypervisor.xenserver.resource.network.XenServerLocalNetwork;
 import com.cloud.network.Networks.TrafficType;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
@@ -53,7 +53,7 @@ public final class CitrixPvlanSetupCommandWrapper extends CommandWrapper<PvlanSe
 
         String nwNameLabel = null;
         try {
-            final XsLocalNetwork nw = xenServerResourceBase.getNativeNetworkForTraffic(conn, TrafficType.Guest, networkTag);
+            final XenServerLocalNetwork nw = xenServerResourceBase.getNativeNetworkForTraffic(conn, TrafficType.Guest, networkTag);
             if (nw == null) {
                 s_logger.error("Network is not configured on the backend for pvlan " + primaryPvlan);
                 throw new CloudRuntimeException("Network for the backend is not configured correctly for pvlan primary: " + primaryPvlan);

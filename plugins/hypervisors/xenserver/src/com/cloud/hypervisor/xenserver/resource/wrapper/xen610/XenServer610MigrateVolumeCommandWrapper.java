@@ -19,16 +19,13 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xen610;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import org.apache.log4j.Logger;
-
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.storage.MigrateVolumeAnswer;
 import com.cloud.agent.api.storage.MigrateVolumeCommand;
 import com.cloud.agent.api.to.StorageFilerTO;
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHelper;
 import com.cloud.hypervisor.xenserver.resource.release.XenServer610Resource;
+import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
@@ -36,6 +33,10 @@ import com.xensource.xenapi.SR;
 import com.xensource.xenapi.Task;
 import com.xensource.xenapi.Types;
 import com.xensource.xenapi.VDI;
+import org.apache.log4j.Logger;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @ResourceWrapper(handles =  MigrateVolumeCommand.class)
 public final class XenServer610MigrateVolumeCommandWrapper extends CommandWrapper<MigrateVolumeCommand, Answer, XenServer610Resource> {
@@ -45,21 +46,22 @@ public final class XenServer610MigrateVolumeCommandWrapper extends CommandWrappe
     @Override
     public Answer execute(final MigrateVolumeCommand command, final XenServer610Resource xenServer610Resource) {
         final Connection connection = xenServer610Resource.getConnection();
+        final XenServerStorageResource storageResource = xenServer610Resource.getStorageResource();
         final String volumeUUID = command.getVolumePath();
         final StorageFilerTO poolTO = command.getPool();
 
         try {
             final String uuid = poolTO.getUuid();
-            final SR destinationPool = xenServer610Resource.getStorageRepository(connection, uuid);
-            final VDI srcVolume = xenServer610Resource.getVDIbyUuid(connection, volumeUUID);
+            final SR destinationPool = storageResource.getStorageRepository(connection, uuid);
+            final VDI srcVolume = storageResource.getVDIbyUuid(connection, volumeUUID);
             final Map<String, String> other = new HashMap<String, String>();
             other.put("live", "true");
 
             // Live migrate the vdi across pool.
             final Task task = srcVolume.poolMigrateAsync(connection, destinationPool, other);
             final long timeout = xenServer610Resource.getMigrateWait() * 1000L;
-            xenServer610Resource.waitForTask(connection, task, 1000, timeout);
-            xenServer610Resource.checkForSuccess(connection, task);
+            XenServerHelper.waitForTask(connection, task, 1000, timeout);
+            XenServerHelper.checkForSuccess(connection, task);
 
             final VDI dvdi = Types.toVDI(task, connection);
 

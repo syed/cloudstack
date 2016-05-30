@@ -26,8 +26,9 @@ import com.cloud.agent.api.to.NicTO;
 import com.cloud.agent.api.to.StorageFilerTO;
 import com.cloud.agent.api.to.VirtualMachineTO;
 import com.cloud.agent.api.to.VolumeTO;
-import com.cloud.hypervisor.xenserver.resource.common.XsHost;
-import com.cloud.hypervisor.xenserver.resource.network.XsLocalNetwork;
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHelper;
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHost;
+import com.cloud.hypervisor.xenserver.resource.network.XenServerLocalNetwork;
 import com.cloud.hypervisor.xenserver.resource.release.XenServer610Resource;
 import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.network.Networks.TrafficType;
@@ -65,8 +66,8 @@ public final class XenServer610MigrateWithStorageCommandWrapper extends CommandW
         final String vmName = vmSpec.getName();
         Task task = null;
 
-        final XsHost xsHost = xenServer610Resource.getHost();
-        final String uuid = xsHost.getUuid();
+        final XenServerHost xenServerHost = xenServer610Resource.getHost();
+        final String uuid = xenServerHost.getUuid();
         try {
             storageResource.prepareISO(connection, vmName, null, null);
 
@@ -78,7 +79,7 @@ public final class XenServer610MigrateWithStorageCommandWrapper extends CommandW
             final Map<String, String> other = new HashMap<String, String>();
             other.put("live", "true");
 
-            final XsLocalNetwork nativeNetworkForTraffic = xenServer610Resource.getNativeNetworkForTraffic(connection, TrafficType.Storage, null);
+            final XenServerLocalNetwork nativeNetworkForTraffic = xenServer610Resource.getNativeNetworkForTraffic(connection, TrafficType.Storage, null);
             final Network networkForSm = nativeNetworkForTraffic.getNetwork();
 
             // Create the vif map. The vm stays in the same cluster so we have to pass an empty vif map.
@@ -87,7 +88,7 @@ public final class XenServer610MigrateWithStorageCommandWrapper extends CommandW
             for (final Map.Entry<VolumeTO, StorageFilerTO> entry : volumeToFiler.entrySet()) {
                 final VolumeTO volume = entry.getKey();
                 final StorageFilerTO sotrageFiler = entry.getValue();
-                vdiMap.put(xenServer610Resource.getVDIbyUuid(connection, volume.getPath()), xenServer610Resource.getStorageRepository(connection, sotrageFiler.getUuid()));
+                vdiMap.put(storageResource.getVDIbyUuid(connection, volume.getPath()), storageResource.getStorageRepository(connection, sotrageFiler.getUuid()));
             }
 
             // Get the vm to migrate.
@@ -101,8 +102,8 @@ public final class XenServer610MigrateWithStorageCommandWrapper extends CommandW
             try {
                 // poll every 1 seconds
                 final long timeout = xenServer610Resource.getMigrateWait() * 1000L;
-                xenServer610Resource.waitForTask(connection, task, 1000, timeout);
-                xenServer610Resource.checkForSuccess(connection, task);
+                XenServerHelper.waitForTask(connection, task, 1000, timeout);
+                XenServerHelper.checkForSuccess(connection, task);
             } catch (final Types.HandleInvalid e) {
                 s_logger.error("Error while checking if vm " + vmName + " can be migrated to the destination host " + host, e);
                 throw new CloudRuntimeException("Error while checking if vm " + vmName + " can be migrated to the " + "destination host " + host, e);
@@ -113,8 +114,8 @@ public final class XenServer610MigrateWithStorageCommandWrapper extends CommandW
             try {
                 // poll every 1 seconds.
                 final long timeout = xenServer610Resource.getMigrateWait() * 1000L;
-                xenServer610Resource.waitForTask(connection, task, 1000, timeout);
-                xenServer610Resource.checkForSuccess(connection, task);
+                XenServerHelper.waitForTask(connection, task, 1000, timeout);
+                XenServerHelper.checkForSuccess(connection, task);
             } catch (final Types.HandleInvalid e) {
                 s_logger.error("Error while migrating vm " + vmName + " to the destination host " + host, e);
                 throw new CloudRuntimeException("Error while migrating vm " + vmName + " to the destination host " + host, e);

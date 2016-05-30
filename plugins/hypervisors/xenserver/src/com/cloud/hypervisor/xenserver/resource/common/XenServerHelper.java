@@ -16,12 +16,17 @@
 // under the License.
 package com.cloud.hypervisor.xenserver.resource.common;
 
+import com.cloud.hypervisor.xenserver.resource.compute.XenServerComputeResource;
+import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.utils.exception.CloudRuntimeException;
+import com.cloud.vm.VirtualMachine.PowerState;
 import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.Host;
 import com.xensource.xenapi.Pool;
 import com.xensource.xenapi.Task;
 import com.xensource.xenapi.Types;
+import com.xensource.xenapi.Types.XenAPIException;
+import com.xensource.xenapi.VM;
 import com.xensource.xenapi.XenAPIObject;
 import org.apache.log4j.Logger;
 import org.apache.xmlrpc.XmlRpcException;
@@ -300,7 +305,7 @@ public class XenServerHelper {
     }
 
 
-    public static String callHostPlugin(final Connection conn, final String plugin, final String cmd, XsHost xsHost, final String... params) {
+    public static String callHostPlugin(final Connection conn, final String plugin, final String cmd, XenServerHost xenServerHost, final String... params) {
         final Map<String, String> args = new HashMap<String, String>();
         String msg;
         try {
@@ -311,7 +316,7 @@ public class XenServerHelper {
             if (s_logger.isTraceEnabled()) {
                 s_logger.trace("callHostPlugin executing for command " + cmd + " with " + getArgsString(args));
             }
-            final Host host = Host.getByUuid(conn, xsHost.getUuid());
+            final Host host = Host.getByUuid(conn, xenServerHost.getUuid());
             final String result = host.callPlugin(conn, plugin, cmd, args);
             if (s_logger.isTraceEnabled()) {
                 s_logger.trace("callHostPlugin Result: " + result);
@@ -327,7 +332,7 @@ public class XenServerHelper {
         throw new CloudRuntimeException(msg);
     }
 
-    public static String callHostPluginAsync(final Connection conn, final String plugin, final String cmd, final int wait,XsHost xsHost, final Map<String, String> params) {
+    public static String callHostPluginAsync(final Connection conn, final String plugin, final String cmd, final int wait, XenServerHost xenServerHost, final Map<String, String> params) {
         final int timeout = wait * 1000;
         final Map<String, String> args = new HashMap<String, String>();
         Task task = null;
@@ -338,7 +343,7 @@ public class XenServerHelper {
             if (s_logger.isTraceEnabled()) {
                 s_logger.trace("callHostPlugin executing for command " + cmd + " with " + getArgsString(args));
             }
-            final Host host = Host.getByUuid(conn, xsHost.getUuid());
+            final Host host = Host.getByUuid(conn, xenServerHost.getUuid());
             task = host.callPluginAsync(conn, plugin, cmd, args);
             // poll every 1 seconds
             waitForTask(conn, task, 1000, timeout);
@@ -357,14 +362,14 @@ public class XenServerHelper {
                 try {
                     task.destroy(conn);
                 } catch (final Exception e1) {
-                    s_logger.debug("unable to destroy task(" + task.toString() + ") on host(" + xsHost.getUuid() + ") due to " + e1.toString());
+                    s_logger.debug("unable to destroy task(" + task.toString() + ") on host(" + xenServerHost.getUuid() + ") due to " + e1.toString());
                 }
             }
         }
         return null;
     }
 
-    public static String callHostPluginAsync(final Connection conn, final String plugin, final String cmd, final int wait, XsHost xsHost, final String... params) {
+    public static String callHostPluginAsync(final Connection conn, final String plugin, final String cmd, final int wait, XenServerHost xenServerHost, final String... params) {
         final int timeout = wait * 1000;
         final Map<String, String> args = new HashMap<String, String>();
         Task task = null;
@@ -375,7 +380,7 @@ public class XenServerHelper {
             if (s_logger.isTraceEnabled()) {
                 s_logger.trace("callHostPlugin executing for command " + cmd + " with " + getArgsString(args));
             }
-            final Host host = Host.getByUuid(conn, xsHost.getUuid());
+            final Host host = Host.getByUuid(conn, xenServerHost.getUuid());
             task = host.callPluginAsync(conn, plugin, cmd, args);
             // poll every 1 seconds
             waitForTask(conn, task, 1000, timeout);
@@ -396,24 +401,24 @@ public class XenServerHelper {
                 try {
                     task.destroy(conn);
                 } catch (final Exception e1) {
-                    s_logger.debug("unable to destroy task(" + task.toString() + ") on host(" + xsHost.getUuid() + ") due to " + e1.toString());
+                    s_logger.debug("unable to destroy task(" + task.toString() + ") on host(" + xenServerHost.getUuid() + ") due to " + e1.toString());
                 }
             }
         }
         return null;
     }
 
-    public static String callHostPluginPremium(final Connection conn, final String cmd, XsHost xsHost, final String... params) {
-        return callHostPlugin(conn, "vmopspremium", cmd, xsHost, params);
+    public static String callHostPluginPremium(final Connection conn, final String cmd, XenServerHost xenServerHost, final String... params) {
+        return callHostPlugin(conn, "vmopspremium", cmd, xenServerHost, params);
     }
 
-    public static String callHostPluginThroughMaster(final Connection conn, final String plugin, final String cmd, XsHost xsHost, final String... params) {
+    public static String callHostPluginThroughMaster(final Connection conn, final String plugin, final String cmd, XenServerHost xenServerHost, final String... params) {
         final Map<String, String> args = new HashMap<String, String>();
 
         try {
             final Map<Pool, Pool.Record> poolRecs = Pool.getAllRecords(conn);
             if (poolRecs.size() != 1) {
-                throw new CloudRuntimeException("There are " + poolRecs.size() + " pool for host :" + xsHost.getUuid());
+                throw new CloudRuntimeException("There are " + poolRecs.size() + " pool for host :" + xenServerHost.getUuid());
             }
             final Host master = poolRecs.values().iterator().next().master;
             for (int i = 0; i < params.length; i += 2) {
@@ -457,4 +462,25 @@ public class XenServerHelper {
     public static boolean isRefNull(final XenAPIObject object) {
         return object == null || object.toWireString().equals("OpaqueRef:NULL") || object.toWireString().equals("<not in database>");
     }
+
+    public static boolean IsISCSI(final String type) {
+        return XenServerStorageResource.SRType.LVMOHBA.equals(type) || XenServerStorageResource.SRType.LVMOISCSI.equals(type) || XenServerStorageResource.SRType.LVM.equals(type);
+    }
+
+    public static PowerState convertToPowerState(final Types.VmPowerState ps) {
+        final PowerState powerState = XenServerComputeResource.s_powerStatesTable.get(ps);
+        return powerState == null ? PowerState.PowerUnknown : powerState;
+    }
+
+    public static boolean isAlienVm(final VM vm, final Connection conn) throws XenAPIException, XmlRpcException {
+        // TODO : we need a better way to tell whether or not the VM belongs to
+        // CloudStack
+        final String vmName = vm.getNameLabel(conn);
+        if (vmName.matches("^[ivs]-\\d+-.+")) {
+            return false;
+        }
+
+        return true;
+    }
+
 }

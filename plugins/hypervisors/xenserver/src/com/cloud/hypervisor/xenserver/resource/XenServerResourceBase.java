@@ -44,12 +44,9 @@ import com.cloud.agent.api.routing.IpAssocVpcCommand;
 import com.cloud.agent.api.routing.NetworkElementCommand;
 import com.cloud.agent.api.routing.SetNetworkACLCommand;
 import com.cloud.agent.api.routing.SetSourceNatCommand;
-import com.cloud.agent.api.to.DataStoreTO;
-import com.cloud.agent.api.to.DataTO;
 import com.cloud.agent.api.to.DiskTO;
 import com.cloud.agent.api.to.GPUDeviceTO;
 import com.cloud.agent.api.to.IpAddressTO;
-import com.cloud.agent.api.to.NfsTO;
 import com.cloud.agent.api.to.NicTO;
 import com.cloud.agent.api.to.VirtualMachineTO;
 import com.cloud.agent.resource.virtualnetwork.VirtualRouterDeployer;
@@ -59,8 +56,10 @@ import com.cloud.host.Host.Type;
 import com.cloud.hypervisor.Hypervisor.HypervisorType;
 import com.cloud.hypervisor.xenserver.resource.common.XenServerConnectionPool;
 import com.cloud.hypervisor.xenserver.resource.common.XenServerHelper;
-import com.cloud.hypervisor.xenserver.resource.common.XsHost;
-import com.cloud.hypervisor.xenserver.resource.network.XsLocalNetwork;
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHost;
+import com.cloud.hypervisor.xenserver.resource.compute.XenServerComputeResource;
+import com.cloud.hypervisor.xenserver.resource.network.XenServerLocalNetwork;
+import com.cloud.hypervisor.xenserver.resource.network.XenServerNetworkResource;
 import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageProcessor;
 import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.hypervisor.xenserver.resource.wrapper.xenbase.CitrixRequestWrapper;
@@ -70,8 +69,6 @@ import com.cloud.network.Networks.BroadcastDomainType;
 import com.cloud.network.Networks.TrafficType;
 import com.cloud.resource.ServerResource;
 import com.cloud.resource.hypervisor.HypervisorResource;
-import com.cloud.storage.Storage;
-import com.cloud.storage.Storage.StoragePoolType;
 import com.cloud.storage.Volume;
 import com.cloud.storage.VolumeVO;
 import com.cloud.storage.resource.StorageSubsystemCommandHandler;
@@ -97,7 +94,6 @@ import com.xensource.xenapi.Host;
 import com.xensource.xenapi.HostCpu;
 import com.xensource.xenapi.HostMetrics;
 import com.xensource.xenapi.Network;
-import com.xensource.xenapi.PBD;
 import com.xensource.xenapi.PIF;
 import com.xensource.xenapi.Pool;
 import com.xensource.xenapi.SR;
@@ -115,7 +111,6 @@ import com.xensource.xenapi.VM;
 import com.xensource.xenapi.XenAPIObject;
 import org.apache.cloudstack.storage.to.TemplateObjectTO;
 import org.apache.cloudstack.storage.to.VolumeObjectTO;
-import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 import org.apache.xmlrpc.XmlRpcException;
 import org.w3c.dom.Document;
@@ -128,15 +123,11 @@ import javax.naming.ConfigurationException;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
@@ -148,7 +139,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.Random;
@@ -170,30 +160,6 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
     /**
      * used to describe what type of resource a storage device is of
      */
-    public enum SRType {
-        EXT, FILE, ISCSI, ISO, LVM, LVMOHBA, LVMOISCSI,
-        /**
-         * used for resigning metadata (like SR UUID and VDI UUID when a
-         * particular storage manager is installed on a XenServer host (for back-end snapshots to work))
-         */
-        RELVMOISCSI, NFS;
-
-        String _str;
-
-        private SRType() {
-            _str = super.toString().toLowerCase();
-        }
-
-        public boolean equals(final String type) {
-            return _str.equalsIgnoreCase(type);
-        }
-
-        @Override
-        public String toString() {
-            return _str;
-        }
-    }
-
     private final static int BASE_TO_CONVERT_BYTES_INTO_KILOBYTES = 1024;
 
     protected static final XenServerConnectionPool ConnPool = XenServerConnectionPool.getInstance();
@@ -213,21 +179,7 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
         s_powerStatesTable.put(VmPowerState.UNRECOGNIZED, PowerState.PowerUnknown);
     }
 
-    private static PowerState convertToPowerState(final VmPowerState ps) {
-        final PowerState powerState = s_powerStatesTable.get(ps);
-        return powerState == null ? PowerState.PowerUnknown : powerState;
-    }
 
-    private static boolean isAlienVm(final VM vm, final Connection conn) throws XenAPIException, XmlRpcException {
-        // TODO : we need a better way to tell whether or not the VM belongs to
-        // CloudStack
-        final String vmName = vm.getNameLabel(conn);
-        if (vmName.matches("^[ivs]-\\d+-.+")) {
-            return false;
-        }
-
-        return true;
-    }
 
     protected IAgentControl _agentControl;
     protected boolean _canBridgeFirewall = false;
@@ -238,7 +190,7 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
     protected String _guestNetworkName;
     protected int _heartbeatInterval = 60;
     protected int _heartbeatTimeout = 120;
-    protected final XsHost _host = new XsHost();
+    protected final XenServerHost _host = new XenServerHost();
     protected String _instance; // instance name (default is usually "VM")
     protected boolean _isOvs = false;
     protected String _linkLocalPrivateNetworkName;
@@ -261,20 +213,19 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
     protected final int _sleep = 10000;
     protected String _storageNetworkName1;
     protected String _storageNetworkName2;
-    protected List<VIF> _tmpDom0Vif = new ArrayList<VIF>();
 
     protected String _username;
 
     protected VirtualRoutingResource _vrResource;
 
-    protected  String _configDriveIsopath = "/opt/xensource/packages/configdrive_iso/";
-    protected  String _configDriveSRName = "ConfigDriveISOs";
     public String _attachIsoDeviceNum = "3";
 
     protected XenServerUtilitiesHelper xenServerUtilitiesHelper = new XenServerUtilitiesHelper();
 
 
     protected XenServerStorageResource xenServerStorageResource;
+    protected XenServerComputeResource xenServerComputeResource;
+    protected XenServerNetworkResource xenServerNetworkResource;
 
     protected int _wait;
     // Hypervisor specific params with generic value, may need to be overridden
@@ -311,6 +262,14 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
 
     public XenServerStorageResource getStorageResource() {
         return xenServerStorageResource;
+    }
+
+    public XenServerNetworkResource getNetworkResource() {
+        return xenServerNetworkResource;
+    }
+
+    public XenServerComputeResource getComputeResource() {
+        return xenServerComputeResource;
     }
 
     protected StorageSubsystemCommandHandler buildStorageHandler() {
@@ -425,37 +384,6 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
         return callHostPlugin(conn, "vmopspremium", cmd, params);
     }
 
-    protected String callHostPluginThroughMaster(final Connection conn, final String plugin, final String cmd, final String... params) {
-        final Map<String, String> args = new HashMap<String, String>();
-
-        try {
-            final Map<Pool, Pool.Record> poolRecs = Pool.getAllRecords(conn);
-            if (poolRecs.size() != 1) {
-                throw new CloudRuntimeException("There are " + poolRecs.size() + " pool for host :" + _host.getUuid());
-            }
-            final Host master = poolRecs.values().iterator().next().master;
-            for (int i = 0; i < params.length; i += 2) {
-                args.put(params[i], params[i + 1]);
-            }
-
-            if (s_logger.isTraceEnabled()) {
-                s_logger.trace("callHostPlugin executing for command " + cmd + " with " + getArgsString(args));
-            }
-            final String result = master.callPlugin(conn, plugin, cmd, args);
-            if (s_logger.isTraceEnabled()) {
-                s_logger.trace("callHostPlugin Result: " + result);
-            }
-            return result.replace("\n", "");
-        } catch (final Types.HandleInvalid e) {
-            s_logger.warn("callHostPlugin failed for cmd: " + cmd + " with args " + getArgsString(args) + " due to HandleInvalid clazz:" + e.clazz + ", handle:" + e.handle);
-        } catch (final XenAPIException e) {
-            s_logger.warn("callHostPlugin failed for cmd: " + cmd + " with args " + getArgsString(args) + " due to " + e.toString(), e);
-        } catch (final XmlRpcException e) {
-            s_logger.warn("callHostPlugin failed for cmd: " + cmd + " with args " + getArgsString(args) + " due to " + e.getMessage(), e);
-        }
-        return null;
-    }
-
     public boolean canBridgeFirewall() {
         return _canBridgeFirewall;
     }
@@ -477,63 +405,6 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
             task.destroy(c);
             throw new Types.BadAsyncResult(msg);
         }
-    }
-
-    protected boolean checkSR(final Connection conn, final SR sr) {
-        try {
-            final SR.Record srr = sr.getRecord(conn);
-            final Set<PBD> pbds = sr.getPBDs(conn);
-            if (pbds.size() == 0) {
-                final String msg = "There is no PBDs for this SR: " + srr.nameLabel + " on host:" + _host.getUuid();
-                s_logger.warn(msg);
-                return false;
-            }
-            if (s_logger.isDebugEnabled()) {
-                s_logger.debug("Checking " + srr.nameLabel + " or SR " + srr.uuid + " on " + _host);
-            }
-            if (srr.shared) {
-                if (SRType.NFS.equals(srr.type)) {
-                    final Map<String, String> smConfig = srr.smConfig;
-                    if (!smConfig.containsKey("nosubdir")) {
-                        smConfig.put("nosubdir", "true");
-                        sr.setSmConfig(conn, smConfig);
-                    }
-                }
-
-                final Host host = Host.getByUuid(conn, _host.getUuid());
-                boolean found = false;
-                for (final PBD pbd : pbds) {
-                    final PBD.Record pbdr = pbd.getRecord(conn);
-                    if (host.equals(pbdr.host)) {
-                        if (!pbdr.currentlyAttached) {
-                            pbdPlug(conn, pbd, pbdr.uuid);
-                        }
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
-                    final PBD.Record pbdr = srr.PBDs.iterator().next().getRecord(conn);
-                    pbdr.host = host;
-                    pbdr.uuid = "";
-                    final PBD pbd = PBD.create(conn, pbdr);
-                    pbdPlug(conn, pbd, pbd.getUuid(conn));
-                }
-            } else {
-                for (final PBD pbd : pbds) {
-                    final PBD.Record pbdr = pbd.getRecord(conn);
-                    if (!pbdr.currentlyAttached) {
-                        pbdPlug(conn, pbd, pbdr.uuid);
-                    }
-                }
-            }
-
-        } catch (final Exception e) {
-            final String msg = "checkSR failed host:" + _host + " due to " + e.toString();
-            s_logger.warn(msg, e);
-            return false;
-        }
-        return true;
     }
 
     private void CheckXenHostInfo() throws ConfigurationException {
@@ -585,7 +456,7 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
                     continue;
                 }
 
-                if (VmPowerState.HALTED.equals(vmRec.powerState) && vmRec.affinity.equals(host) && !isAlienVm(vm, conn)) {
+                if (VmPowerState.HALTED.equals(vmRec.powerState) && vmRec.affinity.equals(host) && !XenServerHelper.isAlienVm(vm, conn)) {
                     try {
                         vm.destroy(conn);
                     } catch (final Exception e) {
@@ -1279,11 +1150,11 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
      * @throws XenAPIException
      * @throws XmlRpcException
      */
-    protected Network enableVlanNetwork(final Connection conn, final long tag, final XsLocalNetwork network) throws XenAPIException, XmlRpcException {
+    protected Network enableVlanNetwork(final Connection conn, final long tag, final XenServerLocalNetwork network) throws XenAPIException, XmlRpcException {
         Network vlanNetwork = null;
         final String oldName = "VLAN" + Long.toString(tag);
         final String newName = "VLAN-" + network.getNetworkRecord(conn).uuid + "-" + tag;
-        XsLocalNetwork vlanNic = getNetworkByName(conn, newName);
+        XenServerLocalNetwork vlanNic = getNetworkByName(conn, newName);
         if (vlanNic == null) {
             if (s_logger.isDebugEnabled()) {
                 s_logger.debug("Couldn't find vlan network with the new name so trying old name: " + oldName);
@@ -1746,7 +1617,7 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
         return platformEmulator;
     }
 
-    public XsHost getHost() {
+    public XenServerHost getHost() {
         return _host;
     }
 
@@ -1788,13 +1659,13 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
             final Host.Record hr = myself.getRecord(conn);
             _host.setProductVersion(XenServerHelper.getProductVersion(hr));
 
-            final XsLocalNetwork privateNic = getManagementNetwork(conn);
+            final XenServerLocalNetwork privateNic = getManagementNetwork(conn);
             _privateNetworkName = privateNic.getNetworkRecord(conn).nameLabel;
             _host.setPrivatePif(privateNic.getPifRecord(conn).uuid);
             _host.setPrivateNetwork(privateNic.getNetworkRecord(conn).uuid);
             _host.setSystemvmisouuid(null);
 
-            XsLocalNetwork guestNic = null;
+            XenServerLocalNetwork guestNic = null;
             if (_guestNetworkName != null && !_guestNetworkName.equals(_privateNetworkName)) {
                 guestNic = getNetworkByName(conn, _guestNetworkName);
                 if (guestNic == null) {
@@ -1808,7 +1679,7 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
             _host.setGuestNetwork(guestNic.getNetworkRecord(conn).uuid);
             _host.setGuestPif(guestNic.getPifRecord(conn).uuid);
 
-            XsLocalNetwork publicNic = null;
+            XenServerLocalNetwork publicNic = null;
             if (_publicNetworkName != null && !_publicNetworkName.equals(_guestNetworkName)) {
                 publicNic = getNetworkByName(conn, _publicNetworkName);
                 if (publicNic == null) {
@@ -1824,7 +1695,7 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
             if (_storageNetworkName1 == null) {
                 _storageNetworkName1 = _guestNetworkName;
             }
-            XsLocalNetwork storageNic1 = null;
+            XenServerLocalNetwork storageNic1 = null;
             storageNic1 = getNetworkByName(conn, _storageNetworkName1);
             if (storageNic1 == null) {
                 s_logger.warn("Unable to find storage network " + _storageNetworkName1 + " for host " + _host.getIp());
@@ -1834,7 +1705,7 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
                 _host.setStoragePif1(storageNic1.getPifRecord(conn).uuid);
             }
 
-            XsLocalNetwork storageNic2 = null;
+            XenServerLocalNetwork storageNic2 = null;
             if (_storageNetworkName2 != null) {
                 storageNic2 = getNetworkByName(conn, _storageNetworkName2);
                 if (storageNic2 != null) {
@@ -1973,202 +1844,12 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
                 }
 
                 if (host_uuid.equalsIgnoreCase(_host.getUuid())) {
-                    vmStates.put(record.nameLabel, new HostVmStateReportEntry(convertToPowerState(ps), host_uuid));
+                    vmStates.put(record.nameLabel, new HostVmStateReportEntry(XenServerHelper.convertToPowerState(ps), host_uuid));
                 }
             }
         }
 
         return vmStates;
-    }
-
-    public SR getIscsiSR(final Connection conn, final String srNameLabel, final String target, String path, final String chapInitiatorUsername,
-            final String chapInitiatorPassword, final boolean ignoreIntroduceException) {
-        return getIscsiSR(conn, srNameLabel, target, path, chapInitiatorUsername, chapInitiatorPassword, false, ignoreIntroduceException);
-    }
-
-    public SR getIscsiSR(final Connection conn, final String srNameLabel, final String target, String path, final String chapInitiatorUsername,
-            final String chapInitiatorPassword, final boolean resignature, final boolean ignoreIntroduceException) {
-        synchronized (srNameLabel.intern()) {
-            final Map<String, String> deviceConfig = new HashMap<String, String>();
-            try {
-                if (path.endsWith("/")) {
-                    path = path.substring(0, path.length() - 1);
-                }
-
-                final String tmp[] = path.split("/");
-                if (tmp.length != 3) {
-                    final String msg = "Wrong iscsi path " + path + " it should be /targetIQN/LUN";
-                    s_logger.warn(msg);
-                    throw new CloudRuntimeException(msg);
-                }
-                final String targetiqn = tmp[1].trim();
-                final String lunid = tmp[2].trim();
-                String scsiid = "";
-
-                final Set<SR> srs = SR.getByNameLabel(conn, srNameLabel);
-                for (final SR sr : srs) {
-                    if (!SRType.LVMOISCSI.equals(sr.getType(conn))) {
-                        continue;
-                    }
-                    final Set<PBD> pbds = sr.getPBDs(conn);
-                    if (pbds.isEmpty()) {
-                        continue;
-                    }
-                    final PBD pbd = pbds.iterator().next();
-                    final Map<String, String> dc = pbd.getDeviceConfig(conn);
-                    if (dc == null) {
-                        continue;
-                    }
-                    if (dc.get("target") == null) {
-                        continue;
-                    }
-                    if (dc.get("targetIQN") == null) {
-                        continue;
-                    }
-                    if (dc.get("lunid") == null) {
-                        continue;
-                    }
-                    if (target.equals(dc.get("target")) && targetiqn.equals(dc.get("targetIQN")) && lunid.equals(dc.get("lunid"))) {
-                        throw new CloudRuntimeException("There is a SR using the same configuration target:" + dc.get("target") + ",  targetIQN:" + dc.get("targetIQN")
-                                + ", lunid:" + dc.get("lunid") + " for pool " + srNameLabel + "on host:" + _host.getUuid());
-                    }
-                }
-                deviceConfig.put("target", target);
-                deviceConfig.put("targetIQN", targetiqn);
-
-                if (StringUtils.isNotBlank(chapInitiatorUsername) && StringUtils.isNotBlank(chapInitiatorPassword)) {
-                    deviceConfig.put("chapuser", chapInitiatorUsername);
-                    deviceConfig.put("chappassword", chapInitiatorPassword);
-                }
-
-                final Host host = Host.getByUuid(conn, _host.getUuid());
-                final Map<String, String> smConfig = new HashMap<String, String>();
-                final String type = SRType.LVMOISCSI.toString();
-                SR sr = null;
-                try {
-                    sr = SR.create(conn, host, deviceConfig, new Long(0), srNameLabel, srNameLabel, type, "user", true, smConfig);
-                } catch (final XenAPIException e) {
-                    final String errmsg = e.toString();
-                    if (errmsg.contains("SR_BACKEND_FAILURE_107")) {
-                        final String lun[] = errmsg.split("<LUN>");
-                        boolean found = false;
-                        for (int i = 1; i < lun.length; i++) {
-                            final int blunindex = lun[i].indexOf("<LUNid>") + 7;
-                            final int elunindex = lun[i].indexOf("</LUNid>");
-                            String ilun = lun[i].substring(blunindex, elunindex);
-                            ilun = ilun.trim();
-                            if (ilun.equals(lunid)) {
-                                final int bscsiindex = lun[i].indexOf("<SCSIid>") + 8;
-                                final int escsiindex = lun[i].indexOf("</SCSIid>");
-                                scsiid = lun[i].substring(bscsiindex, escsiindex);
-                                scsiid = scsiid.trim();
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (!found) {
-                            final String msg = "can not find LUN " + lunid + " in " + errmsg;
-                            s_logger.warn(msg);
-                            throw new CloudRuntimeException(msg);
-                        }
-                    } else {
-                        final String msg = "Unable to create Iscsi SR  " + deviceConfig + " due to  " + e.toString();
-                        s_logger.warn(msg, e);
-                        throw new CloudRuntimeException(msg, e);
-                    }
-                }
-
-                deviceConfig.put("SCSIid", scsiid);
-
-                String result = SR.probe(conn, host, deviceConfig, type, smConfig);
-
-                String pooluuid = null;
-
-                if (result.indexOf("<UUID>") != -1) {
-                    pooluuid = result.substring(result.indexOf("<UUID>") + 6, result.indexOf("</UUID>")).trim();
-                }
-
-                if (pooluuid == null || pooluuid.length() != 36) {
-                    sr = SR.create(conn, host, deviceConfig, new Long(0), srNameLabel, srNameLabel, type, "user", true, smConfig);
-                }
-                else {
-                    if (resignature) {
-                        try {
-                            SR.create(conn, host, deviceConfig, new Long(0), srNameLabel, srNameLabel, SRType.RELVMOISCSI.toString(), "user", true, smConfig);
-
-                            // The successful outcome of SR.create (right above) is to throw an exception of type XenAPIException (with expected
-                            // toString() text) after resigning the metadata (we indicated to perform a resign by passing in SRType.RELVMOISCSI.toString()).
-                            // That being the case, if this CloudRuntimeException statement is executed, there appears to have been some kind
-                            // of failure in the execution of the above SR.create (resign) method.
-                            throw new CloudRuntimeException("Problem resigning the metadata");
-                        }
-                        catch (XenAPIException ex) {
-                            String msg = ex.toString();
-
-                            if (!msg.contains("successfully resigned")) {
-                                throw ex;
-                            }
-
-                            result = SR.probe(conn, host, deviceConfig, type, smConfig);
-
-                            pooluuid = null;
-
-                            if (result.indexOf("<UUID>") != -1) {
-                                pooluuid = result.substring(result.indexOf("<UUID>") + 6, result.indexOf("</UUID>")).trim();
-                            }
-
-                            if (pooluuid == null || pooluuid.length() != 36) {
-                                throw new CloudRuntimeException("Non-existent or invalid SR UUID");
-                            }
-                        }
-                    }
-
-                    try {
-                        sr = SR.introduce(conn, pooluuid, srNameLabel, srNameLabel, type, "user", true, smConfig);
-                    } catch (final XenAPIException ex) {
-                        if (ignoreIntroduceException) {
-                            return sr;
-                        }
-
-                        throw ex;
-                    }
-
-                    final Set<Host> setHosts = Host.getAll(conn);
-
-                    if (setHosts == null) {
-                        final String msg = "Unable to create iSCSI SR " + deviceConfig + " due to hosts not available.";
-
-                        s_logger.warn(msg);
-
-                        throw new CloudRuntimeException(msg);
-                    }
-
-                    for (final Host currentHost : setHosts) {
-                        final PBD.Record rec = new PBD.Record();
-
-                        rec.deviceConfig = deviceConfig;
-                        rec.host = currentHost;
-                        rec.SR = sr;
-
-                        final PBD pbd = PBD.create(conn, rec);
-
-                        pbd.plug(conn);
-                    }
-                }
-
-                sr.scan(conn);
-
-                return sr;
-            } catch (final XenAPIException e) {
-                final String msg = "Unable to create Iscsi SR  " + deviceConfig + " due to  " + e.toString();
-                s_logger.warn(msg, e);
-                throw new CloudRuntimeException(msg, e);
-            } catch (final Exception e) {
-                final String msg = "Unable to create Iscsi SR  " + deviceConfig + " due to  " + e.getMessage();
-                s_logger.warn(msg, e);
-                throw new CloudRuntimeException(msg, e);
-            }
-        }
     }
 
     public String getLabel() {
@@ -2218,7 +1899,7 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
         throw new CloudRuntimeException("Could not find available VIF slot in VM with name: " + vmName);
     }
 
-    protected XsLocalNetwork getManagementNetwork(final Connection conn) throws XmlRpcException, XenAPIException {
+    protected XenServerLocalNetwork getManagementNetwork(final Connection conn) throws XmlRpcException, XenAPIException {
         PIF mgmtPif = null;
         PIF.Record mgmtPifRec = null;
         final Host host = Host.getByUuid(conn, _host.getUuid());
@@ -2254,7 +1935,7 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
         }
         final Network nk = mgmtPifRec.network;
         final Network.Record nkRec = nk.getRecord(conn);
-        return new XsLocalNetwork(this, nk, nkRec, mgmtPif, mgmtPifRec);
+        return new XenServerLocalNetwork(this, nk, nkRec, mgmtPif, mgmtPifRec);
     }
 
     @Override
@@ -2262,7 +1943,7 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
         return _name;
     }
 
-    public XsLocalNetwork getNativeNetworkForTraffic(final Connection conn, final TrafficType type, final String name) throws XenAPIException, XmlRpcException {
+    public XenServerLocalNetwork getNativeNetworkForTraffic(final Connection conn, final TrafficType type, final String name) throws XenAPIException, XmlRpcException {
         if (name != null) {
             if (s_logger.isDebugEnabled()) {
                 s_logger.debug("Looking for network named " + name);
@@ -2271,20 +1952,20 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
         }
 
         if (type == TrafficType.Guest) {
-            return new XsLocalNetwork(this, Network.getByUuid(conn, _host.getGuestNetwork()), null, PIF.getByUuid(conn, _host.getGuestPif()), null);
+            return new XenServerLocalNetwork(this, Network.getByUuid(conn, _host.getGuestNetwork()), null, PIF.getByUuid(conn, _host.getGuestPif()), null);
         } else if (type == TrafficType.Control) {
             setupLinkLocalNetwork(conn);
-            return new XsLocalNetwork(this, Network.getByUuid(conn, _host.getLinkLocalNetwork()));
+            return new XenServerLocalNetwork(this, Network.getByUuid(conn, _host.getLinkLocalNetwork()));
         } else if (type == TrafficType.Management) {
-            return new XsLocalNetwork(this, Network.getByUuid(conn, _host.getPrivateNetwork()), null, PIF.getByUuid(conn, _host.getPrivatePif()), null);
+            return new XenServerLocalNetwork(this, Network.getByUuid(conn, _host.getPrivateNetwork()), null, PIF.getByUuid(conn, _host.getPrivatePif()), null);
         } else if (type == TrafficType.Public) {
-            return new XsLocalNetwork(this, Network.getByUuid(conn, _host.getPublicNetwork()), null, PIF.getByUuid(conn, _host.getPublicPif()), null);
+            return new XenServerLocalNetwork(this, Network.getByUuid(conn, _host.getPublicNetwork()), null, PIF.getByUuid(conn, _host.getPublicPif()), null);
         } else if (type == TrafficType.Storage) {
             /*
              * TrafficType.Storage is for secondary storage, while
              * storageNetwork1 is for primary storage, we need better name here
              */
-            return new XsLocalNetwork(this, Network.getByUuid(conn, _host.getStorageNetwork1()), null, PIF.getByUuid(conn, _host.getStoragePif1()), null);
+            return new XenServerLocalNetwork(this, Network.getByUuid(conn, _host.getStorageNetwork1()), null, PIF.getByUuid(conn, _host.getStoragePif1()), null);
         }
 
         throw new CloudRuntimeException("Unsupported network type: " + type);
@@ -2292,7 +1973,7 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
 
     public Network getNetwork(final Connection conn, final NicTO nic) throws XenAPIException, XmlRpcException {
         final String name = nic.getName();
-        final XsLocalNetwork network = getNativeNetworkForTraffic(conn, nic.getType(), name);
+        final XenServerLocalNetwork network = getNativeNetworkForTraffic(conn, nic.getType(), name);
         if (network == null) {
             s_logger.error("Network is not configured on the backend for nic " + nic.toString());
             throw new CloudRuntimeException("Network for the backend is not configured correctly for network broadcast domain: " + nic.getBroadcastUri());
@@ -2375,10 +2056,10 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
      *
      * @see XenServerResourceBase#enableVlanNetwork
      */
-    public XsLocalNetwork getNetworkByName(final Connection conn, final String name) throws XenAPIException, XmlRpcException {
+    public XenServerLocalNetwork getNetworkByName(final Connection conn, final String name) throws XenAPIException, XmlRpcException {
         final Set<Network> networks = Network.getByNameLabel(conn, name);
         if (networks.size() == 1) {
-            return new XsLocalNetwork(this, networks.iterator().next(), null, null, null);
+            return new XenServerLocalNetwork(this, networks.iterator().next(), null, null, null);
         }
 
         if (networks.size() == 0) {
@@ -2393,7 +2074,7 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
         long earliestTimestamp = Long.MAX_VALUE;
         int earliestRandom = Integer.MAX_VALUE;
         for (final Network network : networks) {
-            final XsLocalNetwork nic = new XsLocalNetwork(this, network);
+            final XenServerLocalNetwork nic = new XenServerLocalNetwork(this, network);
 
             if (nic.getPif(conn) != null) {
                 return nic;
@@ -2417,7 +2098,7 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
             }
         }
 
-        return earliestNetwork != null ? new XsLocalNetwork(this, earliestNetwork, earliestNetworkRecord, null, null) : null;
+        return earliestNetwork != null ? new XenServerLocalNetwork(this, earliestNetwork, earliestNetworkRecord, null, null) : null;
     }
 
     public long[] getNetworkStats(final Connection conn, final String privateIP) {
@@ -2432,60 +2113,6 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
             }
         }
         return stats;
-    }
-
-    public SR getNfsSR(final Connection conn, final String poolid, final String uuid, final String server, String serverpath, final String pooldesc) {
-        final Map<String, String> deviceConfig = new HashMap<String, String>();
-        try {
-            serverpath = serverpath.replace("//", "/");
-            final Set<SR> srs = SR.getAll(conn);
-            if (srs != null && !srs.isEmpty()) {
-                for (final SR sr : srs) {
-                    if (!SRType.NFS.equals(sr.getType(conn))) {
-                        continue;
-                    }
-
-                    final Set<PBD> pbds = sr.getPBDs(conn);
-                    if (pbds.isEmpty()) {
-                        continue;
-                    }
-
-                    final PBD pbd = pbds.iterator().next();
-
-                    final Map<String, String> dc = pbd.getDeviceConfig(conn);
-
-                    if (dc == null) {
-                        continue;
-                    }
-
-                    if (dc.get("server") == null) {
-                        continue;
-                    }
-
-                    if (dc.get("serverpath") == null) {
-                        continue;
-                    }
-
-                    if (server.equals(dc.get("server")) && serverpath.equals(dc.get("serverpath"))) {
-                        throw new CloudRuntimeException("There is a SR using the same configuration server:" + dc.get("server") + ", serverpath:" + dc.get("serverpath")
-                                + " for pool " + uuid + " on host:" + _host.getUuid());
-                    }
-
-                }
-            }
-            deviceConfig.put("server", server);
-            deviceConfig.put("serverpath", serverpath);
-            final Host host = Host.getByUuid(conn, _host.getUuid());
-            final Map<String, String> smConfig = new HashMap<String, String>();
-            smConfig.put("nosubdir", "true");
-            final SR sr = SR.create(conn, host, deviceConfig, new Long(0), uuid, poolid, SRType.NFS.toString(), "user", true, smConfig);
-            sr.scan(conn);
-            return sr;
-        } catch (final XenAPIException e) {
-            throw new CloudRuntimeException("Unable to create NFS SR " + pooldesc, e);
-        } catch (final XmlRpcException e) {
-            throw new CloudRuntimeException("Unable to create NFS SR " + pooldesc, e);
-        }
     }
 
     private String getOvsTunnelNetworkName(final String broadcastUri) {
@@ -2575,26 +2202,6 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
         return 0;
     }
 
-    protected SR getSRByNameLabelandHost(final Connection conn, final String name) throws BadServerResponse, XenAPIException, XmlRpcException {
-        final Set<SR> srs = SR.getByNameLabel(conn, name);
-        SR ressr = null;
-        for (final SR sr : srs) {
-            Set<PBD> pbds;
-            pbds = sr.getPBDs(conn);
-            for (final PBD pbd : pbds) {
-                final PBD.Record pbdr = pbd.getRecord(conn);
-                if (pbdr.host != null && pbdr.host.getUuid(conn).equals(_host.getUuid())) {
-                    if (!pbdr.currentlyAttached) {
-                        pbd.plug(conn);
-                    }
-                    ressr = sr;
-                    break;
-                }
-            }
-        }
-        return ressr;
-    }
-
     private long getStaticMax(final String os, final boolean b, final long dynamicMinRam, final long dynamicMaxRam) {
         final long recommendedValue = XenServerHelper.getXenServerStaticMax(os, b);
         if (recommendedValue == 0) {
@@ -2667,37 +2274,6 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
                 }
             }
         }
-    }
-
-    public SR getStorageRepository(final Connection conn, final String srNameLabel) {
-        Set<SR> srs;
-        try {
-            srs = SR.getByNameLabel(conn, srNameLabel);
-        } catch (final XenAPIException e) {
-            throw new CloudRuntimeException("Unable to get SR " + srNameLabel + " due to " + e.toString(), e);
-        } catch (final Exception e) {
-            throw new CloudRuntimeException("Unable to get SR " + srNameLabel + " due to " + e.getMessage(), e);
-        }
-
-        if (srs.size() > 1) {
-            throw new CloudRuntimeException("More than one storage repository was found for pool with uuid: " + srNameLabel);
-        } else if (srs.size() == 1) {
-            final SR sr = srs.iterator().next();
-            if (s_logger.isDebugEnabled()) {
-                s_logger.debug("SR retrieved for " + srNameLabel);
-            }
-
-            if (checkSR(conn, sr)) {
-                return sr;
-            }
-            throw new CloudRuntimeException("SR check failed for storage pool: " + srNameLabel + "on host:" + _host.getUuid());
-        } else {
-            throw new CloudRuntimeException("Can not see storage pool: " + srNameLabel + " from on host:" + _host.getUuid());
-        }
-    }
-
-    protected Storage.StorageResourceType getStorageResourceType() {
-        return Storage.StorageResourceType.STORAGE_POOL;
     }
 
     @Override
@@ -2869,7 +2445,7 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
             try {
                 final Set<VM> vms = VM.getByNameLabel(conn, vmName);
                 for (final VM vm : vms) {
-                    return convertToPowerState(vm.getPowerState(conn));
+                    return XenServerHelper.convertToPowerState(vm.getPowerState(conn));
                 }
             } catch (final BadServerResponse e) {
                 // There is a race condition within xenserver such that if a vm
@@ -3159,17 +2735,13 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
         return false;
     }
 
-    public boolean IsISCSI(final String type) {
-        return SRType.LVMOHBA.equals(type) || SRType.LVMOISCSI.equals(type) || SRType.LVM.equals(type);
-    }
-
     public boolean isNetworkSetupByName(final String nameTag) throws XenAPIException, XmlRpcException {
         if (nameTag != null) {
             if (s_logger.isDebugEnabled()) {
                 s_logger.debug("Looking for network setup by name " + nameTag);
             }
             final Connection conn = getConnection();
-            final XsLocalNetwork network = getNetworkByName(conn, nameTag);
+            final XenServerLocalNetwork network = getNetworkByName(conn, nameTag);
             if (network == null) {
                 return false;
             }
@@ -3257,67 +2829,6 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
         }
     }
 
-    protected VDI mount(final Connection conn, final StoragePoolType poolType, final String volumeFolder, final String volumePath) {
-        return getVDIbyUuid(conn, volumePath);
-    }
-
-    protected VDI mount(final Connection conn, final String vmName, final DiskTO volume) throws XmlRpcException, XenAPIException {
-        final DataTO data = volume.getData();
-        final Volume.Type type = volume.getType();
-        if (type == Volume.Type.ISO) {
-            final TemplateObjectTO iso = (TemplateObjectTO) data;
-            final DataStoreTO store = iso.getDataStore();
-
-            if (store == null) {
-                // It's a fake iso
-                return null;
-            }
-
-            // corer case, xenserver pv driver iso
-            final String templateName = iso.getName();
-            if (templateName.startsWith("xs-tools")) {
-                try {
-                    final Set<VDI> vdis = VDI.getByNameLabel(conn, templateName);
-                    if (vdis.isEmpty()) {
-                        throw new CloudRuntimeException("Could not find ISO with URL: " + templateName);
-                    }
-                    return vdis.iterator().next();
-                } catch (final XenAPIException e) {
-                    throw new CloudRuntimeException("Unable to get pv iso: " + templateName + " due to " + e.toString());
-                } catch (final Exception e) {
-                    throw new CloudRuntimeException("Unable to get pv iso: " + templateName + " due to " + e.toString());
-                }
-            }
-
-            if (!(store instanceof NfsTO)) {
-                throw new CloudRuntimeException("only support mount iso on nfs");
-            }
-            final NfsTO nfsStore = (NfsTO) store;
-            final String isoPath = nfsStore.getUrl() + File.separator + iso.getPath();
-            final int index = isoPath.lastIndexOf("/");
-
-            final String mountpoint = isoPath.substring(0, index);
-            URI uri;
-            try {
-                uri = new URI(mountpoint);
-            } catch (final URISyntaxException e) {
-                throw new CloudRuntimeException("Incorrect uri " + mountpoint, e);
-            }
-            final SR isoSr = createIsoSRbyURI(conn, uri, vmName, false);
-
-            final String isoname = isoPath.substring(index + 1);
-
-            final VDI isoVdi = getVDIbyLocationandSR(conn, isoname, isoSr);
-
-            if (isoVdi == null) {
-                throw new CloudRuntimeException("Unable to find ISO " + isoPath);
-            }
-            return isoVdi;
-        } else {
-            final VolumeObjectTO vol = (VolumeObjectTO) data;
-            return VDI.getByUuid(conn, vol.getPath());
-        }
-    }
 
     public String networkUsage(final Connection conn, final String privateIpAddress, final String option, final String vif) {
         if (option.equals("get")) {
@@ -3379,19 +2890,6 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
             return null;
         }
         return new Pair<Long, Integer>(Long.parseLong(tokens[1]), Integer.parseInt(tokens[2]));
-    }
-
-    private void pbdPlug(final Connection conn, final PBD pbd, final String uuid) {
-        try {
-            if (s_logger.isDebugEnabled()) {
-                s_logger.debug("Plugging in PBD " + uuid + " for " + _host);
-            }
-            pbd.plug(conn);
-        } catch (final Exception e) {
-            final String msg = "PBD " + uuid + " is not attached! and PBD plug failed due to " + e.toString() + ". Please check this PBD in " + _host;
-            s_logger.warn(msg, e);
-            throw new CloudRuntimeException(msg);
-        }
     }
 
     protected boolean pingdomr(final Connection conn, final String host, final String port) {
@@ -3769,44 +3267,6 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
 
     @Override
     public void setRunLevel(final int level) {
-    }
-
-    public String setupHeartbeatSr(final Connection conn, final SR sr, final boolean force) throws XenAPIException, XmlRpcException {
-        final SR.Record srRec = sr.getRecord(conn);
-        final String srUuid = srRec.uuid;
-        if (!srRec.shared || !SRType.LVMOHBA.equals(srRec.type) && !SRType.LVMOISCSI.equals(srRec.type) && !SRType.NFS.equals(srRec.type)) {
-            return srUuid;
-        }
-        String result = null;
-        final Host host = Host.getByUuid(conn, _host.getUuid());
-        final Set<String> tags = host.getTags(conn);
-        if (force || !tags.contains("cloud-heartbeat-" + srUuid)) {
-            if (s_logger.isDebugEnabled()) {
-                s_logger.debug("Setting up the heartbeat sr for host " + _host.getIp() + " and sr " + srUuid);
-            }
-            final Set<PBD> pbds = sr.getPBDs(conn);
-            for (final PBD pbd : pbds) {
-                final PBD.Record pbdr = pbd.getRecord(conn);
-                if (!pbdr.currentlyAttached && pbdr.host.getUuid(conn).equals(_host.getUuid())) {
-                    pbd.plug(conn);
-                    break;
-                }
-            }
-            result = callHostPluginThroughMaster(conn, "vmopspremium", "setup_heartbeat_sr", "host", _host.getUuid(), "sr", srUuid);
-            if (result == null || !result.split("#")[1].equals("0")) {
-                throw new CloudRuntimeException("Unable to setup heartbeat sr on SR " + srUuid + " due to " + result);
-            }
-
-            if (!tags.contains("cloud-heartbeat-" + srUuid)) {
-                tags.add("cloud-heartbeat-" + srUuid);
-                host.setTags(conn, tags);
-            }
-        }
-        result = callHostPluginPremium(conn, "setup_heartbeat_file", "host", _host.getUuid(), "sr", srUuid, "add", "true");
-        if (result == null || !result.split("#")[1].equals("0")) {
-            throw new CloudRuntimeException("Unable to setup heartbeat file entry on SR " + srUuid + " due to " + result);
-        }
-        return srUuid;
     }
 
     public void setupLinkLocalNetwork(final Connection conn) {

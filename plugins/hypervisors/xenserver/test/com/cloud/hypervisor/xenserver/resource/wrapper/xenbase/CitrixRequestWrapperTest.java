@@ -16,39 +16,6 @@
 // under the License.
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Hashtable;
-import java.util.List;
-import java.util.Map;
-import java.util.Vector;
-
-import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
-import org.apache.cloudstack.storage.command.AttachAnswer;
-import org.apache.cloudstack.storage.command.AttachCommand;
-import org.apache.cloudstack.storage.datastore.db.StoragePoolVO;
-import org.apache.cloudstack.storage.to.VolumeObjectTO;
-import org.apache.xmlrpc.XmlRpcException;
-import org.apache.xmlrpc.client.XmlRpcClient;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.runners.MockitoJUnitRunner;
-import org.powermock.api.mockito.PowerMockito;
-
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.AttachIsoCommand;
 import com.cloud.agent.api.CheckHealthCommand;
@@ -96,6 +63,7 @@ import com.cloud.agent.api.RebootRouterCommand;
 import com.cloud.agent.api.RevertToVMSnapshotCommand;
 import com.cloud.agent.api.ScaleVmCommand;
 import com.cloud.agent.api.SecurityGroupRulesCmd;
+import com.cloud.agent.api.SecurityGroupRulesCmd.IpPortAndProto;
 import com.cloud.agent.api.SetupCommand;
 import com.cloud.agent.api.StartCommand;
 import com.cloud.agent.api.StopCommand;
@@ -103,7 +71,6 @@ import com.cloud.agent.api.UnPlugNicCommand;
 import com.cloud.agent.api.UpdateHostPasswordCommand;
 import com.cloud.agent.api.UpgradeSnapshotCommand;
 import com.cloud.agent.api.VMSnapshotTO;
-import com.cloud.agent.api.SecurityGroupRulesCmd.IpPortAndProto;
 import com.cloud.agent.api.check.CheckSshCommand;
 import com.cloud.agent.api.proxy.CheckConsoleProxyLoadCommand;
 import com.cloud.agent.api.proxy.WatchConsoleProxyLoadCommand;
@@ -123,8 +90,9 @@ import com.cloud.agent.api.to.VirtualMachineTO;
 import com.cloud.agent.resource.virtualnetwork.VRScripts;
 import com.cloud.agent.resource.virtualnetwork.VirtualRoutingResource;
 import com.cloud.host.HostEnvironment;
-import com.cloud.hypervisor.xenserver.resource.common.XsHost;
-import com.cloud.hypervisor.xenserver.resource.network.XsLocalNetwork;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHost;
+import com.cloud.hypervisor.xenserver.resource.network.XenServerLocalNetwork;
 import com.cloud.network.Networks.TrafficType;
 import com.cloud.network.PhysicalNetworkSetupInfo;
 import com.cloud.storage.Storage.ImageFormat;
@@ -143,6 +111,37 @@ import com.xensource.xenapi.Types.BadServerResponse;
 import com.xensource.xenapi.Types.XenAPIException;
 import com.xensource.xenapi.VM;
 import com.xensource.xenapi.VMGuestMetrics;
+import org.apache.cloudstack.storage.command.AttachAnswer;
+import org.apache.cloudstack.storage.command.AttachCommand;
+import org.apache.cloudstack.storage.datastore.db.StoragePoolVO;
+import org.apache.cloudstack.storage.to.VolumeObjectTO;
+import org.apache.xmlrpc.XmlRpcException;
+import org.apache.xmlrpc.client.XmlRpcClient;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.runners.MockitoJUnitRunner;
+import org.powermock.api.mockito.PowerMockito;
+
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.List;
+import java.util.Map;
+import java.util.Vector;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class CitrixRequestWrapperTest {
@@ -373,14 +372,14 @@ public class CitrixRequestWrapperTest {
     @Test
     public void testCreateStoragePoolCommand() {
         final StoragePoolVO poolVO = Mockito.mock(StoragePoolVO.class);
-        final XsHost xsHost = Mockito.mock(XsHost.class);
+        final XenServerHost xenServerHost = Mockito.mock(XenServerHost.class);
 
         final CreateStoragePoolCommand createStorageCommand = new CreateStoragePoolCommand(false, poolVO);
 
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getHost()).thenReturn(xenServerHost);
 
         final Answer answer = wrapper.execute(createStorageCommand, xenServerResourceBase);
         verify(xenServerResourceBase, times(1)).getConnection();
@@ -391,14 +390,14 @@ public class CitrixRequestWrapperTest {
     @Test
     public void testModifyStoragePoolCommand() {
         final StoragePoolVO poolVO = Mockito.mock(StoragePoolVO.class);
-        final XsHost xsHost = Mockito.mock(XsHost.class);
+        final XenServerHost xenServerHost = Mockito.mock(XenServerHost.class);
 
         final ModifyStoragePoolCommand modifyStorageCommand = new ModifyStoragePoolCommand(false, poolVO);
 
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getHost()).thenReturn(xenServerHost);
 
         final Answer answer = wrapper.execute(modifyStorageCommand, xenServerResourceBase);
         verify(xenServerResourceBase, times(1)).getConnection();
@@ -409,14 +408,14 @@ public class CitrixRequestWrapperTest {
     @Test
     public void testDeleteStoragePoolCommand() {
         final StoragePoolVO poolVO = Mockito.mock(StoragePoolVO.class);
-        final XsHost xsHost = Mockito.mock(XsHost.class);
+        final XenServerHost xenServerHost = Mockito.mock(XenServerHost.class);
 
         final DeleteStoragePoolCommand deleteStorageCommand = new DeleteStoragePoolCommand(poolVO);
 
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getHost()).thenReturn(xenServerHost);
 
         final Answer answer = wrapper.execute(deleteStorageCommand, xenServerResourceBase);
         verify(xenServerResourceBase, times(1)).getConnection();
@@ -486,7 +485,7 @@ public class CitrixRequestWrapperTest {
 
     @Test
     public void testGetStorageStatsCommand() {
-        final XsHost xsHost = Mockito.mock(XsHost.class);
+        final XenServerHost xenServerHost = Mockito.mock(XenServerHost.class);
         final DataStoreTO store = Mockito.mock(DataStoreTO.class);
 
         final GetStorageStatsCommand storageStatsCommand = new GetStorageStatsCommand(store);
@@ -494,7 +493,7 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getHost()).thenReturn(xenServerHost);
 
         final Answer answer = wrapper.execute(storageStatsCommand, xenServerResourceBase);
         verify(xenServerResourceBase, times(1)).getConnection();
@@ -504,7 +503,7 @@ public class CitrixRequestWrapperTest {
 
     @Test
     public void testPrimaryStorageDownloadCommand() {
-        final XsHost xsHost = Mockito.mock(XsHost.class);
+        final XenServerHost xenServerHost = Mockito.mock(XenServerHost.class);
         final StoragePoolVO poolVO = Mockito.mock(StoragePoolVO.class);
 
         final PrimaryStorageDownloadCommand storageDownloadCommand = new PrimaryStorageDownloadCommand("Test", "http://127.0.0.1", ImageFormat.VHD, 1l, poolVO, 200);
@@ -512,7 +511,7 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getHost()).thenReturn(xenServerHost);
 
         final Answer answer = wrapper.execute(storageDownloadCommand, xenServerResourceBase);
         verify(xenServerResourceBase, times(1)).getConnection();
@@ -535,7 +534,7 @@ public class CitrixRequestWrapperTest {
 
     @Test
     public void testSetupCommand() {
-        final XsHost xsHost = Mockito.mock(XsHost.class);
+        final XenServerHost xenServerHost = Mockito.mock(XenServerHost.class);
         final HostEnvironment env = Mockito.mock(HostEnvironment.class);
 
         final SetupCommand setupCommand = new SetupCommand(env);
@@ -543,7 +542,7 @@ public class CitrixRequestWrapperTest {
         final CitrixRequestWrapper wrapper = CitrixRequestWrapper.getInstance();
         assertNotNull(wrapper);
 
-        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getHost()).thenReturn(xenServerHost);
 
         final Answer answer = wrapper.execute(setupCommand, xenServerResourceBase);
         verify(xenServerResourceBase, times(1)).getConnection();
@@ -558,7 +557,7 @@ public class CitrixRequestWrapperTest {
         final String uuid = "befc4dcd-f5c6-4015-8791-3c18622b7c7f";
 
         final Connection conn = Mockito.mock(Connection.class);
-        final XsHost xsHost = Mockito.mock(XsHost.class);
+        final XenServerHost xenServerHost = Mockito.mock(XenServerHost.class);
         final XmlRpcClient client = Mockito.mock(XmlRpcClient.class);
 
         // final Host.Record hr = PowerMockito.mock(Host.Record.class);
@@ -575,8 +574,8 @@ public class CitrixRequestWrapperTest {
         assertNotNull(wrapper);
 
         when(xenServerResourceBase.getConnection()).thenReturn(conn);
-        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
-        when(xsHost.getUuid()).thenReturn(uuid);
+        when(xenServerResourceBase.getHost()).thenReturn(xenServerHost);
+        when(xenServerHost.getUuid()).thenReturn(uuid);
         when(conn.getSessionReference()).thenReturn("befc4dcd");
 
         try {
@@ -590,9 +589,9 @@ public class CitrixRequestWrapperTest {
         // try {
         // PowerMockito.mockStatic(Host.class);
         // //BDDMockito.given(Host.getByUuid(conn,
-        // xsHost.getUuid())).willReturn(host);
+        // xenServerHost.getUuid())).willReturn(host);
         // PowerMockito.when(Host.getByUuid(conn,
-        // xsHost.getUuid())).thenReturn(host);
+        // xenServerHost.getUuid())).thenReturn(host);
         // PowerMockito.verifyStatic(times(1));
         // } catch (final BadServerResponse e) {
         // fail(e.getMessage());
@@ -740,7 +739,7 @@ public class CitrixRequestWrapperTest {
     @Test
     public void testSecurityGroupRulesCommand() {
         final Connection conn = Mockito.mock(Connection.class);
-        final XsHost xsHost = Mockito.mock(XsHost.class);
+        final XenServerHost xenServerHost = Mockito.mock(XenServerHost.class);
 
         final String guestIp = "127.0.0.1";
         final String guestMac = "00:00:00:00";
@@ -758,7 +757,7 @@ public class CitrixRequestWrapperTest {
         assertNotNull(wrapper);
 
         when(xenServerResourceBase.getConnection()).thenReturn(conn);
-        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getHost()).thenReturn(xenServerHost);
 
         final Answer answer = wrapper.execute(sshCommand, xenServerResourceBase);
 
@@ -773,12 +772,12 @@ public class CitrixRequestWrapperTest {
         final String uuid = "befc4dcd-f5c6-4015-8791-3c18622b7c7f";
 
         final Connection conn = Mockito.mock(Connection.class);
-        final XsLocalNetwork network = Mockito.mock(XsLocalNetwork.class);
+        final XenServerLocalNetwork network = Mockito.mock(XenServerLocalNetwork.class);
         final Network network2 = Mockito.mock(Network.class);
         final PIF pif = Mockito.mock(PIF.class);
         final PIF.Record pifRec = Mockito.mock(PIF.Record.class);
 
-        final XsHost xsHost = Mockito.mock(XsHost.class);
+        final XenServerHost xenServerHost = Mockito.mock(XenServerHost.class);
 
         final OvsFetchInterfaceCommand fetchInterCommand = new OvsFetchInterfaceCommand(label);
 
@@ -788,7 +787,7 @@ public class CitrixRequestWrapperTest {
         when(xenServerResourceBase.isXcp()).thenReturn(true);
         when(xenServerResourceBase.getLabel()).thenReturn("[abc]");
         when(xenServerResourceBase.getConnection()).thenReturn(conn);
-        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getHost()).thenReturn(xenServerHost);
 
         try {
             when(network.getNetwork()).thenReturn(network2);
@@ -815,7 +814,7 @@ public class CitrixRequestWrapperTest {
         final String bridge = "gre";
         final Connection conn = Mockito.mock(Connection.class);
         final Network network = Mockito.mock(Network.class);
-        final XsHost xsHost = Mockito.mock(XsHost.class);
+        final XenServerHost xenServerHost = Mockito.mock(XenServerHost.class);
 
         final OvsCreateGreTunnelCommand createGreCommand = new OvsCreateGreTunnelCommand("127.0.0.1", "KEY", 1l, 2l);
 
@@ -823,7 +822,7 @@ public class CitrixRequestWrapperTest {
         assertNotNull(wrapper);
 
         when(xenServerResourceBase.getConnection()).thenReturn(conn);
-        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getHost()).thenReturn(xenServerHost);
         when(xenServerResourceBase.setupvSwitchNetwork(conn)).thenReturn(network);
         try {
             when(network.getBridge(conn)).thenReturn(bridge);
@@ -996,7 +995,7 @@ public class CitrixRequestWrapperTest {
     @Test
     public void testCleanupNetworkRulesCmd() {
         final Connection conn = Mockito.mock(Connection.class);
-        final XsHost xsHost = Mockito.mock(XsHost.class);
+        final XenServerHost xenServerHost = Mockito.mock(XenServerHost.class);
 
         final CleanupNetworkRulesCmd cleanupNets = new CleanupNetworkRulesCmd(20);
 
@@ -1005,7 +1004,7 @@ public class CitrixRequestWrapperTest {
 
         when(xenServerResourceBase.canBridgeFirewall()).thenReturn(true);
         when(xenServerResourceBase.getConnection()).thenReturn(conn);
-        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getHost()).thenReturn(xenServerHost);
         when(xenServerResourceBase.getVMInstanceName()).thenReturn("VM");
         when(xenServerResourceBase.callHostPlugin(conn, "vmops", "cleanup_rules", "instance", xenServerResourceBase.getVMInstanceName())).thenReturn("1");
 
@@ -1019,7 +1018,7 @@ public class CitrixRequestWrapperTest {
     @Test
     public void testCleanupNetworkRulesCmdLTZ() {
         final Connection conn = Mockito.mock(Connection.class);
-        final XsHost xsHost = Mockito.mock(XsHost.class);
+        final XenServerHost xenServerHost = Mockito.mock(XenServerHost.class);
 
         final CleanupNetworkRulesCmd cleanupNets = new CleanupNetworkRulesCmd(20);
 
@@ -1028,14 +1027,14 @@ public class CitrixRequestWrapperTest {
 
         when(xenServerResourceBase.canBridgeFirewall()).thenReturn(true);
         when(xenServerResourceBase.getConnection()).thenReturn(conn);
-        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getHost()).thenReturn(xenServerHost);
         when(xenServerResourceBase.getVMInstanceName()).thenReturn("VM");
         when(xenServerResourceBase.callHostPlugin(conn, "vmops", "cleanup_rules", "instance", xenServerResourceBase.getVMInstanceName())).thenReturn("-1");
 
         final Answer answer = wrapper.execute(cleanupNets, xenServerResourceBase);
 
         verify(xenServerResourceBase, times(1)).getConnection();
-        verify(xsHost, times(1)).getIp();
+        verify(xenServerHost, times(1)).getIp();
 
         assertFalse(answer.getResult());
         assertEquals(answer.getDetails(), "-1");
@@ -1464,7 +1463,7 @@ public class CitrixRequestWrapperTest {
         final String uuid = "6172d8b7-ba10-4a70-93f9-ecaf41f51d53";
 
         final Connection conn = Mockito.mock(Connection.class);
-        final XsHost xsHost = Mockito.mock(XsHost.class);
+        final XenServerHost xenServerHost = Mockito.mock(XenServerHost.class);
 
         final Pool pool = PowerMockito.mock(Pool.class);
         final Pool.Record poolr = Mockito.mock(Pool.Record.class);
@@ -1478,7 +1477,7 @@ public class CitrixRequestWrapperTest {
 
         when(xenServerResourceBase.getConnection()).thenReturn(conn);
         try {
-            when(xenServerResourceBase.getHost()).thenReturn(xsHost);
+            when(xenServerResourceBase.getHost()).thenReturn(xenServerHost);
             when(xenServerResourceBase.getHost().getUuid()).thenReturn(uuid);
 
             PowerMockito.mockStatic(Pool.Record.class);
@@ -1681,7 +1680,7 @@ public class CitrixRequestWrapperTest {
 
         final VirtualMachineTO machineTO = Mockito.mock(VirtualMachineTO.class);
         final Connection conn = Mockito.mock(Connection.class);
-        final XsHost xsHost = Mockito.mock(XsHost.class);
+        final XenServerHost xenServerHost = Mockito.mock(XenServerHost.class);
         final Host host = Mockito.mock(Host.class);
 
         final ScaleVmCommand scaleVm = new ScaleVmCommand(machineTO);
@@ -1690,7 +1689,7 @@ public class CitrixRequestWrapperTest {
         assertNotNull(wrapper);
 
         when(xenServerResourceBase.getConnection()).thenReturn(conn);
-        when(xenServerResourceBase.getHost()).thenReturn(xsHost);
+        when(xenServerResourceBase.getHost()).thenReturn(xenServerHost);
         when(xenServerResourceBase.getHost().getUuid()).thenReturn(uuid);
 
         try {
@@ -1713,7 +1712,7 @@ public class CitrixRequestWrapperTest {
         final String label = "net";
 
         final Connection conn = Mockito.mock(Connection.class);
-        final XsLocalNetwork network = Mockito.mock(XsLocalNetwork.class);
+        final XenServerLocalNetwork network = Mockito.mock(XenServerLocalNetwork.class);
         final Network network2 = Mockito.mock(Network.class);
 
         final PvlanSetupCommand lanSetup = PvlanSetupCommand.createDhcpSetup("add", URI.create("http://127.0.0.1"), "tag", "dhcp", "0:0:0:0:0:0", "127.0.0.1");
@@ -1754,7 +1753,7 @@ public class CitrixRequestWrapperTest {
         final String label = "net";
 
         final Connection conn = Mockito.mock(Connection.class);
-        final XsLocalNetwork network = Mockito.mock(XsLocalNetwork.class);
+        final XenServerLocalNetwork network = Mockito.mock(XenServerLocalNetwork.class);
         final Network network2 = Mockito.mock(Network.class);
 
         final PvlanSetupCommand lanSetup = PvlanSetupCommand.createDhcpSetup("add", URI.create("http://127.0.0.1"), "tag", "dhcp", "0:0:0:0:0:0", "127.0.0.1");
@@ -1795,7 +1794,7 @@ public class CitrixRequestWrapperTest {
         final String label = "net";
 
         final Connection conn = Mockito.mock(Connection.class);
-        final XsLocalNetwork network = Mockito.mock(XsLocalNetwork.class);
+        final XenServerLocalNetwork network = Mockito.mock(XenServerLocalNetwork.class);
         final Network network2 = Mockito.mock(Network.class);
 
         final PvlanSetupCommand lanSetup = PvlanSetupCommand.createVmSetup("add", URI.create("http://127.0.0.1"), "tag", "0:0:0:0:0:0");
@@ -1834,7 +1833,7 @@ public class CitrixRequestWrapperTest {
         final String label = "net";
 
         final Connection conn = Mockito.mock(Connection.class);
-        final XsLocalNetwork network = Mockito.mock(XsLocalNetwork.class);
+        final XenServerLocalNetwork network = Mockito.mock(XenServerLocalNetwork.class);
         final Network network2 = Mockito.mock(Network.class);
 
         final PvlanSetupCommand lanSetup = PvlanSetupCommand.createVmSetup("add", URI.create("http://127.0.0.1"), "tag", "0:0:0:0:0:0");

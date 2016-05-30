@@ -22,6 +22,7 @@ package com.cloud.hypervisor.xenserver.resource.wrapper.xen610;
 import java.util.List;
 import java.util.Set;
 
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHost;
 import org.apache.cloudstack.storage.to.VolumeObjectTO;
 import org.apache.log4j.Logger;
 
@@ -30,7 +31,6 @@ import com.cloud.agent.api.MigrateWithStorageCompleteAnswer;
 import com.cloud.agent.api.MigrateWithStorageCompleteCommand;
 import com.cloud.agent.api.to.VirtualMachineTO;
 import com.cloud.hypervisor.xenserver.resource.release.XenServer610Resource;
-import com.cloud.hypervisor.xenserver.resource.common.XsHost;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.utils.exception.CloudRuntimeException;
@@ -50,8 +50,8 @@ public final class XenServer610MigrateWithStorageCompleteCommandWrapper extends 
 
         final String name = vmSpec.getName();
         try {
-            final XsHost xsHost = xenServer610Resource.getHost();
-            final String uuid = xsHost.getUuid();
+            final XenServerHost xenServerHost = xenServer610Resource.getHost();
+            final String uuid = xenServerHost.getUuid();
 
             final Set<VM> vms = VM.getByNameLabel(connection, name);
             // Check if VMs can be found by label.

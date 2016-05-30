@@ -23,6 +23,8 @@ import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.ReadyAnswer;
 import com.cloud.agent.api.ReadyCommand;
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.compute.XenServerComputeResource;
+import com.cloud.hypervisor.xenserver.resource.network.XenServerNetworkResource;
 import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
@@ -42,7 +44,11 @@ public final class CitrixReadyCommandWrapper extends CommandWrapper<ReadyCommand
 
     @Override
     public Answer execute(final ReadyCommand command, final XenServerResourceBase xenServerResourceBase) {
+
         final XenServerStorageResource storageResource = xenServerResourceBase.getStorageResource();
+        final XenServerComputeResource computeResource = xenServerResourceBase.getComputeResource();
+        final XenServerNetworkResource networkResource = xenServerResourceBase.getNetworkResource();
+
         final Connection conn = xenServerResourceBase.getConnection();
         final Long dcId = command.getDataCenterId();
         // Ignore the result of the callHostPlugin. Even if unmounting the

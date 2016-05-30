@@ -22,7 +22,7 @@ import com.xensource.xenapi.Network;
  * A list of UUIDs that are gathered from the XenServer when the resource first
  * connects to XenServer. These UUIDs do not change over time.
  */
-public class XsHost {
+public class XenServerHost {
 
     private String systemvmisouuid;
     private String uuid;

@@ -24,7 +24,7 @@ import com.cloud.agent.api.to.DataTO;
 import com.cloud.agent.api.to.DiskTO;
 import com.cloud.agent.api.to.NfsTO;
 import com.cloud.hypervisor.xenserver.resource.common.XenServerHelper;
-import com.cloud.hypervisor.xenserver.resource.common.XsHost;
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHost;
 import com.cloud.storage.Storage;
 import com.cloud.storage.Volume;
 import com.cloud.template.VirtualMachineTemplate;
@@ -80,17 +80,15 @@ public class XenServerStorageResource {
     protected String _attachIsoDeviceNum = "3";
     protected String _username;
     protected Queue<String> _password = new LinkedList<String>();
-    protected XsHost host;
+    protected XenServerHost host;
     private long dcId;
 
-    public XenServerStorageResource(XsHost host, long dcId, String username, Queue<String> password) {
+    public XenServerStorageResource(XenServerHost host, long dcId, String username, Queue<String> password) {
         this.host = host;
         this.dcId = dcId;
         this._username = username;
         this._password = password;
     }
-
-
 
     public enum SRType {
         EXT, FILE, ISCSI, ISO, LVM, LVMOHBA, LVMOISCSI,
@@ -99,6 +97,21 @@ public class XenServerStorageResource {
          * particular storage manager is installed on a XenServer host (for back-end snapshots to work))
          */
         RELVMOISCSI, NFS;
+
+        String _str;
+
+        private SRType() {
+            _str = super.toString().toLowerCase();
+        }
+
+        public boolean equals(final String type) {
+            return _str.equalsIgnoreCase(type);
+        }
+
+        @Override
+        public String toString() {
+            return _str;
+        }
     }
 
     protected boolean checkSR(final Connection conn, final SR sr) {

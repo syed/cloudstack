@@ -42,7 +42,7 @@ public final class CitrixDeleteStoragePoolCommandWrapper extends CommandWrapper<
         final Connection conn = xenServerResourceBase.getConnection();
         final StorageFilerTO poolTO = command.getPool();
         try {
-            final SR sr = xenServerResourceBase.getStorageRepository(conn, poolTO.getUuid());
+            final SR sr = storageResource.getStorageRepository(conn, poolTO.getUuid());
             storageResource.removeSR(conn, sr);
             final Answer answer = new Answer(command, true, "success");
             return answer;

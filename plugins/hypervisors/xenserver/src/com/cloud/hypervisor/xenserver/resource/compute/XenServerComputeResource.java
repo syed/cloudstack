@@ -17,8 +17,20 @@
 
 package com.cloud.hypervisor.xenserver.resource.compute;
 
-/**
- * Created by syed on 5/25/16.
- */
+import com.cloud.vm.VirtualMachine.PowerState;
+import com.xensource.xenapi.Types.VmPowerState;
+
+import java.util.HashMap;
+
 public class XenServerComputeResource {
+
+    public static final HashMap<VmPowerState, PowerState> s_powerStatesTable;
+    static {
+        s_powerStatesTable = new HashMap<VmPowerState, PowerState>();
+        s_powerStatesTable.put(VmPowerState.HALTED, PowerState.PowerOff);
+        s_powerStatesTable.put(VmPowerState.PAUSED, PowerState.PowerOff);
+        s_powerStatesTable.put(VmPowerState.RUNNING, PowerState.PowerOn);
+        s_powerStatesTable.put(VmPowerState.SUSPENDED, PowerState.PowerOff);
+        s_powerStatesTable.put(VmPowerState.UNRECOGNIZED, PowerState.PowerUnknown);
+    }
 }

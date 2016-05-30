@@ -26,7 +26,7 @@ import org.apache.xmlrpc.XmlRpcException;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.OvsFetchInterfaceAnswer;
 import com.cloud.agent.api.OvsFetchInterfaceCommand;
-import com.cloud.hypervisor.xenserver.resource.network.XsLocalNetwork;
+import com.cloud.hypervisor.xenserver.resource.network.XenServerLocalNetwork;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.utils.exception.CloudRuntimeException;
@@ -50,7 +50,7 @@ public final class CitrixOvsFetchInterfaceCommandWrapper extends CommandWrapper<
         s_logger.debug("Will look for network with name-label:" + label + " on host " + xenServerResourceBase.getHost().getIp());
         final Connection conn = xenServerResourceBase.getConnection();
         try {
-            final XsLocalNetwork nw = xenServerResourceBase.getNetworkByName(conn, label);
+            final XenServerLocalNetwork nw = xenServerResourceBase.getNetworkByName(conn, label);
             if(nw == null) {
                 throw new CloudRuntimeException("Unable to locate the network with name-label: " + label + " on host: " + xenServerResourceBase.getHost().getIp());
             }

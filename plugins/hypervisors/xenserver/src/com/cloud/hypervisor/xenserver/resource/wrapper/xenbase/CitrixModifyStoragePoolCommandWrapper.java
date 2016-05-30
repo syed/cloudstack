@@ -76,7 +76,7 @@ public final class CitrixModifyStoragePoolCommandWrapper extends CommandWrapper<
             }
         } else {
             try {
-                final SR sr = xenServerResourceBase.getStorageRepository(conn, pool.getUuid());
+                final SR sr = storageResource.getStorageRepository(conn, pool.getUuid());
                 final String srUuid = sr.getUuid(conn);
                 final String result = xenServerResourceBase.callHostPluginPremium(conn, "setup_heartbeat_file", "host", xenServerResourceBase.getHost().getUuid(), "sr", srUuid, "add",
                         "false");

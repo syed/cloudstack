@@ -19,16 +19,13 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
-import java.util.HashMap;
-
-import org.apache.log4j.Logger;
-
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.storage.CreateAnswer;
 import com.cloud.agent.api.storage.CreateCommand;
 import com.cloud.agent.api.to.StorageFilerTO;
 import com.cloud.agent.api.to.VolumeTO;
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.vm.DiskProfile;
@@ -36,6 +33,9 @@ import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.SR;
 import com.xensource.xenapi.Types;
 import com.xensource.xenapi.VDI;
+import org.apache.log4j.Logger;
+
+import java.util.HashMap;
 
 @ResourceWrapper(handles =  CreateCommand.class)
 public final class CitrixCreateCommandWrapper extends CommandWrapper<CreateCommand, Answer, XenServerResourceBase> {
@@ -45,16 +45,17 @@ public final class CitrixCreateCommandWrapper extends CommandWrapper<CreateComma
     @Override
     public Answer execute(final CreateCommand command, final XenServerResourceBase xenServerResourceBase) {
         final Connection conn = xenServerResourceBase.getConnection();
+        final XenServerStorageResource storageResource = xenServerResourceBase.getStorageResource();
         final StorageFilerTO pool = command.getPool();
         final DiskProfile dskch = command.getDiskCharacteristics();
 
         VDI vdi = null;
         try {
-            final SR poolSr = xenServerResourceBase.getStorageRepository(conn, pool.getUuid());
+            final SR poolSr = storageResource.getStorageRepository(conn, pool.getUuid());
             if (command.getTemplateUrl() != null) {
                 VDI tmpltvdi = null;
 
-                tmpltvdi = xenServerResourceBase.getVDIbyUuid(conn, command.getTemplateUrl());
+                tmpltvdi = storageResource.getVDIbyUuid(conn, command.getTemplateUrl());
                 vdi = tmpltvdi.createClone(conn, new HashMap<String, String>());
                 vdi.setNameLabel(conn, dskch.getName());
             } else {
