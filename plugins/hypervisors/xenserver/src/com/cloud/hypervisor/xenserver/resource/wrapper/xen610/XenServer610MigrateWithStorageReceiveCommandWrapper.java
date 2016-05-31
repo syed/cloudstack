@@ -19,6 +19,15 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xen610;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.List;
+
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHost;
+import com.google.gson.Gson;
+import org.apache.log4j.Logger;
+
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.MigrateWithStorageReceiveAnswer;
 import com.cloud.agent.api.MigrateWithStorageReceiveCommand;
@@ -26,7 +35,6 @@ import com.cloud.agent.api.to.NicTO;
 import com.cloud.agent.api.to.StorageFilerTO;
 import com.cloud.agent.api.to.VirtualMachineTO;
 import com.cloud.agent.api.to.VolumeTO;
-import com.cloud.hypervisor.xenserver.resource.common.XenServerHost;
 import com.cloud.hypervisor.xenserver.resource.network.XenServerLocalNetwork;
 import com.cloud.hypervisor.xenserver.resource.release.XenServer610Resource;
 import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
@@ -35,17 +43,10 @@ import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.cloud.utils.Pair;
 import com.cloud.utils.exception.CloudRuntimeException;
-import com.google.gson.Gson;
 import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.Host;
 import com.xensource.xenapi.Network;
 import com.xensource.xenapi.SR;
-import org.apache.log4j.Logger;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @ResourceWrapper(handles =  MigrateWithStorageReceiveCommand.class)
 public final class XenServer610MigrateWithStorageReceiveCommandWrapper extends CommandWrapper<MigrateWithStorageReceiveCommand, Answer, XenServer610Resource> {

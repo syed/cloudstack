@@ -30,7 +30,11 @@ import com.cloud.agent.api.to.VirtualMachineTO;
 import com.cloud.agent.api.to.VolumeTO;
 import com.cloud.host.HostEnvironment;
 import com.cloud.hypervisor.xenserver.resource.common.XenServerHost;
+<<<<<<< HEAD
 import com.cloud.hypervisor.xenserver.resource.network.XenServerLocalNetwork;
+=======
+import com.cloud.hypervisor.xenserver.resource.network.XsLocalNetwork;
+>>>>>>> 5e6164d90fa7ccc7071f941ca16e00fd91ae82cf
 import com.cloud.hypervisor.xenserver.resource.release.XenServer610Resource;
 import com.cloud.network.Networks.TrafficType;
 import com.cloud.network.PhysicalNetworkSetupInfo;
@@ -46,7 +50,10 @@ import com.xensource.xenapi.Types.XenAPIException;
 import com.xensource.xenapi.VDI;
 import com.xensource.xenapi.VIF;
 import org.apache.xmlrpc.XmlRpcException;
+<<<<<<< HEAD
 import org.junit.Ignore;
+=======
+>>>>>>> 5e6164d90fa7ccc7071f941ca16e00fd91ae82cf
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;

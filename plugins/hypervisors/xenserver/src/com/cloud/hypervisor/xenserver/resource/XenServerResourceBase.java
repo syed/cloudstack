@@ -63,7 +63,6 @@ import com.cloud.hypervisor.xenserver.resource.network.XenServerNetworkResource;
 import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageProcessor;
 import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.hypervisor.xenserver.resource.wrapper.xenbase.CitrixRequestWrapper;
-import com.cloud.hypervisor.xenserver.resource.wrapper.xenbase.XenServerUtilitiesHelper;
 import com.cloud.network.Networks;
 import com.cloud.network.Networks.BroadcastDomainType;
 import com.cloud.network.Networks.TrafficType;
@@ -220,8 +219,6 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
 
     public String _attachIsoDeviceNum = "3";
 
-    protected XenServerUtilitiesHelper xenServerUtilitiesHelper = new XenServerUtilitiesHelper();
-
 
     protected XenServerStorageResource xenServerStorageResource;
     protected XenServerComputeResource xenServerComputeResource;
@@ -254,10 +251,6 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
 
     public String getPwdFromQueue() {
         return _password.peek();
-    }
-
-    public XenServerUtilitiesHelper getXenServerUtilitiesHelper() {
-        return xenServerUtilitiesHelper;
     }
 
     public XenServerStorageResource getStorageResource() {
@@ -439,7 +432,7 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
     @Override
     public ExecutionResult cleanupCommand(final NetworkElementCommand cmd) {
         if (cmd instanceof IpAssocCommand && !(cmd instanceof IpAssocVpcCommand)) {
-            return cleanupNetworkElementCommand((IpAssocCommand) cmd);
+            return xenServerNetworkResource.cleanupNetworkElementCommand(getConnection(), (IpAssocCommand) cmd);
         }
         return new ExecutionResult(true, null);
     }
@@ -469,71 +462,6 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
         return success;
     }
 
-    protected ExecutionResult cleanupNetworkElementCommand(final IpAssocCommand cmd) {
-        final Connection conn = getConnection();
-        final String routerName = cmd.getAccessDetail(NetworkElementCommand.ROUTER_NAME);
-        final String routerIp = cmd.getAccessDetail(NetworkElementCommand.ROUTER_IP);
-        try {
-            final IpAddressTO[] ips = cmd.getIpAddresses();
-            final int ipsCount = ips.length;
-            for (final IpAddressTO ip : ips) {
-
-                final VM router = getVM(conn, routerName);
-
-                final NicTO nic = new NicTO();
-                nic.setMac(ip.getVifMacAddress());
-                nic.setType(ip.getTrafficType());
-                if (ip.getBroadcastUri() == null) {
-                    nic.setBroadcastType(BroadcastDomainType.Native);
-                } else {
-                    final URI uri = BroadcastDomainType.fromString(ip.getBroadcastUri());
-                    nic.setBroadcastType(BroadcastDomainType.getSchemeValue(uri));
-                    nic.setBroadcastUri(uri);
-                }
-                nic.setDeviceId(0);
-                nic.setNetworkRateMbps(ip.getNetworkRate());
-                nic.setName(ip.getNetworkName());
-
-                Network network = getNetwork(conn, nic);
-
-                // If we are disassociating the last IP address in the VLAN, we
-                // need
-                // to remove a VIF
-                boolean removeVif = false;
-
-                // there is only one ip in this public vlan and removing it, so
-                // remove the nic
-                if (ipsCount == 1 && !ip.isAdd()) {
-                    removeVif = true;
-                }
-
-                if (removeVif) {
-
-                    // Determine the correct VIF on DomR to
-                    // associate/disassociate the
-                    // IP address with
-                    final VIF correctVif = getCorrectVif(conn, router, network);
-                    if (correctVif != null) {
-                        network = correctVif.getNetwork(conn);
-
-                        // Mark this vif to be removed from network usage
-                        networkUsage(conn, routerIp, "deleteVif", "eth" + correctVif.getDevice(conn));
-
-                        // Remove the VIF from DomR
-                        correctVif.unplug(conn);
-                        correctVif.destroy(conn);
-
-                        // Disable the VLAN network if necessary
-                        disableVlanNetwork(conn, network);
-                    }
-                }
-            }
-        } catch (final Exception e) {
-            s_logger.debug("Ip Assoc failure on applying one ip due to exception:  ", e);
-            return new ExecutionResult(false, e.getMessage());
-        }
-        return new ExecutionResult(true, null);
-    }
 
     public void cleanUpTmpDomVif(final Connection conn, final Network nw) throws XenAPIException, XmlRpcException {
 
@@ -662,6 +590,8 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
         }
 
         xenServerStorageResource = new XenServerStorageResource(_host, _dcId, _username, _password);
+        xenServerComputeResource = new XenServerComputeResource();
+        xenServerNetworkResource = new XenServerNetworkResource(_canBridgeFirewall, _host, _instance);
         return true;
     }
 
@@ -1371,9 +1301,8 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
             try {
                 final String cmdLine = "xe sm-list | grep \"resigning of duplicates\"";
 
-                final XenServerUtilitiesHelper xenServerUtilitiesHelper = getXenServerUtilitiesHelper();
 
-                Pair<Boolean, String> result = xenServerUtilitiesHelper.executeSshWrapper(_host.getIp(), 22, _username, null, getPwdFromQueue(), cmdLine);
+                Pair<Boolean, String> result = XenServerHelper.executeSshWrapper(_host.getIp(), 22, _username, null, getPwdFromQueue(), cmdLine);
 
                 boolean supportsClonedVolumes = result != null && result.first() != null && result.first() &&
                         result.second() != null && result.second().length() > 0;
@@ -1851,6 +1780,7 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
 
         return vmStates;
     }
+
 
     public String getLabel() {
         final Connection conn = getConnection();

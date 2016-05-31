@@ -56,6 +56,7 @@ public final class CitrixCreateCommandWrapper extends CommandWrapper<CreateComma
                 VDI tmpltvdi = null;
 
                 tmpltvdi = storageResource.getVDIbyUuid(conn, command.getTemplateUrl());
+
                 vdi = tmpltvdi.createClone(conn, new HashMap<String, String>());
                 vdi.setNameLabel(conn, dskch.getName());
             } else {

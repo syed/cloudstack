@@ -20,6 +20,8 @@ import com.cloud.hypervisor.xenserver.resource.compute.XenServerComputeResource;
 import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.utils.exception.CloudRuntimeException;
 import com.cloud.vm.VirtualMachine.PowerState;
+import com.cloud.utils.Pair;
+import com.cloud.utils.ssh.SshHelper;
 import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.Host;
 import com.xensource.xenapi.Pool;
@@ -30,7 +32,7 @@ import com.xensource.xenapi.VM;
 import com.xensource.xenapi.XenAPIObject;
 import org.apache.log4j.Logger;
 import org.apache.xmlrpc.XmlRpcException;
-
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
@@ -40,9 +42,12 @@ import java.util.concurrent.TimeoutException;
  *
  */
 public class XenServerHelper {
+    public static final int TIMEOUT = 10000;
+    public static final String SCRIPT_CMD_PATH = "sh /opt/cloud/bin/";
     private static final HashMap<String, MemoryValues> XenServerGuestOsMemoryMap = new HashMap<String, MemoryValues>(70);
-
     private static final Logger s_logger = Logger.getLogger(XenServerHelper.class);
+
+
 
     public static class MemoryValues {
         long max;
@@ -220,6 +225,18 @@ public class XenServerHelper {
         XenServerGuestOsMemoryMap.put("Ubuntu 12.04 (64-bit)", new MemoryValues(512l, 128 * 1024l));
         XenServerGuestOsMemoryMap.put("Ubuntu 14.04 (32-bit)", new MemoryValues(512l, 32 * 1024l));
         XenServerGuestOsMemoryMap.put("Ubuntu 14.04 (64-bit)", new MemoryValues(512l, 128 * 1024l));
+    }
+
+    public static Pair<Boolean, String> executeSshWrapper(final String hostIp, final int port, final String username, final File pemFile, final String hostPasswd, final String command) throws Exception {
+        final Pair<Boolean, String> result = SshHelper.sshExecute(hostIp, port, username, pemFile, hostPasswd, command, 60000, 60000, TIMEOUT);
+        return result;
+    }
+
+    public static String buildCommandLine(final String scriptPath, final String script, final String username, final String newPassword) {
+        final StringBuilder cmdLine = new StringBuilder();
+        cmdLine.append(scriptPath).append(script).append(' ').append(username).append(' ').append(newPassword);
+
+        return cmdLine.toString();
     }
 
     public static long getXenServerStaticMax(final String stdType, final boolean bootFromCD) {
@@ -482,5 +499,4 @@ public class XenServerHelper {
 
         return true;
     }
-
 }
