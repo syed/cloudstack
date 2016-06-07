@@ -20,6 +20,7 @@
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.network.XenServerNetworkResource;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
@@ -38,11 +39,12 @@ public final class CitrixOvsDestroyBridgeCommandWrapper extends CommandWrapper<O
     public Answer execute(final OvsDestroyBridgeCommand command, final XenServerResourceBase xenServerResourceBase) {
         try {
             final Connection conn = xenServerResourceBase.getConnection();
+            XenServerNetworkResource networkResource = xenServerResourceBase.getNetworkResource();
 
-            final Network nw = xenServerResourceBase.findOrCreateTunnelNetwork(conn, command.getBridgeName());
-            xenServerResourceBase.cleanUpTmpDomVif(conn, nw);
+            final Network nw = networkResource.findOrCreateTunnelNetwork(conn, command.getBridgeName());
+            networkResource.cleanUpTmpDomVif(conn, nw);
 
-            xenServerResourceBase.destroyTunnelNetwork(conn, nw, command.getHostId());
+            networkResource.destroyTunnelNetwork(conn, nw, command.getHostId());
 
             s_logger.debug("OVS Bridge destroyed");
 

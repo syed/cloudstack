@@ -25,6 +25,7 @@ import com.cloud.agent.api.StopCommand;
 import com.cloud.agent.api.VgpuTypesInfo;
 import com.cloud.agent.api.to.GPUDeviceTO;
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.network.XenServerNetworkResource;
 import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
@@ -54,6 +55,8 @@ public final class CitrixStopCommandWrapper extends CommandWrapper<StopCommand, 
     public Answer execute(final StopCommand command, final XenServerResourceBase xenServerResourceBase) {
         final String vmName = command.getVmName();
         final XenServerStorageResource storageResource = xenServerResourceBase.getStorageResource();
+        final XenServerNetworkResource networkResource = xenServerResourceBase.getNetworkResource();
+
         String platformstring = null;
         try {
             final Connection conn = xenServerResourceBase.getConnection();
@@ -149,7 +152,7 @@ public final class CitrixStopCommandWrapper extends CommandWrapper<StopCommand, 
                             for (final Network network : networks) {
                                 try {
                                     if (network.getNameLabel(conn).startsWith("VLAN")) {
-                                        xenServerResourceBase.disableVlanNetwork(conn, network);
+                                        networkResource.disableVlanNetwork(conn, network);
                                     }
                                 } catch (final Exception e) {
                                     // network might be destroyed by other host

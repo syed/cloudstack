@@ -20,6 +20,7 @@
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.network.XenServerNetworkResource;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
@@ -36,9 +37,10 @@ public final class CitrixOvsSetupBridgeCommandWrapper extends CommandWrapper<Ovs
     @Override
     public Answer execute(final OvsSetupBridgeCommand command, final XenServerResourceBase xenServerResourceBase) {
         final Connection conn = xenServerResourceBase.getConnection();
+        XenServerNetworkResource networkResource = xenServerResourceBase.getNetworkResource();
 
-        xenServerResourceBase.findOrCreateTunnelNetwork(conn, command.getBridgeName());
-        xenServerResourceBase.configureTunnelNetwork(conn, command.getNetworkId(), command.getHostId(), command.getBridgeName());
+        networkResource.findOrCreateTunnelNetwork(conn, command.getBridgeName());
+        networkResource.configureTunnelNetwork(conn, command.getNetworkId(), command.getHostId(), command.getBridgeName());
 
         s_logger.debug("OVS Bridge configured");
 

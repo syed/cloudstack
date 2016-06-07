@@ -148,7 +148,7 @@ public class XenServerNetworkResource {
         return new ExecutionResult(true, null);
     }
 
-        public void cleanUpTmpDomVif(final Connection conn, final Network nw) throws XenAPIException, XmlRpcException {
+    public void cleanUpTmpDomVif(final Connection conn, final Network nw) throws XenAPIException, XmlRpcException {
 
             final Pair<VM, VM.Record> vm = getControlDomain(conn);
             final VM dom0 = vm.first();
@@ -220,7 +220,7 @@ public class XenServerNetworkResource {
 
     }
 
-        public VIF createVif(final Connection conn, final String vmName, final VM vm, final VirtualMachineTO vmSpec, final NicTO nic) throws XmlRpcException, XenAPIException {
+    public VIF createVif(final Connection conn, final String vmName, final VM vm, final VirtualMachineTO vmSpec, final NicTO nic) throws XmlRpcException, XenAPIException {
         assert nic.getUuid() != null : "Nic should have a uuid value";
 
         if (s_logger.isDebugEnabled()) {
@@ -295,7 +295,8 @@ public class XenServerNetworkResource {
 
     public void disableVlanNetwork(final Connection conn, final Network network) {
     }
-        public boolean doPingTest(final Connection conn, final String computingHostIp) {
+
+    public boolean doPingTest(final Connection conn, final String computingHostIp) {
         final com.trilead.ssh2.Connection sshConnection = new com.trilead.ssh2.Connection(_host.getIp(), 22);
         try {
             sshConnection.connect(null, 60000, 60000);

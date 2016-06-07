@@ -29,6 +29,7 @@ import com.cloud.agent.api.to.GPUDeviceTO;
 import com.cloud.agent.api.to.NicTO;
 import com.cloud.agent.api.to.VirtualMachineTO;
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.network.XenServerNetworkResource;
 import com.cloud.hypervisor.xenserver.resource.storage.XenServerStorageResource;
 import com.cloud.network.Networks;
 import com.cloud.network.Networks.BroadcastDomainType;
@@ -59,6 +60,8 @@ public final class CitrixStartCommandWrapper extends CommandWrapper<StartCommand
     public Answer execute(final StartCommand command, final XenServerResourceBase xenServerResourceBase) {
         final Connection conn = xenServerResourceBase.getConnection();
         final XenServerStorageResource storageResource = xenServerResourceBase.getStorageResource();
+        final XenServerNetworkResource networkResource = xenServerResourceBase.getNetworkResource();
+
         final VirtualMachineTO vmSpec = command.getVirtualMachine();
         final String vmName = vmSpec.getName();
         VmPowerState state = VmPowerState.HALTED;
@@ -123,7 +126,7 @@ public final class CitrixStartCommandWrapper extends CommandWrapper<StartCommand
             }
 
             for (final NicTO nic : vmSpec.getNics()) {
-                xenServerResourceBase.createVif(conn, vmName, vm, vmSpec, nic);
+                networkResource.createVif(conn, vmName, vm, vmSpec, nic);
             }
 
             xenServerResourceBase.startVM(conn, host, vm, vmName);
@@ -132,7 +135,7 @@ public final class CitrixStartCommandWrapper extends CommandWrapper<StartCommand
                 // TODO(Salvatore-orlando): This code should go
                 for (final NicTO nic : vmSpec.getNics()) {
                     if (nic.getBroadcastType() == Networks.BroadcastDomainType.Vswitch) {
-                        final HashMap<String, String> args = xenServerResourceBase.parseDefaultOvsRuleComamnd(BroadcastDomainType.getValue(nic.getBroadcastUri()));
+                        final HashMap<String, String> args = networkResource.parseDefaultOvsRuleComamnd(BroadcastDomainType.getValue(nic.getBroadcastUri()));
                         final OvsSetTagAndFlowCommand flowCmd = new OvsSetTagAndFlowCommand(args.get("vmName"), args.get("tag"), args.get("vlans"), args.get("seqno"),
                                 Long.parseLong(args.get("vmId")));
 

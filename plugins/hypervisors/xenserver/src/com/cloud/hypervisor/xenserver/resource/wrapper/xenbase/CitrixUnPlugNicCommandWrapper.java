@@ -19,21 +19,21 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
-import java.util.Set;
-
-import org.apache.log4j.Logger;
-
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.UnPlugNicAnswer;
 import com.cloud.agent.api.UnPlugNicCommand;
 import com.cloud.agent.api.to.NicTO;
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.network.XenServerNetworkResource;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.Network;
 import com.xensource.xenapi.VIF;
 import com.xensource.xenapi.VM;
+import org.apache.log4j.Logger;
+
+import java.util.Set;
 
 @ResourceWrapper(handles =  UnPlugNicCommand.class)
 public final class CitrixUnPlugNicCommandWrapper extends CommandWrapper<UnPlugNicCommand, Answer, XenServerResourceBase> {
@@ -43,6 +43,8 @@ public final class CitrixUnPlugNicCommandWrapper extends CommandWrapper<UnPlugNi
     @Override
     public Answer execute(final UnPlugNicCommand command, final XenServerResourceBase xenServerResourceBase) {
         final Connection conn = xenServerResourceBase.getConnection();
+        final XenServerNetworkResource networkResource = xenServerResourceBase.getNetworkResource();
+
         final String vmName = command.getVmName();
         try {
             final Set<VM> vms = VM.getByNameLabel(conn, vmName);
@@ -59,7 +61,7 @@ public final class CitrixUnPlugNicCommandWrapper extends CommandWrapper<UnPlugNi
                 vif.destroy(conn);
                 try {
                     if (network.getNameLabel(conn).startsWith("VLAN")) {
-                        xenServerResourceBase.disableVlanNetwork(conn, network);
+                        networkResource.disableVlanNetwork(conn, network);
                     }
                 } catch (final Exception e) {
                 }

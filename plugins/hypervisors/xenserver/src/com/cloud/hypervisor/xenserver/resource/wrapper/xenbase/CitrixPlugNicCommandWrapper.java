@@ -19,20 +19,20 @@
 
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
-import java.util.Set;
-
-import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
-import org.apache.log4j.Logger;
-
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.PlugNicAnswer;
 import com.cloud.agent.api.PlugNicCommand;
 import com.cloud.agent.api.to.NicTO;
+import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.network.XenServerNetworkResource;
 import com.cloud.resource.CommandWrapper;
 import com.cloud.resource.ResourceWrapper;
 import com.xensource.xenapi.Connection;
 import com.xensource.xenapi.VIF;
 import com.xensource.xenapi.VM;
+import org.apache.log4j.Logger;
+
+import java.util.Set;
 
 @ResourceWrapper(handles =  PlugNicCommand.class)
 public final class CitrixPlugNicCommandWrapper extends CommandWrapper<PlugNicCommand, Answer, XenServerResourceBase> {
@@ -42,6 +42,7 @@ public final class CitrixPlugNicCommandWrapper extends CommandWrapper<PlugNicCom
     @Override
     public Answer execute(final PlugNicCommand command, final XenServerResourceBase xenServerResourceBase) {
         final Connection conn = xenServerResourceBase.getConnection();
+        XenServerNetworkResource networkResource = xenServerResourceBase.getNetworkResource();
         final String vmName = command.getVmName();
         try {
             final Set<VM> vms = VM.getByNameLabel(conn, vmName);
@@ -79,9 +80,9 @@ public final class CitrixPlugNicCommandWrapper extends CommandWrapper<PlugNicCom
             // return new PlugNicAnswer(cmd, false, msg);
             // }
 
-            final String deviceId = xenServerResourceBase.getLowestAvailableVIFDeviceNum(conn, vm);
+            final String deviceId = networkResource.getLowestAvailableVIFDeviceNum(conn, vm);
             nic.setDeviceId(Integer.parseInt(deviceId));
-            final VIF vif = xenServerResourceBase.createVif(conn, vmName, vm, null, nic);
+            final VIF vif = networkResource.createVif(conn, vmName, vm, null, nic);
             // vif = createVif(conn, vmName, vm, null, nic);
             vif.plug(conn);
             return new PlugNicAnswer(command, true, "success");

@@ -463,30 +463,6 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
     }
 
 
-    public void cleanUpTmpDomVif(final Connection conn, final Network nw) throws XenAPIException, XmlRpcException {
-
-        final Pair<VM, VM.Record> vm = getControlDomain(conn);
-        final VM dom0 = vm.first();
-        final Set<VIF> dom0Vifs = dom0.getVIFs(conn);
-        for (final VIF v : dom0Vifs) {
-            String vifName = "unknown";
-            try {
-                final VIF.Record vifr = v.getRecord(conn);
-                if (v.getNetwork(conn).getUuid(conn).equals(nw.getUuid(conn))) {
-                    if (vifr != null) {
-                        final Map<String, String> config = vifr.otherConfig;
-                        vifName = config.get("nameLabel");
-                    }
-                    s_logger.debug("A VIF in dom0 for the network is found - so destroy the vif");
-                    v.destroy(conn);
-                    s_logger.debug("Destroy temp dom0 vif" + vifName + " success");
-                }
-            } catch (final Exception e) {
-                s_logger.warn("Destroy temp dom0 vif " + vifName + "failed", e);
-            }
-        }
-    }
-
     public HashMap<String, String> clusterVMMetaDataSync(final Connection conn) {
         final HashMap<String, String> vmMetaDatum = new HashMap<String, String>();
         try {
@@ -595,52 +571,6 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
         return true;
     }
 
-    /**
-     * This method creates a XenServer network and configures it for being used
-     * as a L2-in-L3 tunneled network
-     */
-    public synchronized Network configureTunnelNetwork(final Connection conn, final Long networkId, final long hostId, final String bridgeName) {
-        try {
-            final Network nw = findOrCreateTunnelNetwork(conn, bridgeName);
-            // Invoke plugin to setup the bridge which will be used by this
-            // network
-            final String bridge = nw.getBridge(conn);
-            final Map<String, String> nwOtherConfig = nw.getOtherConfig(conn);
-            final String configuredHosts = nwOtherConfig.get("ovs-host-setup");
-            boolean configured = false;
-            if (configuredHosts != null) {
-                final String hostIdsStr[] = configuredHosts.split(",");
-                for (final String hostIdStr : hostIdsStr) {
-                    if (hostIdStr.equals(((Long) hostId).toString())) {
-                        configured = true;
-                        break;
-                    }
-                }
-            }
-
-            if (!configured) {
-                String result;
-                if (bridgeName.startsWith("OVS-DR-VPC-Bridge")) {
-                    result = callHostPlugin(conn, "ovstunnel", "setup_ovs_bridge_for_distributed_routing", "bridge", bridge, "key", bridgeName, "xs_nw_uuid", nw.getUuid(conn),
-                            "cs_host_id", ((Long) hostId).toString());
-                } else {
-                    result = callHostPlugin(conn, "ovstunnel", "setup_ovs_bridge", "bridge", bridge, "key", bridgeName, "xs_nw_uuid", nw.getUuid(conn), "cs_host_id",
-                            ((Long) hostId).toString());
-                }
-
-                // Note down the fact that the ovs bridge has been setup
-                final String[] res = result.split(":");
-                if (res.length != 2 || !res[0].equalsIgnoreCase("SUCCESS")) {
-                    // TODO: Should make this error not fatal?
-                    throw new CloudRuntimeException("Unable to pre-configure OVS bridge " + bridge);
-                }
-            }
-            return nw;
-        } catch (final Exception e) {
-            s_logger.warn("createandConfigureTunnelNetwork failed", e);
-            return null;
-        }
-    }
 
     public String connect(final Connection conn, final String vmname, final String ipAddress) {
         return connect(conn, vmname, ipAddress, 3922);
@@ -744,59 +674,7 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
     public void createVGPU(final Connection conn, final StartCommand cmd, final VM vm, final GPUDeviceTO gpuDevice) throws XenAPIException, XmlRpcException {
     }
 
-    public VIF createVif(final Connection conn, final String vmName, final VM vm, final VirtualMachineTO vmSpec, final NicTO nic) throws XmlRpcException, XenAPIException {
-        assert nic.getUuid() != null : "Nic should have a uuid value";
 
-        if (s_logger.isDebugEnabled()) {
-            s_logger.debug("Creating VIF for " + vmName + " on nic " + nic);
-        }
-        VIF.Record vifr = new VIF.Record();
-        vifr.VM = vm;
-        vifr.device = Integer.toString(nic.getDeviceId());
-        vifr.MAC = nic.getMac();
-
-        // Nicira needs these IDs to find the NIC
-        vifr.otherConfig = new HashMap<String, String>();
-        vifr.otherConfig.put("nicira-iface-id", nic.getUuid());
-        vifr.otherConfig.put("nicira-vm-id", vm.getUuid(conn));
-        // Provide XAPI with the cloudstack vm and nic uids.
-        vifr.otherConfig.put("cloudstack-nic-id", nic.getUuid());
-        if (vmSpec != null) {
-            vifr.otherConfig.put("cloudstack-vm-id", vmSpec.getUuid());
-        }
-
-        // OVS plugin looks at network UUID in the vif 'otherconfig' details to
-        // group VIF's & tunnel ports as part of tier
-        // when bridge is setup for distributed routing
-        vifr.otherConfig.put("cloudstack-network-id", nic.getNetworkUuid());
-
-        // Nuage Vsp needs Virtual Router IP to be passed in the otherconfig
-        // get the virtual router IP information from broadcast uri
-        final URI broadcastUri = nic.getBroadcastUri();
-        if (broadcastUri != null && broadcastUri.getScheme().equalsIgnoreCase(Networks.BroadcastDomainType.Vsp.scheme())) {
-            final String path = broadcastUri.getPath();
-            vifr.otherConfig.put("vsp-vr-ip", path.substring(1));
-        }
-        vifr.network = getNetwork(conn, nic);
-
-        if (nic.getNetworkRateMbps() != null && nic.getNetworkRateMbps().intValue() != -1) {
-            vifr.qosAlgorithmType = "ratelimit";
-            vifr.qosAlgorithmParams = new HashMap<String, String>();
-            // convert mbs to kilobyte per second
-            vifr.qosAlgorithmParams.put("kbps", Integer.toString(nic.getNetworkRateMbps() * 128));
-        }
-
-        vifr.lockingMode = Types.VifLockingMode.NETWORK_DEFAULT;
-        final VIF vif = VIF.create(conn, vifr);
-        if (s_logger.isDebugEnabled()) {
-            vifr = vif.getRecord(conn);
-            if (vifr != null) {
-                s_logger.debug("Created a vif " + vifr.uuid + " on " + nic.getDeviceId());
-            }
-        }
-
-        return vif;
-    }
 
     public VM createVmFromTemplate(final Connection conn, final VirtualMachineTO vmSpec, final Host host) throws XenAPIException, XmlRpcException {
         final String guestOsTypeName = getGuestOsType(vmSpec.getPlatformEmulator());
@@ -975,28 +853,6 @@ public abstract class XenServerResourceBase implements ServerResource, Hyperviso
             VBD.create(conn, vbdr);
         }
         return vm;
-    }
-
-    public synchronized void destroyTunnelNetwork(final Connection conn, final Network nw, final long hostId) {
-        try {
-            final String bridge = nw.getBridge(conn);
-            final String result = callHostPlugin(conn, "ovstunnel", "destroy_ovs_bridge", "bridge", bridge, "cs_host_id", ((Long) hostId).toString());
-            final String[] res = result.split(":");
-            if (res.length != 2 || !res[0].equalsIgnoreCase("SUCCESS")) {
-                // TODO: Should make this error not fatal?
-                // Can Concurrent VM shutdown/migration/reboot events can cause
-                // this method
-                // to be executed on a bridge which has already been removed?
-                throw new CloudRuntimeException("Unable to remove OVS bridge " + bridge + ":" + result);
-            }
-            return;
-        } catch (final Exception e) {
-            s_logger.warn("destroyTunnelNetwork failed:", e);
-            return;
-        }
-    }
-
-    public void disableVlanNetwork(final Connection conn, final Network network) {
     }
 
     @Override

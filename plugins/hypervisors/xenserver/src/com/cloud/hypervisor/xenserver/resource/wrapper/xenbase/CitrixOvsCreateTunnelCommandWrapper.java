@@ -20,6 +20,8 @@
 package com.cloud.hypervisor.xenserver.resource.wrapper.xenbase;
 
 import com.cloud.hypervisor.xenserver.resource.XenServerResourceBase;
+import com.cloud.hypervisor.xenserver.resource.common.XenServerHelper;
+import com.cloud.hypervisor.xenserver.resource.network.XenServerNetworkResource;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.Answer;
@@ -38,18 +40,20 @@ public final class CitrixOvsCreateTunnelCommandWrapper extends CommandWrapper<Ov
     @Override
     public Answer execute(final OvsCreateTunnelCommand command, final XenServerResourceBase xenServerResourceBase) {
         final Connection conn = xenServerResourceBase.getConnection();
+        XenServerNetworkResource networkResource = xenServerResourceBase.getNetworkResource();
+
         String bridge = "unknown";
         try {
-            final Network nw = xenServerResourceBase.findOrCreateTunnelNetwork(conn, command.getNetworkName());
+            final Network nw = networkResource.findOrCreateTunnelNetwork(conn, command.getNetworkName());
             if (nw == null) {
                 s_logger.debug("Error during bridge setup");
                 return new OvsCreateTunnelAnswer(command, false, "Cannot create network", bridge);
             }
 
-            xenServerResourceBase.configureTunnelNetwork(conn, command.getNetworkId(), command.getFrom(), command.getNetworkName());
+            networkResource.configureTunnelNetwork(conn, command.getNetworkId(), command.getFrom(), command.getNetworkName());
             bridge = nw.getBridge(conn);
             final String result =
-                    xenServerResourceBase.callHostPlugin(conn, "ovstunnel", "create_tunnel", "bridge", bridge, "remote_ip", command.getRemoteIp(),
+                    XenServerHelper.callHostPlugin(conn, "ovstunnel", "create_tunnel", xenServerResourceBase.getHost(), "bridge", bridge, "remote_ip", command.getRemoteIp(),
                             "key", command.getKey().toString(), "from",
                             command.getFrom().toString(), "to", command.getTo().toString(), "cloudstack-network-id",
                             command.getNetworkUuid());
