@@ -16,8 +16,14 @@
 // under the License.
 package org.apache.cloudstack.api.command.user.snapshot;
 
-import org.apache.log4j.Logger;
-
+import com.cloud.event.EventTypes;
+import com.cloud.exception.InvalidParameterValueException;
+import com.cloud.exception.PermissionDeniedException;
+import com.cloud.exception.ResourceAllocationException;
+import com.cloud.projects.Project;
+import com.cloud.storage.Snapshot;
+import com.cloud.storage.Volume;
+import com.cloud.user.Account;
 import org.apache.cloudstack.api.APICommand;
 import org.apache.cloudstack.api.ApiCommandJobType;
 import org.apache.cloudstack.api.ApiConstants;
@@ -30,16 +36,7 @@ import org.apache.cloudstack.api.response.DomainResponse;
 import org.apache.cloudstack.api.response.SnapshotPolicyResponse;
 import org.apache.cloudstack.api.response.SnapshotResponse;
 import org.apache.cloudstack.api.response.VolumeResponse;
-import org.apache.cloudstack.context.CallContext;
-
-import com.cloud.event.EventTypes;
-import com.cloud.exception.InvalidParameterValueException;
-import com.cloud.exception.PermissionDeniedException;
-import com.cloud.exception.ResourceAllocationException;
-import com.cloud.projects.Project;
-import com.cloud.storage.Snapshot;
-import com.cloud.storage.Volume;
-import com.cloud.user.Account;
+import org.apache.log4j.Logger;
 
 @APICommand(name = "createSnapshot", description = "Creates an instant snapshot of a volume.", responseObject = SnapshotResponse.class, entityType = {Snapshot.class},
         requestHasSensitiveInfo = false, responseHasSensitiveInfo = false)
@@ -75,7 +72,7 @@ public class CreateSnapshotCmd extends BaseAsyncCreateCmd {
     private Boolean quiescevm;
 
     @Parameter(name = ApiConstants.LOCATION_TYPE, type = CommandType.SHORT, required = false, description = "Currently applicable only for managed storage. " +
-            "Valid location types: 1 = 'primary'; 2 = 'archive'. Default = 1.")
+            "Valid location types: 1 = 'standard'; 2 = 'archive'. Default = 1.")
     private Short locationType;
 
     @Parameter(name = ApiConstants.NAME, type = CommandType.STRING, description = "the name of the snapshot")
@@ -188,7 +185,7 @@ public class CreateSnapshotCmd extends BaseAsyncCreateCmd {
 
     @Override
     public void create() throws ResourceAllocationException {
-        Snapshot snapshot = _volumeService.allocSnapshot(getVolumeId(), getPolicyId(), getSnapshotName());
+        Snapshot snapshot = _volumeService.allocSnapshot(getVolumeId(), getPolicyId(), getSnapshotName(), getLocationType());
         if (snapshot != null) {
             setEntityId(snapshot.getId());
             setEntityUuid(snapshot.getUuid());
@@ -199,21 +196,20 @@ public class CreateSnapshotCmd extends BaseAsyncCreateCmd {
 
     @Override
     public void execute() {
-        s_logger.info("VOLSS: createSnapshotCmd starts:" + System.currentTimeMillis());
-        CallContext.current().setEventDetails("Volume Id: " + getVolumeUuid());
         Snapshot snapshot;
         try {
             snapshot =
                 _volumeService.takeSnapshot(getVolumeId(), getPolicyId(), getEntityId(), _accountService.getAccount(getEntityOwnerId()), getQuiescevm(), getLocationType());
+
             if (snapshot != null) {
                 SnapshotResponse response = _responseGenerator.createSnapshotResponse(snapshot);
                 response.setResponseName(getCommandName());
                 setResponseObject(response);
             } else {
-                throw new ServerApiException(ApiErrorCode.INTERNAL_ERROR, "Failed to create snapshot due to an internal error creating snapshot for volume " + volumeId);
+                throw new ServerApiException(ApiErrorCode.INTERNAL_ERROR, "Failed to create snapshot due to an internal error creating snapshot for volume " + getVolumeId());
             }
         } catch (Exception e) {
-            throw new ServerApiException(ApiErrorCode.INTERNAL_ERROR, "Failed to create snapshot due to an internal error creating snapshot for volume " + volumeId);
+            throw new ServerApiException(ApiErrorCode.INTERNAL_ERROR, "Failed to create snapshot due to an internal error creating snapshot for volume " + getVolumeId());
         }
     }
 
@@ -224,8 +220,8 @@ public class CreateSnapshotCmd extends BaseAsyncCreateCmd {
 
         Snapshot.LocationType locationTypeToReturn = Snapshot.LocationType.values()[0];
 
-        if (locationType != null && locationType >= 0 && locationType < Snapshot.LocationType.values().length) {
-            locationTypeToReturn = Snapshot.LocationType.values()[locationType];
+        if (locationType != null && locationType >= 1 && locationType <= Snapshot.LocationType.values().length) {
+            locationTypeToReturn = Snapshot.LocationType.values()[locationType-1];
         }
 
         return locationTypeToReturn;

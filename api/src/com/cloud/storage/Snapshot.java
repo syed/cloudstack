@@ -16,14 +16,13 @@
 // under the License.
 package com.cloud.storage;
 
-import java.util.Date;
-
+import com.cloud.hypervisor.Hypervisor.HypervisorType;
+import com.cloud.utils.fsm.StateObject;
 import org.apache.cloudstack.acl.ControlledEntity;
 import org.apache.cloudstack.api.Identity;
 import org.apache.cloudstack.api.InternalIdentity;
 
-import com.cloud.hypervisor.Hypervisor.HypervisorType;
-import com.cloud.utils.fsm.StateObject;
+import java.util.Date;
 
 public interface Snapshot extends ControlledEntity, Identity, InternalIdentity, StateObject<Snapshot.State> {
     public enum Type {
@@ -68,7 +67,7 @@ public interface Snapshot extends ControlledEntity, Identity, InternalIdentity, 
     }
 
     enum LocationType {
-        Primary, Archive
+        Standard, Archive
     }
 
     public static final long MANUAL_POLICY_ID = 0L;
