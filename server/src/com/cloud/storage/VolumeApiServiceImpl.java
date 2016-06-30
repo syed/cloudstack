@@ -16,76 +16,6 @@
 // under the License.
 package com.cloud.storage;
 
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
-
-import javax.inject.Inject;
-
-import com.cloud.utils.EncryptionUtil;
-import com.cloud.utils.db.TransactionCallbackWithException;
-import com.google.common.base.Strings;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonParseException;
-
-import org.apache.cloudstack.api.command.user.volume.GetUploadParamsForVolumeCmd;
-import org.apache.cloudstack.api.response.GetUploadParamsResponse;
-import org.apache.cloudstack.engine.subsystem.api.storage.DataObject;
-import org.apache.cloudstack.engine.subsystem.api.storage.EndPoint;
-import org.apache.cloudstack.storage.command.TemplateOrVolumePostUploadCommand;
-import org.apache.cloudstack.utils.imagestore.ImageStoreUtil;
-import org.apache.cloudstack.utils.volume.VirtualMachineDiskInfo;
-import org.apache.log4j.Logger;
-import org.apache.cloudstack.api.command.user.volume.AttachVolumeCmd;
-import org.apache.cloudstack.api.command.user.volume.CreateVolumeCmd;
-import org.apache.cloudstack.api.command.user.volume.DetachVolumeCmd;
-import org.apache.cloudstack.api.command.user.volume.ExtractVolumeCmd;
-import org.apache.cloudstack.api.command.user.volume.MigrateVolumeCmd;
-import org.apache.cloudstack.api.command.user.volume.ResizeVolumeCmd;
-import org.apache.cloudstack.api.command.user.volume.UploadVolumeCmd;
-import org.apache.cloudstack.context.CallContext;
-import org.apache.cloudstack.engine.orchestration.service.VolumeOrchestrationService;
-import org.apache.cloudstack.engine.subsystem.api.storage.ChapInfo;
-import org.apache.cloudstack.engine.subsystem.api.storage.DataStore;
-import org.apache.cloudstack.engine.subsystem.api.storage.DataStoreManager;
-import org.apache.cloudstack.engine.subsystem.api.storage.HostScope;
-import org.apache.cloudstack.engine.subsystem.api.storage.PrimaryDataStoreInfo;
-import org.apache.cloudstack.engine.subsystem.api.storage.Scope;
-import org.apache.cloudstack.engine.subsystem.api.storage.StoragePoolAllocator;
-import org.apache.cloudstack.engine.subsystem.api.storage.VolumeDataFactory;
-import org.apache.cloudstack.engine.subsystem.api.storage.VolumeInfo;
-import org.apache.cloudstack.engine.subsystem.api.storage.VolumeService;
-import org.apache.cloudstack.engine.subsystem.api.storage.VolumeService.VolumeApiResult;
-import org.apache.cloudstack.framework.async.AsyncCallFuture;
-import org.apache.cloudstack.framework.config.ConfigKey;
-import org.apache.cloudstack.framework.config.dao.ConfigurationDao;
-import org.apache.cloudstack.framework.jobs.AsyncJob;
-import org.apache.cloudstack.framework.jobs.AsyncJobExecutionContext;
-import org.apache.cloudstack.framework.jobs.AsyncJobManager;
-import org.apache.cloudstack.framework.jobs.Outcome;
-import org.apache.cloudstack.framework.jobs.dao.VmWorkJobDao;
-import org.apache.cloudstack.framework.jobs.impl.AsyncJobVO;
-import org.apache.cloudstack.framework.jobs.impl.OutcomeImpl;
-import org.apache.cloudstack.framework.jobs.impl.VmWorkJobVO;
-import org.apache.cloudstack.jobs.JobInfo;
-import org.apache.cloudstack.storage.command.AttachAnswer;
-import org.apache.cloudstack.storage.command.AttachCommand;
-import org.apache.cloudstack.storage.command.DettachCommand;
-import org.apache.cloudstack.storage.datastore.db.PrimaryDataStoreDao;
-import org.apache.cloudstack.storage.datastore.db.StoragePoolDetailsDao;
-import org.apache.cloudstack.storage.datastore.db.StoragePoolVO;
-import org.apache.cloudstack.storage.datastore.db.VolumeDataStoreDao;
-import org.apache.cloudstack.storage.datastore.db.VolumeDataStoreVO;
-import org.apache.cloudstack.storage.image.datastore.ImageStoreEntity;
-import org.apache.cloudstack.utils.identity.ManagementServerNode;
-
 import com.cloud.agent.AgentManager;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.to.DataTO;
@@ -134,6 +64,7 @@ import com.cloud.user.VmDiskStatisticsVO;
 import com.cloud.user.dao.AccountDao;
 import com.cloud.user.dao.VmDiskStatisticsDao;
 import com.cloud.utils.DateUtil;
+import com.cloud.utils.EncryptionUtil;
 import com.cloud.utils.EnumUtils;
 import com.cloud.utils.NumbersUtil;
 import com.cloud.utils.Pair;
@@ -146,6 +77,7 @@ import com.cloud.utils.db.DB;
 import com.cloud.utils.db.EntityManager;
 import com.cloud.utils.db.Transaction;
 import com.cloud.utils.db.TransactionCallback;
+import com.cloud.utils.db.TransactionCallbackWithException;
 import com.cloud.utils.db.TransactionStatus;
 import com.cloud.utils.db.UUIDManager;
 import com.cloud.utils.exception.CloudRuntimeException;
@@ -172,9 +104,73 @@ import com.cloud.vm.dao.UserVmDao;
 import com.cloud.vm.dao.VMInstanceDao;
 import com.cloud.vm.snapshot.VMSnapshotVO;
 import com.cloud.vm.snapshot.dao.VMSnapshotDao;
-
+import com.google.common.base.Strings;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParseException;
+import org.apache.cloudstack.api.command.user.volume.AttachVolumeCmd;
+import org.apache.cloudstack.api.command.user.volume.CreateVolumeCmd;
+import org.apache.cloudstack.api.command.user.volume.DetachVolumeCmd;
+import org.apache.cloudstack.api.command.user.volume.ExtractVolumeCmd;
+import org.apache.cloudstack.api.command.user.volume.GetUploadParamsForVolumeCmd;
+import org.apache.cloudstack.api.command.user.volume.MigrateVolumeCmd;
+import org.apache.cloudstack.api.command.user.volume.ResizeVolumeCmd;
+import org.apache.cloudstack.api.command.user.volume.UploadVolumeCmd;
+import org.apache.cloudstack.api.response.GetUploadParamsResponse;
+import org.apache.cloudstack.context.CallContext;
+import org.apache.cloudstack.engine.orchestration.service.VolumeOrchestrationService;
+import org.apache.cloudstack.engine.subsystem.api.storage.ChapInfo;
+import org.apache.cloudstack.engine.subsystem.api.storage.DataObject;
+import org.apache.cloudstack.engine.subsystem.api.storage.DataStore;
+import org.apache.cloudstack.engine.subsystem.api.storage.DataStoreManager;
+import org.apache.cloudstack.engine.subsystem.api.storage.EndPoint;
+import org.apache.cloudstack.engine.subsystem.api.storage.HostScope;
+import org.apache.cloudstack.engine.subsystem.api.storage.PrimaryDataStoreInfo;
+import org.apache.cloudstack.engine.subsystem.api.storage.Scope;
+import org.apache.cloudstack.engine.subsystem.api.storage.StoragePoolAllocator;
+import org.apache.cloudstack.engine.subsystem.api.storage.VolumeDataFactory;
+import org.apache.cloudstack.engine.subsystem.api.storage.VolumeInfo;
+import org.apache.cloudstack.engine.subsystem.api.storage.VolumeService;
+import org.apache.cloudstack.engine.subsystem.api.storage.VolumeService.VolumeApiResult;
+import org.apache.cloudstack.framework.async.AsyncCallFuture;
+import org.apache.cloudstack.framework.config.ConfigKey;
+import org.apache.cloudstack.framework.config.dao.ConfigurationDao;
+import org.apache.cloudstack.framework.jobs.AsyncJob;
+import org.apache.cloudstack.framework.jobs.AsyncJobExecutionContext;
+import org.apache.cloudstack.framework.jobs.AsyncJobManager;
+import org.apache.cloudstack.framework.jobs.Outcome;
+import org.apache.cloudstack.framework.jobs.dao.VmWorkJobDao;
+import org.apache.cloudstack.framework.jobs.impl.AsyncJobVO;
+import org.apache.cloudstack.framework.jobs.impl.OutcomeImpl;
+import org.apache.cloudstack.framework.jobs.impl.VmWorkJobVO;
+import org.apache.cloudstack.jobs.JobInfo;
+import org.apache.cloudstack.storage.command.AttachAnswer;
+import org.apache.cloudstack.storage.command.AttachCommand;
+import org.apache.cloudstack.storage.command.DettachCommand;
+import org.apache.cloudstack.storage.command.TemplateOrVolumePostUploadCommand;
+import org.apache.cloudstack.storage.datastore.db.PrimaryDataStoreDao;
+import org.apache.cloudstack.storage.datastore.db.StoragePoolDetailsDao;
+import org.apache.cloudstack.storage.datastore.db.StoragePoolVO;
+import org.apache.cloudstack.storage.datastore.db.VolumeDataStoreDao;
+import org.apache.cloudstack.storage.datastore.db.VolumeDataStoreVO;
+import org.apache.cloudstack.storage.image.datastore.ImageStoreEntity;
+import org.apache.cloudstack.utils.identity.ManagementServerNode;
+import org.apache.cloudstack.utils.imagestore.ImageStoreUtil;
+import org.apache.cloudstack.utils.volume.VirtualMachineDiskInfo;
+import org.apache.log4j.Logger;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+
+import javax.inject.Inject;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 public class VolumeApiServiceImpl extends ManagerBase implements VolumeApiService, VmWorkJobHandler {
     private final static Logger s_logger = Logger.getLogger(VolumeApiServiceImpl.class);
@@ -219,7 +215,7 @@ public class VolumeApiServiceImpl extends ManagerBase implements VolumeApiServic
     @Inject
     AccountDao _accountDao;
     @Inject
-    final DataCenterDao _dcDao = null;
+    DataCenterDao _dcDao = null;
     @Inject
     VMTemplateDao _templateDao;
     @Inject
@@ -481,7 +477,7 @@ public class VolumeApiServiceImpl extends ManagerBase implements VolumeApiServic
                 // decrement it
                 _resourceLimitMgr.incrementResourceCount(volume.getAccountId(), ResourceType.volume);
                 //url can be null incase of postupload
-                if(url!=null) {
+                if (url != null) {
                     _resourceLimitMgr.incrementResourceCount(volume.getAccountId(), ResourceType.secondary_storage, UriUtils.getRemoteSize(url));
                 }
 
@@ -2139,7 +2135,7 @@ public class VolumeApiServiceImpl extends ManagerBase implements VolumeApiServic
 
     @Override
     @ActionEvent(eventType = EventTypes.EVENT_SNAPSHOT_CREATE, eventDescription = "allocating snapshot", create = true)
-    public Snapshot allocSnapshot(Long volumeId, Long policyId, String snapshotName) throws ResourceAllocationException {
+    public Snapshot allocSnapshot(Long volumeId, Long policyId, String snapshotName, Snapshot.LocationType locationType) throws ResourceAllocationException {
         Account caller = CallContext.current().getCallingAccount();
 
         VolumeInfo volume = volFactory.getVolume(volumeId);
@@ -2177,12 +2173,17 @@ public class VolumeApiServiceImpl extends ManagerBase implements VolumeApiServic
             }
         }
 
+        StoragePoolVO storagePoolVO = _storagePoolDao.findById(volume.getPoolId());
+        if (!storagePoolVO.isManaged() && Snapshot.LocationType.Archive.equals(locationType)) {
+            throw new InvalidParameterValueException("VolumeId: " + volumeId + " Archive is supported only for managed storage");
+        }
+
         StoragePool storagePool = (StoragePool)volume.getDataStore();
         if (storagePool == null) {
             throw new InvalidParameterValueException("VolumeId: " + volumeId + " please attach this volume to a VM before create snapshot for it");
         }
 
-        return snapshotMgr.allocSnapshot(volumeId, policyId, snapshotName);
+        return snapshotMgr.allocSnapshot(volumeId, policyId, snapshotName, locationType);
     }
 
     @Override

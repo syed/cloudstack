@@ -372,7 +372,7 @@ public class XenserverSnapshotStrategy extends SnapshotStrategyBase {
                 }
             }
 
-            snapshot = result.getSnashot();
+            snapshot = result.getSnapshot();
             DataStore primaryStore = snapshot.getDataStore();
 
             SnapshotInfo backupedSnapshot = backupSnapshot(snapshot);
