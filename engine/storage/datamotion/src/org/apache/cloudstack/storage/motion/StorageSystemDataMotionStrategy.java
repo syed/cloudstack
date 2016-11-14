@@ -436,7 +436,8 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
                         copyCmdAnswer = (CopyCmdAnswer) ep.sendMessage(cmd);
                     }
 
-                    // clean up snapshot copied to staging
+                    // clean up snapshot copied to staging irrespective
+                    // of whether the copy was success or failure
                     performCleanupCacheStorage(destOnStore);
                 }
 
@@ -610,7 +611,7 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
                 destOnStore.processEvent(Event.OperationFailed);
             } else {
                 Answer deleteAnswer = ep.sendMessage(deleteCommand);
-                if (deleteAnswer != null && deleteAnswer.getResult()) {
+                if (deleteAnswer != null && !deleteAnswer.getResult()) {
                     LOGGER.warn("Unable to cleanup staging NFS " + deleteAnswer.getDetails() +
                     "Object: " + destOnStore.getType() + " ID: " + destOnStore.getId());
                     destOnStore.processEvent(Event.OperationFailed);
@@ -886,6 +887,9 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
         volumeDetails.put(DiskTO.STORAGE_PORT, String.valueOf(storagePoolVO.getPort()));
         volumeDetails.put(DiskTO.IQN, volumeVO.get_iScsiName());
 
+        volumeDetails.put(DiskTO.PATH, volumeVO.getPath());
+        volumeDetails.put(DiskTO.VOLUME_SIZE, String.valueOf(volumeVO.getSize()));
+
         ChapInfo chapInfo = _volumeService.getChapInfo(volumeInfo, volumeInfo.getDataStore());
 
         if (chapInfo != null) {
@@ -910,6 +914,9 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
         long snapshotId = snapshotInfo.getId();
 
         snapshotDetails.put(DiskTO.IQN, getProperty(snapshotId, DiskTO.IQN));
+
+        snapshotDetails.put(DiskTO.PATH, getProperty(snapshotId, DiskTO.PATH));
+        snapshotDetails.put(DiskTO.VOLUME_SIZE, getProperty(snapshotId, DiskTO.VOLUME_SIZE));
 
         snapshotDetails.put(DiskTO.CHAP_INITIATOR_USERNAME, getProperty(snapshotId, DiskTO.CHAP_INITIATOR_USERNAME));
         snapshotDetails.put(DiskTO.CHAP_INITIATOR_SECRET, getProperty(snapshotId, DiskTO.CHAP_INITIATOR_SECRET));
