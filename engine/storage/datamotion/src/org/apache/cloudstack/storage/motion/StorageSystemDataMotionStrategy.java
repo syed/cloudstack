@@ -413,6 +413,12 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
 
                 copyCmdAnswer = (CopyCmdAnswer)_agentMgr.send(hostVO.getId(), copyCommand);
 
+                if (!copyCmdAnswer.getResult()) {
+                    // We were not able to copy, deal with it
+                    errMsg = copyCmdAnswer.getDetails();
+                    throw  new CloudRuntimeException(errMsg);
+                }
+
                 if (needCache) {
                     // If cached storage was needed (in case of object store as secondary
                     // storage), at this point, the data has been copied from the primary
@@ -450,6 +456,9 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
                 if (copyCmdAnswer == null || !copyCmdAnswer.getResult()) {
                     if (copyCmdAnswer != null && !StringUtils.isEmpty(copyCmdAnswer.getDetails())) {
                         errMsg = copyCmdAnswer.getDetails();
+                        if(needCache) {
+                            cacheMgr.deleteCacheObject(destOnStore);
+                        }
                     }
                     else {
                         errMsg = "Unable to create template from snapshot";
