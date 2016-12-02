@@ -54,9 +54,10 @@ import com.cloud.hypervisor.xenserver.resource.XenServer600Resource;
 import com.cloud.hypervisor.xenserver.resource.XenServer610Resource;
 import com.cloud.hypervisor.xenserver.resource.XenServer620Resource;
 import com.cloud.hypervisor.xenserver.resource.XenServer620SP1Resource;
+import com.cloud.hypervisor.xenserver.resource.XenServer650Resource;
+import com.cloud.hypervisor.xenserver.resource.XenServer700Resource;
 import com.cloud.hypervisor.xenserver.resource.XenServerConnectionPool;
 import com.cloud.hypervisor.xenserver.resource.Xenserver625Resource;
-import com.cloud.hypervisor.xenserver.resource.XenServer650Resource;
 import com.cloud.resource.Discoverer;
 import com.cloud.resource.DiscovererBase;
 import com.cloud.resource.ResourceStateAdapter;
@@ -81,7 +82,6 @@ import com.xensource.xenapi.Session;
 import com.xensource.xenapi.Types.SessionAuthenticationFailed;
 import com.xensource.xenapi.Types.UuidInvalid;
 import com.xensource.xenapi.Types.XenAPIException;
-
 import org.apache.cloudstack.hypervisor.xenserver.XenserverConfigs;
 import org.apache.log4j.Logger;
 import org.apache.xmlrpc.XmlRpcException;
@@ -89,7 +89,6 @@ import org.apache.xmlrpc.XmlRpcException;
 import javax.inject.Inject;
 import javax.naming.ConfigurationException;
 import javax.persistence.EntityExistsException;
-
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
@@ -410,6 +409,8 @@ public class XcpServerDiscoverer extends DiscovererBase implements Discoverer, L
             return new XenServer610Resource();
         else if (prodBrand.equals("XenServer") && prodVersion.equals("6.5.0"))
             return new XenServer650Resource();
+        else if (prodBrand.equals("XenServer") && prodVersion.equals("7.0.0"))
+            return new XenServer700Resource();
         else if (prodBrand.equals("XenServer") && prodVersion.equals("6.2.0")) {
             if (hotfix != null && hotfix.equals(XenserverConfigs.XSHotFix62ESP1004)) {
                 return new Xenserver625Resource();
