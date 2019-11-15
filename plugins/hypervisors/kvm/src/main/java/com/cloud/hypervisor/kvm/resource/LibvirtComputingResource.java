@@ -46,6 +46,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import com.cloud.hypervisor.kvm.storage.IscsiStorageCleanupMonitor;
 import com.cloud.resource.RequestWrapper;
 import org.apache.cloudstack.api.ApiConstants;
 import org.apache.cloudstack.storage.to.PrimaryDataStoreTO;
@@ -988,6 +989,11 @@ public class LibvirtComputingResource extends ServerResourceBase implements Serv
                 s_logger.debug("Can't find system vm ISO");
             }
         }
+
+        IscsiStorageCleanupMonitor iscsiCleanupMonitor = new IscsiStorageCleanupMonitor();
+        final Thread cleanupMonitorThread = new Thread(iscsiCleanupMonitor);
+        cleanupMonitorThread.start();
+
 
         final Map<String, String> bridges = new HashMap<String, String>();
 

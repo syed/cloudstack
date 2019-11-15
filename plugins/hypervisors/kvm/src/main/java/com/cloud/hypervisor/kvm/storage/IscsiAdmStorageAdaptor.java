@@ -36,17 +36,25 @@ import com.cloud.utils.exception.CloudRuntimeException;
 import com.cloud.utils.script.OutputInterpreter;
 import com.cloud.utils.script.Script;
 
+
 @StorageAdaptorInfo(storagePoolType=StoragePoolType.Iscsi)
 public class IscsiAdmStorageAdaptor implements StorageAdaptor {
     private static final Logger s_logger = Logger.getLogger(IscsiAdmStorageAdaptor.class);
 
     private static final Map<String, KVMStoragePool> MapStorageUuidToStoragePool = new HashMap<>();
 
+    public IscsiAdmStorageAdaptor() {
+        IscsiStorageCleanupMonitor cleanupMonitor = new IscsiStorageCleanupMonitor();
+        final Thread monitor = new Thread(cleanupMonitor);
+        monitor.start();
+    }
+
     @Override
     public KVMStoragePool createStoragePool(String uuid, String host, int port, String path, String userInfo, StoragePoolType storagePoolType) {
         IscsiAdmStoragePool storagePool = new IscsiAdmStoragePool(uuid, host, port, storagePoolType, this);
 
         MapStorageUuidToStoragePool.put(uuid, storagePool);
+
 
         return storagePool;
     }
