@@ -1,4 +1,3 @@
-// Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
 // regarding copyright ownership.  The ASF licenses this file
@@ -46,6 +45,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import com.cloud.hypervisor.kvm.storage.IscsiStorageCleanupMonitor;
 import com.cloud.resource.RequestWrapper;
 import org.apache.cloudstack.api.ApiConstants;
 import org.apache.cloudstack.storage.to.PrimaryDataStoreTO;
@@ -281,6 +281,7 @@ public class LibvirtComputingResource extends ServerResourceBase implements Serv
     private final String _qemuGuestAgentSocketName = "org.qemu.guest_agent.0";
     protected WatchDogAction _watchDogAction = WatchDogAction.NONE;
     protected WatchDogModel _watchDogModel = WatchDogModel.I6300ESB;
+    private IscsiStorageCleanupMonitor isciCleanupMonitor;
 
     private final Map <String, String> _pifs = new HashMap<String, String>();
     private final Map<String, VmStats> _vmStats = new ConcurrentHashMap<String, VmStats>();
@@ -1074,6 +1075,10 @@ public class LibvirtComputingResource extends ServerResourceBase implements Serv
         final KVMStorageProcessor storageProcessor = new KVMStorageProcessor(_storagePoolMgr, this);
         storageProcessor.configure(name, params);
         storageHandler = new StorageSubsystemCommandHandlerBase(storageProcessor);
+
+        isciCleanupMonitor = new IscsiStorageCleanupMonitor();
+        final Thread cleanupMonitor = new Thread(isciCleanupMonitor);
+        cleanupMonitor.start();
 
         return true;
     }
