@@ -16,10 +16,15 @@
 // under the License.
 package com.cloud.hypervisor.kvm.storage;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.cloud.hypervisor.kvm.resource.LibvirtConnection;
+import com.cloud.hypervisor.kvm.resource.LibvirtDomainXMLParser;
+import com.cloud.hypervisor.kvm.resource.LibvirtVMDef;
 import org.apache.cloudstack.utils.qemu.QemuImg;
 import org.apache.cloudstack.utils.qemu.QemuImgException;
 import org.apache.cloudstack.utils.qemu.QemuImgFile;
@@ -35,6 +40,9 @@ import com.cloud.utils.StringUtils;
 import com.cloud.utils.exception.CloudRuntimeException;
 import com.cloud.utils.script.OutputInterpreter;
 import com.cloud.utils.script.Script;
+import org.libvirt.Connect;
+import org.libvirt.Domain;
+import org.libvirt.LibvirtException;
 
 
 @StorageAdaptorInfo(storagePoolType=StoragePoolType.Iscsi)
@@ -42,6 +50,12 @@ public class IscsiAdmStorageAdaptor implements StorageAdaptor {
     private static final Logger s_logger = Logger.getLogger(IscsiAdmStorageAdaptor.class);
 
     private static final Map<String, KVMStoragePool> MapStorageUuidToStoragePool = new HashMap<>();
+
+    public IscsiAdmStorageAdaptor() {
+        IscsiStorageCleanupMonitor iscsiCleanupMonitor = new IscsiStorageCleanupMonitor();
+        final Thread cleanupMonitorThread = new Thread(iscsiCleanupMonitor);
+        cleanupMonitorThread.start();
+    }
 
     @Override
     public KVMStoragePool createStoragePool(String uuid, String host, int port, String path, String userInfo, StoragePoolType storagePoolType) {
@@ -384,8 +398,8 @@ public class IscsiAdmStorageAdaptor implements StorageAdaptor {
 
     @Override
     public KVMPhysicalDisk createDiskFromTemplate(KVMPhysicalDisk template, String name, PhysicalDiskFormat format,
-            ProvisioningType provisioningType, long size,
-            KVMStoragePool destPool, int timeout) {
+                                                  ProvisioningType provisioningType, long size,
+                                                  KVMStoragePool destPool, int timeout) {
         throw new UnsupportedOperationException("Creating a disk from a template is not yet supported for this configuration.");
     }
 
@@ -404,8 +418,8 @@ public class IscsiAdmStorageAdaptor implements StorageAdaptor {
 
         if (srcPool.getType() == StoragePoolType.RBD) {
             srcFile = new QemuImgFile(KVMPhysicalDisk.RBDStringBuilder(srcPool.getSourceHost(), srcPool.getSourcePort(),
-                                                                       srcPool.getAuthUserName(), srcPool.getAuthSecret(),
-                                                                       srcDisk.getPath()),srcDisk.getFormat());
+                    srcPool.getAuthUserName(), srcPool.getAuthSecret(),
+                    srcDisk.getPath()),srcDisk.getFormat());
         } else {
             srcFile = new QemuImgFile(srcDisk.getPath(), srcDisk.getFormat());
         }
@@ -441,5 +455,80 @@ public class IscsiAdmStorageAdaptor implements StorageAdaptor {
     @Override
     public boolean createFolder(String uuid, String path) {
         throw new UnsupportedOperationException("A folder cannot be created in this configuration.");
+    }
+
+    public class IscsiStorageCleanupMonitor implements Runnable{
+        private static final int CLEANUP_INTERVAL_SEC = 30; // check every hour
+        private static final String ISCSI_PATH_PREFIX = "/dev/disk/by-path/ip-"; // check every hour
+        private static final String KEYWORD_ISCSI = "iscsi"; // check every hour
+        private static final String KEYWORD_IQN = "iqn"; // check every hour
+
+        private Map<String, Boolean> diskStatusMap;
+
+        IscsiStorageCleanupMonitor() {
+            diskStatusMap = new HashMap<>();
+            s_logger.debug("Initialize cleanup thread");
+        }
+
+        @Override
+        public void run() {
+            //change the status of volumemap entries to false
+            while(true) {
+                try {
+                    Thread.sleep(CLEANUP_INTERVAL_SEC * 1000);
+                    for ( String diskName :  diskStatusMap.keySet()) {
+                        diskStatusMap.put(diskName, false);
+                    }
+
+                    Connect conn = LibvirtConnection.getConnection();
+                    int[] domains = conn.listDomains();
+                    s_logger.debug(String.format(" ********* FOUND %d DOMAINS ************", domains.length));
+                    for (int domId : domains) {
+                        Domain dm = conn.domainLookupByID(domId);
+                        final String domXml = dm.getXMLDesc(0);
+                        final LibvirtDomainXMLParser parser = new LibvirtDomainXMLParser();
+                        parser.parseDomainXML(domXml);
+                        List<LibvirtVMDef.DiskDef> disks = parser.getDisks();
+
+                        //populate the volume map. If an entry exists change the status to True
+                        for (final LibvirtVMDef.DiskDef disk : disks) {
+                            if (isIscsiDisk(disk)) {
+                                diskStatusMap.put(disk.getDiskPath(), true);
+                                s_logger.debug("Disk found by cleanup thread" + disk.getDiskPath());
+                            }
+                        }
+                    }
+
+                    // the ones where the state is false, they are stale. They may be actually
+                    // removed we go through each volume which is false, check iscsiadm,
+                    // if the volume still exisits, logout of that volume and remove it from the map
+                    for ( String diskPath :  diskStatusMap.keySet()) {
+                        if (!diskStatusMap.get(diskPath)) {
+                            if (Files.exists(Paths.get(diskPath))) {
+                                try {
+                                    s_logger.info("Cleaning up disk " + diskPath);
+                                    disconnectPhysicalDiskByPath(diskPath);
+                                } catch (Exception e) {
+                                    s_logger.warn("Error cleaning up " + diskPath, e);
+                                }
+                            }
+                            diskStatusMap.remove(diskPath);
+                        }
+                    }
+
+                } catch (InterruptedException | LibvirtException e) {
+                    s_logger.warn(e);
+                }
+            }
+        }
+
+        private boolean isIscsiDisk(LibvirtVMDef.DiskDef disk) {
+            String path = disk.getDiskPath();
+            return path.startsWith(ISCSI_PATH_PREFIX) && path.contains(KEYWORD_ISCSI) && path.contains(KEYWORD_IQN);
+        }
+
+        private Boolean IscsiRecordExisits(String path) {
+            return true;
+        }
     }
 }
