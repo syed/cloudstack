@@ -43,12 +43,6 @@ public class IscsiAdmStorageAdaptor implements StorageAdaptor {
 
     private static final Map<String, KVMStoragePool> MapStorageUuidToStoragePool = new HashMap<>();
 
-    public IscsiAdmStorageAdaptor() {
-        IscsiStorageCleanupMonitor cleanupMonitor = new IscsiStorageCleanupMonitor();
-        final Thread monitor = new Thread(cleanupMonitor);
-        monitor.start();
-    }
-
     @Override
     public KVMStoragePool createStoragePool(String uuid, String host, int port, String path, String userInfo, StoragePoolType storagePoolType) {
         IscsiAdmStoragePool storagePool = new IscsiAdmStoragePool(uuid, host, port, storagePoolType, this);
