@@ -60,6 +60,7 @@ public class IscsiStorageCleanupMonitor implements Runnable{
                 }
 
                 for( File v : iscsiVolumes) {
+                    s_logger.debug("found iscsi disk by cleanup thread, marking inactive:" + v.getAbsolutePath());
                     diskStatusMap.put(v.getAbsolutePath(), false);
                 }
 
@@ -77,7 +78,7 @@ public class IscsiStorageCleanupMonitor implements Runnable{
                     for (final LibvirtVMDef.DiskDef disk : disks) {
                         if (diskStatusMap.containsKey(disk.getDiskPath())) {
                             diskStatusMap.put(disk.getDiskPath(), true);
-                            s_logger.debug("Disk found by cleanup thread" + disk.getDiskPath());
+                            s_logger.debug("active disk found by cleanup thread" + disk.getDiskPath());
                         }
                     }
                 }
