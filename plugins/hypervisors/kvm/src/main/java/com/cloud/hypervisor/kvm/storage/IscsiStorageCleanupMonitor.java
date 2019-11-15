@@ -3,6 +3,7 @@ package com.cloud.hypervisor.kvm.storage;
 import com.cloud.hypervisor.kvm.resource.LibvirtConnection;
 import com.cloud.hypervisor.kvm.resource.LibvirtDomainXMLParser;
 import com.cloud.hypervisor.kvm.resource.LibvirtVMDef;
+import org.apache.cloudstack.managed.context.ManagedContextRunnable;
 import org.apache.log4j.Logger;
 import org.libvirt.Connect;
 import org.libvirt.Domain;
@@ -31,17 +32,19 @@ public class IscsiStorageCleanupMonitor implements Runnable{
         iscsiStorageAdaptor = new IscsiAdmStorageAdaptor();
     }
 
-    @Override
-    public void run() {
-        //change the status of volumemap entries to false
-        while(true) {
-            try {
-                Thread.sleep(CLEANUP_INTERVAL_SEC * 1000);
-                for ( String diskName :  diskStatusMap.keySet()) {
-                    diskStatusMap.put(diskName, false);
-                }
 
-                Connect conn = LibvirtConnection.getConnection();
+    private class Monitor extends ManagedContextRunnable {
+
+        @Override
+        protected void runInContext() {
+            for (String diskPath : diskStatusMap.keySet()) {
+                diskStatusMap.put(diskPath, false);
+            }
+
+            Connect conn = null;
+            try {
+                conn = LibvirtConnection.getConnection();
+
                 int[] domains = conn.listDomains();
                 s_logger.debug(String.format(" ********* FOUND %d DOMAINS ************", domains.length));
                 for (int domId : domains) {
@@ -63,32 +66,49 @@ public class IscsiStorageCleanupMonitor implements Runnable{
                 // the ones where the state is false, they are stale. They may be actually
                 // removed we go through each volume which is false, check iscsiadm,
                 // if the volume still exisits, logout of that volume and remove it from the map
-                for ( String diskPath :  diskStatusMap.keySet()) {
+                for (String diskPath : diskStatusMap.keySet()) {
                     if (!diskStatusMap.get(diskPath)) {
                         if (Files.exists(Paths.get(diskPath))) {
                             try {
                                 s_logger.info("Cleaning up disk " + diskPath);
                                 iscsiStorageAdaptor.disconnectPhysicalDiskByPath(diskPath);
                             } catch (Exception e) {
-                                s_logger.warn("Error cleaning up " + diskPath, e);
+                                s_logger.warn("[ignored] Error cleaning up " + diskPath, e);
                             }
                         }
                         diskStatusMap.remove(diskPath);
                     }
                 }
 
-            } catch (InterruptedException | LibvirtException e) {
-                s_logger.warn(e);
+            } catch (LibvirtException e) {
+                s_logger.warn("[ignored] Error tryong to cleanup ", e);
             }
         }
+
+        private boolean isIscsiDisk(LibvirtVMDef.DiskDef disk) {
+            String path = disk.getDiskPath();
+            return path.startsWith(ISCSI_PATH_PREFIX) && path.contains(KEYWORD_ISCSI) && path.contains(KEYWORD_IQN);
+        }
+
     }
 
-    private boolean isIscsiDisk(LibvirtVMDef.DiskDef disk) {
-        String path = disk.getDiskPath();
-        return path.startsWith(ISCSI_PATH_PREFIX) && path.contains(KEYWORD_ISCSI) && path.contains(KEYWORD_IQN);
-    }
+    @Override
+    public void run() {
+        //change the status of volumemap entries to false
+        while(true) {
+            Thread monitorThread = new Thread(new Monitor());
+            monitorThread.start();
+            try {
+                monitorThread.join();
+            } catch (InterruptedException e) {
+                s_logger.debug("[ignored] interupted joining monitor.");
+            }
 
-    private Boolean IscsiRecordExisits(String path) {
-        return true;
+            try {
+                Thread.sleep(CLEANUP_INTERVAL_SEC);
+            } catch (InterruptedException e) {
+                s_logger.debug("[ignored] interupted between heartbeats.");
+            }
+        }
     }
 }
