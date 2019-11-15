@@ -38,11 +38,6 @@ public class IscsiStorageCleanupMonitor implements Runnable{
 
         @Override
         protected void runInContext() {
-            //change the status of volumemap entries to false
-            for (String diskPath : diskStatusMap.keySet()) {
-                diskStatusMap.put(diskPath, false);
-            }
-
             Connect conn = null;
             try {
                 conn = LibvirtConnection.getConnection();
@@ -57,8 +52,10 @@ public class IscsiStorageCleanupMonitor implements Runnable{
                 }
 
                 for( File v : iscsiVolumes) {
-                    s_logger.debug("found iscsi disk by cleanup thread, marking inactive:" + v.getAbsolutePath());
-                    diskStatusMap.put(v.getAbsolutePath(), false);
+                    if (isIscsiDisk(v.getAbsolutePath())) {
+                        s_logger.debug("found iscsi disk by cleanup thread, marking inactive:" + v.getAbsolutePath());
+                        diskStatusMap.put(v.getAbsolutePath(), false);
+                    }
                 }
 
                 // check if they belong to any VM
@@ -105,8 +102,7 @@ public class IscsiStorageCleanupMonitor implements Runnable{
             }
         }
 
-        private boolean isIscsiDisk(LibvirtVMDef.DiskDef disk) {
-            String path = disk.getDiskPath();
+        private boolean isIscsiDisk(String path) {
             return path.startsWith(ISCSI_PATH_PREFIX) && path.contains(KEYWORD_ISCSI) && path.contains(KEYWORD_IQN);
         }
     }
