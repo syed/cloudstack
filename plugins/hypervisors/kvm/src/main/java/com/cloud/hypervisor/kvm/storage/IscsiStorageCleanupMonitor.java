@@ -9,16 +9,20 @@ import org.libvirt.Connect;
 import org.libvirt.Domain;
 import org.libvirt.LibvirtException;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 public class IscsiStorageCleanupMonitor implements Runnable{
     private static final Logger s_logger = Logger.getLogger(IscsiStorageCleanupMonitor.class);
-    private static final int CLEANUP_INTERVAL_SEC = 30; // check every X seconds
-    private static final String ISCSI_PATH_PREFIX = "/dev/disk/by-path/ip-";
+    private static final int CLEANUP_INTERVAL_SEC = 60; // check every X seconds
+    private static final String ISCSI_PATH_PREFIX = "/dev/disk/by-path";
     private static final String KEYWORD_ISCSI = "iscsi";
     private static final String KEYWORD_IQN = "iqn";
 
@@ -46,6 +50,20 @@ public class IscsiStorageCleanupMonitor implements Runnable{
             try {
                 conn = LibvirtConnection.getConnection();
 
+                //populate all the iscsi disks currently attached to this host
+                diskStatusMap.clear();
+                File[] iscsiVolumes = new File(ISCSI_PATH_PREFIX).listFiles();
+
+                if (iscsiVolumes == null || iscsiVolumes.length == 0) {
+                    s_logger.debug("No iscsi sessions found for cleanup");
+                    return;
+                }
+
+                for( File v : iscsiVolumes) {
+                    diskStatusMap.put(v.getAbsolutePath(), false);
+                }
+
+                // check if they belong to any VM
                 int[] domains = conn.listDomains();
                 s_logger.debug(String.format(" ********* FOUND %d DOMAINS ************", domains.length));
                 for (int domId : domains) {
@@ -55,18 +73,21 @@ public class IscsiStorageCleanupMonitor implements Runnable{
                     parser.parseDomainXML(domXml);
                     List<LibvirtVMDef.DiskDef> disks = parser.getDisks();
 
-                    //populate the volume map. If an entry exists change the status to True
+                    //check the volume map. If an entry exists change the status to True
                     for (final LibvirtVMDef.DiskDef disk : disks) {
-                        if (isIscsiDisk(disk)) {
+                        if (diskStatusMap.containsKey(disk.getDiskPath())) {
                             diskStatusMap.put(disk.getDiskPath(), true);
                             s_logger.debug("Disk found by cleanup thread" + disk.getDiskPath());
                         }
                     }
                 }
 
-                // the ones where the state is false, they are stale. They may be actually
+                // the ones where the state is false, they are stale. They may be
                 // removed we go through each volume which is false, check iscsiadm,
                 // if the volume still exisits, logout of that volume and remove it from the map
+
+                // XXX: It is possible that someone had manually added an iSCSI volume.
+                // we would not be able to detect that
                 for (String diskPath : diskStatusMap.keySet()) {
                     if (!diskStatusMap.get(diskPath)) {
                         if (Files.exists(Paths.get(diskPath))) {
