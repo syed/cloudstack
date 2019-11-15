@@ -22,10 +22,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.cloud.hypervisor.kvm.resource.LibvirtConnection;
-import com.cloud.hypervisor.kvm.resource.LibvirtDomainXMLParser;
-import com.cloud.hypervisor.kvm.resource.LibvirtVMDef;
-import org.apache.cloudstack.utils.qemu.QemuImg;
 import org.apache.cloudstack.utils.qemu.QemuImgException;
 import org.apache.cloudstack.utils.qemu.QemuImgFile;
 import org.apache.log4j.Logger;
@@ -40,9 +36,6 @@ import com.cloud.utils.StringUtils;
 import com.cloud.utils.exception.CloudRuntimeException;
 import com.cloud.utils.script.OutputInterpreter;
 import com.cloud.utils.script.Script;
-import org.libvirt.Connect;
-import org.libvirt.Domain;
-import org.libvirt.LibvirtException;
 
 
 @StorageAdaptorInfo(storagePoolType=StoragePoolType.Iscsi)
