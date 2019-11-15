@@ -37,6 +37,7 @@ public class IscsiStorageCleanupMonitor implements Runnable{
 
         @Override
         protected void runInContext() {
+            //change the status of volumemap entries to false
             for (String diskPath : diskStatusMap.keySet()) {
                 diskStatusMap.put(diskPath, false);
             }
@@ -89,12 +90,10 @@ public class IscsiStorageCleanupMonitor implements Runnable{
             String path = disk.getDiskPath();
             return path.startsWith(ISCSI_PATH_PREFIX) && path.contains(KEYWORD_ISCSI) && path.contains(KEYWORD_IQN);
         }
-
     }
 
     @Override
     public void run() {
-        //change the status of volumemap entries to false
         while(true) {
             Thread monitorThread = new Thread(new Monitor());
             monitorThread.start();
@@ -105,7 +104,7 @@ public class IscsiStorageCleanupMonitor implements Runnable{
             }
 
             try {
-                Thread.sleep(CLEANUP_INTERVAL_SEC);
+                Thread.sleep(CLEANUP_INTERVAL_SEC * 1000);
             } catch (InterruptedException e) {
                 s_logger.debug("[ignored] interupted between heartbeats.");
             }
