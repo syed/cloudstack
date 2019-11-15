@@ -16,8 +16,6 @@
 // under the License.
 package com.cloud.hypervisor.kvm.storage;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
